@@ -1,59 +1,100 @@
 # Project Context
 
-**Read this first.** This file is the source of truth for any AI session working on this codebase. If something conflicts with this doc, this doc wins. If a user request contradicts this doc, ask before proceeding.
+**Read this first.** This file is the source of truth for any AI session working on this codebase. If something conflicts with this doc, this doc wins.
+
+---
+
+## Current product goal
+
+Ship a **working web-first fitness tracker by the end of today**.
+
+The app should run as a **Flutter web app / PWA** and be usable on an iPhone through Safari "Add to Home Screen". Store release and native mobile builds are deferred.
+
+This repo is now **web first**:
+- browser runtime is the priority
+- local browser persistence is the priority
+- native-only APIs are out of scope for the current delivery target
 
 ---
 
 ## What this project is
 
-A personal workout tracker mobile app. Built primarily for the author's own gym use, with the long-term option to publish publicly on the App Store and Play Store.
+A personal workout tracker for one primary user.
 
-**Core loop:** user opens the app at the gym -> starts a workout (empty or from a template) -> logs exercises, sets, reps, weight (or distance/time for cardio) -> finishes the workout -> sees history and progress over time.
+Core loop:
+- open the app
+- start a workout
+- log exercises and sets
+- finish the workout
+- review history and progress
 
-**Non-goals:** social features, coaching, workout recommendations, AI-generated plans, video exercise demos, community. Don't build these. Don't suggest them unprompted.
+Non-goals:
+- social features
+- coaching
+- AI workout planning
+- video demos
+- community features
+
+Do not add these unless explicitly requested later.
 
 ---
 
-## Stack
+## Delivery mindset
 
-- **Framework:** Flutter (Dart), latest stable.
-- **UI:** Material 3 (`useMaterial3: true`). No third-party UI kits.
-- **Fonts:** `google_fonts` package. Font is Inter (fallback Manrope).
-- **Local DB:** Drift (SQLite under the hood). Local-first - the app must be fully functional offline.
-- **Remote sync (later phases only):** Supabase. Not wired until Phase 9 of `EXECUTION_PLAN.md`.
-- **Auth (later phases only):** Supabase email/password.
-- **Charts:** `fl_chart` (added in Phase 8).
-- **State management:** Riverpod. Use `riverpod_generator` / `@riverpod` annotations.
-- **Navigation:** `go_router`.
-- **IDs:** UUID v4 strings via the `uuid` package. No auto-increment ints - makes sync simpler later.
-- **Dates:** Store as `DateTime` in UTC, display in device local time via `intl`.
+Right now, optimize for:
+- simplest working implementation
+- one-user practicality
+- end-of-day usability
+- minimal moving parts
 
-### Key packages
-```
-drift, drift_flutter, path_provider, path
-flutter_riverpod, riverpod_annotation
-go_router
-google_fonts
-intl
-uuid
-image_picker (for exercise thumbnails)
-```
-Dev: `drift_dev`, `build_runner`, `riverpod_generator`, `custom_lint`, `riverpod_lint`.
+Do **not** optimize for:
+- store readiness
+- native parity
+- perfect long-term abstractions
+- extra backend services
+- heavy new libraries unless they are necessary to make web/PWA work today
+
+If there is a choice between a simpler working web solution and a more "correct" architecture, pick the simpler working web solution.
+
+---
+
+## Runtime and stack
+
+- **Framework:** Flutter (Dart)
+- **Primary target:** Web / PWA
+- **UI:** Material 3 only
+- **Fonts:** Inter via `google_fonts` with Manrope fallback
+- **State:** Riverpod with `riverpod_generator`
+- **Navigation:** `go_router`
+- **Persistence:** local browser storage
+- **Database layer:** Drift, but configured for browser-safe local persistence
+- **IDs:** UUID v4 strings
+- **Dates:** store UTC `DateTime`, display in local time via `intl`
+
+### Important runtime rule
+
+For the current phase, do not introduce or reintroduce:
+- `dart:io` in app runtime code
+- native SQLite bootstrap paths
+- filesystem-based document storage
+- native-only image/file handling
+
+Native support can come later. Web support is the priority now.
 
 ---
 
 ## Design tokens
 
-**Seed color:** `#289CB2` (jelly-bean 500).
+**Seed color:** `#289CB2`
 
-**Full jelly-bean ramp** (use for custom surfaces outside M3's generated scheme):
+**Jelly-bean ramp**
 ```
 50:  #EFFBFC
 100: #D7F3F6
 200: #B3E7EE
 300: #7FD4E1
 400: #44B8CC
-500: #289CB2   <- seed
+500: #289CB2
 600: #26849D
 700: #24667A
 800: #255565
@@ -61,164 +102,133 @@ Dev: `drift_dev`, `build_runner`, `riverpod_generator`, `custom_lint`, `riverpod
 950: #122E3A
 ```
 
-**Theme:** both light and dark generated via `ColorScheme.fromSeed`. Default mode is light.
+**Theme:** Material 3, light mode default.
 
-**Shapes:** M3 defaults (rounded corners, ~12px on cards).
-
-**Spacing:** 4 / 8 / 12 / 16 / 24 / 32 grid. No arbitrary values.
+**Spacing:** 4 / 8 / 12 / 16 / 24 / 32.
 
 ---
 
-## Units - locked
+## Units
 
-- Weight: **kg only**. No lbs. No unit toggle.
-- Distance: **km only**. No miles.
-- Time (cardio): **minutes** in UI, stored as seconds in DB.
-- Do not add unit conversion code. Do not add a settings toggle for units.
+- Weight: **kg only**
+- Distance: **km only**
+- Cardio time in UI: **minutes**
+- Cardio time in storage: **seconds**
 
----
-
-## Default exercise seed list
-
-The first-launch default exercise list for v1 is locked to these 18 exercises:
-
-- Bench Press
-- Incline Dumbbell Press
-- Overhead Press
-- Pull-Up
-- Barbell Row
-- Lat Pulldown
-- Seated Cable Row
-- Squat
-- Deadlift
-- Romanian Deadlift
-- Leg Press
-- Bicep Curl
-- Tricep Pushdown
-- Plank
-- Push-Up
-- Sit-Up
-- Treadmill
-- Stationary Bike
+Do not add unit toggles or conversion code.
 
 ---
 
 ## Domain model
 
-Three exercise types, and only three:
+Exercise types:
+- `weighted`
+- `bodyweight`
+- `cardio`
 
-| Type | Tracks | Set row columns |
-|---|---|---|
-| `weighted` | reps + kg | Set \| Previous \| Kg \| Reps \| ✅ |
-| `bodyweight` | reps | Set \| Previous \| Reps \| ✅ |
-| `cardio` | distance + time | Set \| Previous \| Km \| Time \| ✅ |
+Entities:
+- **Exercise** - `id`, `name`, `type`, `thumbnailPath?`, `isDefault`, `createdAt`, `updatedAt`
+- **WorkoutTemplate** - `id`, `name`, `createdAt`, `updatedAt`
+- **TemplateExercise** - `id`, `templateId`, `exerciseId`, `orderIndex`, `defaultSets`
+- **Workout** - `id`, `startedAt`, `endedAt?`, `templateId?`, `notes?`
+- **WorkoutExercise** - `id`, `workoutId`, `exerciseId`, `orderIndex`
+- **Set** - `id`, `workoutExerciseId`, `setNumber`, `weightKg?`, `reps?`, `distanceKm?`, `durationSeconds?`, `completed`
 
-### Entities
-- **Exercise** - `id`, `name`, `type`, `thumbnailPath?`, `isDefault`, `createdAt`, `updatedAt`.
-- **WorkoutTemplate** - `id`, `name`, `createdAt`, `updatedAt`.
-- **TemplateExercise** - `id`, `templateId`, `exerciseId`, `orderIndex`, `defaultSets`.
-- **Workout** - `id`, `startedAt`, `endedAt?` (null = in-progress), `templateId?`, `notes?`.
-- **WorkoutExercise** - `id`, `workoutId`, `exerciseId`, `orderIndex`.
-- **Set** - `id`, `workoutExerciseId`, `setNumber`, `weightKg?`, `reps?`, `distanceKm?`, `durationSeconds?`, `completed`.
-
-Nullable weight/reps/distance/duration because different exercise types use different fields. Repositories validate which fields are required per type.
-
-### Invariants
-- At most one workout has `endedAt == null` at a time (the active workout).
-- Deleting an Exercise does not delete past Sets - soft-delete or block deletion if referenced. Pick blocking for v1.
-- Editing a template does not affect past workouts or the currently active workout.
-- Past workouts are **read-only** in v1. Do not build edit UI for completed workouts.
+Invariants:
+- at most one active workout at a time
+- completed workouts are read-only in v1
+- deleting an exercise must not break past workout history
+- editing a template must not mutate past workouts
 
 ---
 
 ## Project structure
 
-```
+```text
 lib/
   core/
-    theme/          (AppTheme, color extensions)
-    router/         (go_router config)
-    utils/          (formatters, extensions)
+    theme/
+    router/
+    utils/
   data/
-    db/             (Drift database, tables, DAOs)
-    models/         (domain models, not DB rows - mappers between them)
-    repositories/   (ExerciseRepository, WorkoutRepository, TemplateRepository)
-    seed/           (default exercise list)
+    db/
+    models/
+    repositories/
+    seed/
   features/
-    workouts/       (active workout screen, summary, start flow)
-    exercises/      (list, create/edit, history view)
-    templates/      (list, create/edit)
-    history/        (workout history list + detail)
-    home/           (bottom nav shell)
-  app.dart          (MaterialApp.router + theme)
-  main.dart         (ProviderScope, DB init, runApp)
+    workouts/
+    exercises/
+    templates/
+    history/
+    home/
+  app.dart
+  main.dart
 ```
 
-**Rules:**
-- `features/` never imports from another feature. Cross-feature sharing goes through `data/` or `core/`.
-- `data/` never imports from `features/`.
-- UI widgets never touch Drift directly - always go through a repository.
-- Providers for repositories live in `data/`. Providers for screen state live alongside their feature.
+Rules:
+- `features/` never imports another feature
+- `data/` never imports `features/`
+- UI never talks to Drift directly
+- repository providers live in `data/`
+- screen/application providers live with their feature
 
 ---
 
-## Coding conventions
+## UI rules for the current web phase
 
-- **Formatting:** `dart format` (80 cols). Lints: `flutter_lints` + `riverpod_lint` + `custom_lint`. All warnings must be zero before a commit.
-- **Naming:** files `snake_case.dart`, classes `PascalCase`, vars `camelCase`, constants `lowerCamelCase` (no `SCREAMING_CASE`).
-- **Widgets:** prefer `StatelessWidget` + Riverpod `ConsumerWidget`. Avoid `StatefulWidget` unless you need a controller lifecycle (e.g., `TextEditingController`, animation).
-- **Async:** every async function has explicit return types. No `dynamic`. No `!` null-bangs unless the null case is impossible and commented why.
-- **Errors:** repositories throw typed exceptions (`ExerciseNotFoundException`, etc.). UI catches and shows a `SnackBar`. Never swallow errors silently.
-- **Magic numbers:** none. Lift to constants in `core/` or the relevant feature folder.
-- **Comments:** explain *why*, not *what*. The code already says what.
+- Letter-avatar fallback is the default thumbnail treatment
+- For the current web-first build, **exercise thumbnails are deferred**
+- Do not design flows that depend on native filesystem image picking
+- Empty states must have a meaningful CTA
+- Destructive actions stay behind confirm dialogs
 
----
-
-## UI conventions
-
-- **Letter-avatar fallback:** when an exercise has no `thumbnailPath`, render a circle with the first letter of the name. Background color derived from a hash of the name (stable across sessions). Build this once as a shared widget.
-- **Set table:** matches the mockup in the brief exactly - rows per set, tappable ✅ to complete, previous set data pulled from most recent prior completed set for that exercise.
-- **Persist-as-you-go:** every field change in an active workout writes to DB immediately. Do not rely on a "save" button mid-workout. If the app crashes, nothing is lost.
-- **Empty states:** every list screen has a meaningful empty state with a CTA, not just a blank page.
-- **Destructive actions:** always behind a confirm dialog (cancel workout, delete exercise, delete template).
+If a UI choice conflicts with web/PWA simplicity, choose the simpler web-safe option.
 
 ---
 
 ## Testing
 
-- Repositories must have unit tests. Cover happy path + the one or two realistic error paths. No testing for testing's sake.
-- Widget tests only for the active workout screen's set-logging logic - that's the most critical UI.
-- Integration tests: skip for v1.
+- Repository tests are required
+- Add only the highest-value widget tests
+- Prioritize:
+  - web build success
+  - browser persistence across refresh
+  - seeded data appearing on first load
+  - critical workout logging behavior
+
+---
+
+## Working split
+
+- **Claude** owns frontend/UI work
+- **Codex** owns logic, data, runtime, storage, repo wiring, and technical fixes unless told otherwise
+
+When editing docs or implementation, keep this split visible so frontend work is built against the correct web-first assumptions.
 
 ---
 
 ## What not to do
 
-- **Don't add features outside the current phase** of `EXECUTION_PLAN.md`. Ideas go in `BACKLOG.md`, not the codebase.
-- **Don't introduce new state management libraries** (no Bloc, no GetX, no Provider-the-package). Riverpod only.
-- **Don't wire Supabase before Phase 9.** Local-first. No network calls in the critical path.
-- **Don't build a unit toggle.** kg/km only, see above.
-- **Don't build edit-past-workout UI** in v1.
-- **Don't add rest timers, workout plans, social features, or exercise demo videos.** Out of scope.
-- **Don't invent new colors** outside the jelly-bean ramp or M3-generated scheme.
-- **Don't use `setState` in `ConsumerWidget`.** If it's feeling tempting, model the state as a Riverpod provider.
-- **Don't scaffold entire features in one go.** Small, reviewable chunks.
+- Don't optimize for App Store / Play Store right now
+- Don't add Supabase right now
+- Don't add sync right now
+- Don't reintroduce native-only runtime APIs
+- Don't add new product scope outside the current delivery goal
+- Don't build for multiple users yet
+- Don't add complicated infrastructure if a simple local solution works
 
 ---
 
-## How to work with this codebase (AI instructions)
+## How to work in this repo
 
-When asked to implement something:
-
-1. **Re-read this file and the relevant phase section of `EXECUTION_PLAN.md`.** Confirm the task is in scope for the current phase.
-2. **Ask before deviating.** If the request conflicts with rules above, flag it and wait for a decision. Don't "helpfully" expand scope.
-3. **Work in small commits.** One logical change per commit. Commit messages start with the phase number, e.g. `P4: add set-completion toggle`.
-4. **Show your plan before writing code** for anything non-trivial - list files you'll create or change, then wait for a go-ahead.
-5. **Generated code** (Drift, Riverpod) - always run the build step and commit the `.g.dart` files alongside source.
-6. **When in doubt, pick the simpler option.** This app is a personal tool first. Elegance beats cleverness.
+1. Re-read this file and the relevant execution doc before implementing.
+2. Keep changes small and reviewable.
+3. Prefer simple working code over clever code.
+4. Keep generated files committed when generators are used.
+5. Keep docs aligned with the actual runtime target.
 
 ---
 
 ## Current phase
 
-**Phase 2** - data layer.
+**Phase W1** - web-first PWA conversion and same-day usable delivery.

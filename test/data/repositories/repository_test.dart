@@ -82,6 +82,16 @@ void main() {
       );
     });
 
+    test('rejects blank exercise names', () async {
+      expect(
+        () => exerciseRepository.createExercise(
+          name: '   ',
+          type: ExerciseType.weighted,
+        ),
+        throwsA(isA<InvalidExerciseNameException>()),
+      );
+    });
+
     test(
       'blocks delete when the exercise is referenced by workout data',
       () async {

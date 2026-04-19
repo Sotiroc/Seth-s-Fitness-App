@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../features/exercises/presentation/exercises_placeholder_screen.dart';
+import '../../features/exercises/presentation/exercise_form_screen.dart';
+import '../../features/exercises/presentation/exercise_list_screen.dart';
 import '../../features/history/presentation/history_placeholder_screen.dart';
 import '../../features/home/presentation/home_shell.dart';
 import '../../features/home/presentation/phase2_debug_screen.dart';
@@ -83,9 +84,20 @@ GoRouter appRouter(Ref ref) {
             routes: <RouteBase>[
               GoRoute(
                 path: AppTab.exercises.path,
-                pageBuilder: (context, state) => const NoTransitionPage<void>(
-                  child: ExercisesPlaceholderScreen(),
-                ),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage<void>(child: ExerciseListScreen()),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: 'new',
+                    builder: (context, state) => const ExerciseFormScreen(),
+                  ),
+                  GoRoute(
+                    path: ':id/edit',
+                    builder: (context, state) => ExerciseFormScreen(
+                      exerciseId: state.pathParameters['id'],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

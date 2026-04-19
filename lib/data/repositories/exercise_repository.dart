@@ -80,6 +80,19 @@ class ExerciseRepository {
     return rows.map((row) => row.toModel()).toList(growable: false);
   }
 
+  Stream<List<Exercise>> watchAllExercises() {
+    final Stream<List<ExerciseRow>> rows =
+        (_database.select(_database.exercises)
+              ..orderBy(<OrderingTerm Function(Exercises)>[
+                (tbl) => OrderingTerm(expression: tbl.name),
+              ]))
+            .watch();
+
+    return rows.map(
+      (items) => items.map((row) => row.toModel()).toList(growable: false),
+    );
+  }
+
   Future<List<Exercise>> getExercisesByType(ExerciseType type) async {
     final List<ExerciseRow> rows =
         await (_database.select(_database.exercises)
@@ -103,6 +116,14 @@ class ExerciseRepository {
     return row.toModel();
   }
 
+  Stream<Exercise?> watchExerciseById(String exerciseId) {
+    final Stream<ExerciseRow?> rowStream = (_database.select(
+      _database.exercises,
+    )..where((tbl) => tbl.id.equals(exerciseId))).watchSingleOrNull();
+
+    return rowStream.map((row) => row?.toModel());
+  }
+
   Future<Exercise> createExercise({
     required String name,
     required ExerciseType type,
@@ -110,9 +131,10 @@ class ExerciseRepository {
     bool isDefault = false,
   }) async {
     final DateTime now = _utcNow();
+    final String trimmedName = _validatedName(name);
     final Exercise exercise = Exercise(
       id: _uuid.v4(),
-      name: name.trim(),
+      name: trimmedName,
       type: type,
       thumbnailPath: thumbnailPath,
       isDefault: isDefault,
@@ -140,7 +162,10 @@ class ExerciseRepository {
   Future<Exercise> updateExercise(Exercise exercise) async {
     await getExerciseById(exercise.id);
 
-    final Exercise updatedExercise = exercise.copyWith(updatedAt: _utcNow());
+    final Exercise updatedExercise = exercise.copyWith(
+      name: _validatedName(exercise.name),
+      updatedAt: _utcNow(),
+    );
 
     await (_database.update(
       _database.exercises,
@@ -190,4 +215,12 @@ class ExerciseRepository {
   }
 
   DateTime _utcNow() => DateTime.now().toUtc();
+
+  String _validatedName(String name) {
+    final String trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      throw InvalidExerciseNameException();
+    }
+    return trimmedName;
+  }
 }

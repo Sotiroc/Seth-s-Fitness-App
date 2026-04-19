@@ -1,16 +1,14 @@
-# fitnessapp
+# Fitness App Docs
 
-A personal workout tracker mobile app.
+The project is currently aimed at a **web-first PWA** delivery, not a store release.
 
-## Getting Started
+Current focus:
+- browser runtime
+- local browser persistence
+- iPhone home-screen use
+- simple one-user functionality
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Read first:
+- `../AGENTS.md`
+- `../EXECUTION_PLAN.md`
+- `../Brand.md`

@@ -12,6 +12,10 @@ class ExerciseNotFoundException extends RepositoryException {
     : super('Exercise not found: $exerciseId');
 }
 
+class InvalidExerciseNameException extends RepositoryException {
+  InvalidExerciseNameException() : super('Exercise name cannot be empty.');
+}
+
 class WorkoutNotFoundException extends RepositoryException {
   WorkoutNotFoundException(String workoutId)
     : super('Workout not found: $workoutId');
