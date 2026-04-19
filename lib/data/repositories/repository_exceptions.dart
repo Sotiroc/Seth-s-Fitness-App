@@ -35,3 +35,22 @@ class ExerciseDeleteBlockedException extends RepositoryException {
   ExerciseDeleteBlockedException(String exerciseId)
     : super('Exercise cannot be deleted because it is referenced: $exerciseId');
 }
+
+class WorkoutNotActiveException extends RepositoryException {
+  WorkoutNotActiveException(String workoutId)
+    : super('Workout is not active: $workoutId');
+}
+
+class WorkoutExerciseNotFoundException extends RepositoryException {
+  WorkoutExerciseNotFoundException(String workoutExerciseId)
+    : super('Workout exercise not found: $workoutExerciseId');
+}
+
+class WorkoutSetNotFoundException extends RepositoryException {
+  WorkoutSetNotFoundException(String workoutSetId)
+    : super('Workout set not found: $workoutSetId');
+}
+
+class InvalidWorkoutSetException extends RepositoryException {
+  InvalidWorkoutSetException(super.message);
+}

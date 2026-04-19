@@ -8,6 +8,8 @@ import 'package:fitnessapp/data/models/exercise.dart';
 import 'package:fitnessapp/data/models/exercise_type.dart';
 import 'package:fitnessapp/data/models/template_exercise.dart';
 import 'package:fitnessapp/data/models/workout.dart';
+import 'package:fitnessapp/data/models/workout_detail.dart';
+import 'package:fitnessapp/data/models/workout_set.dart';
 import 'package:fitnessapp/data/models/workout_template.dart';
 import 'package:fitnessapp/data/repositories/exercise_repository.dart';
 import 'package:fitnessapp/data/repositories/repository_exceptions.dart';
@@ -191,6 +193,140 @@ void main() {
       expect(detail.exercises.first.sets.first.weightKg, 80);
       expect(detail.exercises.first.sets.first.reps, 5);
     });
+
+    test(
+      'supports adding exercises, sets, notes, and typed set updates',
+      () async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final Workout workout = await workoutRepository.startWorkout(
+          notes: '  Upper body  ',
+        );
+
+        final String weightedExerciseId = defaultExerciseSeeds
+            .firstWhere((seed) => seed.name == 'Bench Press')
+            .id;
+        final String bodyweightExerciseId = defaultExerciseSeeds
+            .firstWhere((seed) => seed.name == 'Pull-Up')
+            .id;
+        final String cardioExerciseId = defaultExerciseSeeds
+            .firstWhere((seed) => seed.name == 'Treadmill')
+            .id;
+
+        final weightedDetail = await workoutRepository.addExerciseToWorkout(
+          workoutId: workout.id,
+          exerciseId: weightedExerciseId,
+        );
+        final bodyweightDetail = await workoutRepository.addExerciseToWorkout(
+          workoutId: workout.id,
+          exerciseId: bodyweightExerciseId,
+        );
+        final cardioDetail = await workoutRepository.addExerciseToWorkout(
+          workoutId: workout.id,
+          exerciseId: cardioExerciseId,
+        );
+
+        final WorkoutSet weightedSet = await workoutRepository
+            .addSetToWorkoutExercise(weightedDetail.workoutExercise.id);
+        final WorkoutSet bodyweightSet = await workoutRepository
+            .addSetToWorkoutExercise(bodyweightDetail.workoutExercise.id);
+        final WorkoutSet cardioSet = await workoutRepository
+            .addSetToWorkoutExercise(cardioDetail.workoutExercise.id);
+
+        await workoutRepository.updateWorkoutNotes(
+          workoutId: workout.id,
+          notes: '  Push and cardio  ',
+        );
+        await workoutRepository.updateWorkoutSet(
+          workoutSetId: weightedSet.id,
+          weightKg: 82.5,
+          reps: 6,
+          distanceKm: null,
+          durationSeconds: null,
+          completed: true,
+        );
+        await workoutRepository.updateWorkoutSet(
+          workoutSetId: bodyweightSet.id,
+          weightKg: null,
+          reps: 8,
+          distanceKm: null,
+          durationSeconds: null,
+          completed: true,
+        );
+        await workoutRepository.updateWorkoutSet(
+          workoutSetId: cardioSet.id,
+          weightKg: null,
+          reps: null,
+          distanceKm: 2.4,
+          durationSeconds: 900,
+          completed: true,
+        );
+
+        final WorkoutDetail detail = await workoutRepository.getWorkoutById(
+          workout.id,
+        );
+
+        expect(detail.workout.notes, 'Push and cardio');
+        expect(detail.exercises, hasLength(3));
+        expect(detail.exercises[0].exercise.name, 'Bench Press');
+        expect(detail.exercises[0].sets.single.weightKg, 82.5);
+        expect(detail.exercises[0].sets.single.reps, 6);
+        expect(detail.exercises[1].exercise.name, 'Pull-Up');
+        expect(detail.exercises[1].sets.single.reps, 8);
+        expect(detail.exercises[1].sets.single.weightKg, isNull);
+        expect(detail.exercises[2].exercise.name, 'Treadmill');
+        expect(detail.exercises[2].sets.single.distanceKm, 2.4);
+        expect(detail.exercises[2].sets.single.durationSeconds, 900);
+      },
+    );
+
+    test(
+      'rejects invalid set values and blocks mutations on ended workouts',
+      () async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final Workout workout = await workoutRepository.startWorkout();
+        final String exerciseId = defaultExerciseSeeds
+            .firstWhere((seed) => seed.name == 'Bench Press')
+            .id;
+        final weightedDetail = await workoutRepository.addExerciseToWorkout(
+          workoutId: workout.id,
+          exerciseId: exerciseId,
+        );
+        final WorkoutSet workoutSet = await workoutRepository
+            .addSetToWorkoutExercise(weightedDetail.workoutExercise.id);
+
+        expect(
+          () => workoutRepository.updateWorkoutSet(
+            workoutSetId: workoutSet.id,
+            weightKg: null,
+            reps: 5,
+            distanceKm: null,
+            durationSeconds: null,
+            completed: true,
+          ),
+          throwsA(isA<InvalidWorkoutSetException>()),
+        );
+
+        await workoutRepository.endWorkout(workout.id);
+
+        expect(
+          () => workoutRepository.addSetToWorkoutExercise(
+            weightedDetail.workoutExercise.id,
+          ),
+          throwsA(isA<WorkoutNotActiveException>()),
+        );
+        expect(
+          () => workoutRepository.updateWorkoutNotes(
+            workoutId: workout.id,
+            notes: 'Late edit',
+          ),
+          throwsA(isA<WorkoutNotActiveException>()),
+        );
+        expect(
+          () => workoutRepository.cancelWorkout(workout.id),
+          throwsA(isA<WorkoutNotActiveException>()),
+        );
+      },
+    );
   });
 
   group('TemplateRepository', () {
