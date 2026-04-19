@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'data/database_bootstrap.dart';
 
 class FitnessApp extends ConsumerWidget {
   const FitnessApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(databaseBootstrapProvider);
     final router = ref.watch(appRouterProvider);
 
     return MaterialApp.router(

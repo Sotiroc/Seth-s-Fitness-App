@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -8,14 +9,16 @@ class WorkoutsPlaceholderScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final palette = context.jellyBeanPalette;
+    final ThemeData theme = Theme.of(context);
+    final JellyBeanPalette palette = context.jellyBeanPalette;
 
     return Scaffold(
       backgroundColor: palette.shade50,
       body: CustomScrollView(
         slivers: <Widget>[
-          SliverToBoxAdapter(child: _Hero(palette: palette, theme: theme)),
+          SliverToBoxAdapter(
+            child: _Hero(palette: palette, theme: theme),
+          ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg,
@@ -39,15 +42,15 @@ class WorkoutsPlaceholderScreen extends StatelessWidget {
                   index: '02',
                   title: 'Navigation shell',
                   subtitle:
-                      'Workouts, History, Exercises, Templates — stateful branches ready for feature work.',
+                      'Workouts, History, and Exercises wired. A temporary data debug route is now available.',
                   palette: palette,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _FeatureTile(
                   index: '03',
-                  title: 'Data-ready scaffold',
+                  title: 'Data layer online',
                   subtitle:
-                      'Folders, Riverpod, Drift, and go_router installed. Phase 2 plugs straight in.',
+                      'Drift schema, repositories, seeding, and inspection hooks are ready for Phase 3 feature work.',
                   palette: palette,
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -69,35 +72,35 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.paddingOf(context).top;
+    final double topPadding = MediaQuery.paddingOf(context).top;
 
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: <Color>[
-            palette.shade950,
-            palette.shade800,
-            palette.shade600,
-          ],
+          colors: <Color>[palette.shade950, palette.shade800, palette.shade600],
           stops: const <double>[0.0, 0.55, 1.0],
         ),
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(36),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
       ),
       child: Stack(
         children: <Widget>[
           Positioned(
             right: -60,
             top: -40,
-            child: _Blob(color: palette.shade400.withValues(alpha: 0.28), size: 220),
+            child: _Blob(
+              color: palette.shade400.withValues(alpha: 0.28),
+              size: 220,
+            ),
           ),
           Positioned(
             left: -50,
             bottom: -70,
-            child: _Blob(color: palette.shade300.withValues(alpha: 0.18), size: 200),
+            child: _Blob(
+              color: palette.shade300.withValues(alpha: 0.18),
+              size: 200,
+            ),
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(
@@ -115,7 +118,7 @@ class _Hero extends StatelessWidget {
                     _GlassPill(
                       palette: palette,
                       icon: Icons.bolt_rounded,
-                      label: 'PHASE 1 · PREVIEW',
+                      label: 'PHASE 2 · DATA',
                     ),
                     Container(
                       width: 40,
@@ -128,7 +131,7 @@ class _Hero extends StatelessWidget {
                         ),
                       ),
                       child: Icon(
-                        Icons.fitness_center_rounded,
+                        Icons.storage_rounded,
                         color: palette.shade100,
                         size: 20,
                       ),
@@ -159,7 +162,7 @@ class _Hero extends StatelessWidget {
                     Expanded(
                       child: _StatTile(
                         palette: palette,
-                        value: '17',
+                        value: '18',
                         label: 'Seed exercises',
                       ),
                     ),
@@ -175,8 +178,8 @@ class _Hero extends StatelessWidget {
                     Expanded(
                       child: _StatTile(
                         palette: palette,
-                        value: 'M3',
-                        label: 'Material 3',
+                        value: 'Drift',
+                        label: 'Local-first DB',
                       ),
                     ),
                   ],
@@ -194,7 +197,8 @@ class _Hero extends StatelessWidget {
                     const SizedBox(width: AppSpacing.sm),
                     _GhostCta(
                       palette: palette,
-                      icon: Icons.dashboard_customize_outlined,
+                      icon: Icons.developer_board_outlined,
+                      onTap: () => context.go('/workouts/debug'),
                     ),
                   ],
                 ),
@@ -291,7 +295,7 @@ class _StatTile extends StatelessWidget {
         children: <Widget>[
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.w800,
@@ -363,22 +367,31 @@ class _PrimaryCta extends StatelessWidget {
 }
 
 class _GhostCta extends StatelessWidget {
-  const _GhostCta({required this.palette, required this.icon});
+  const _GhostCta({
+    required this.palette,
+    required this.icon,
+    required this.onTap,
+  });
 
   final JellyBeanPalette palette;
   final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Icon(icon, color: palette.shade100, size: 22),
       ),
-      child: Icon(icon, color: palette.shade100, size: 22),
     );
   }
 }
@@ -424,7 +437,7 @@ class _FeatureTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final ThemeData theme = Theme.of(context);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -492,7 +505,7 @@ class _Footnote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final ThemeData theme = Theme.of(context);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -506,7 +519,7 @@ class _Footnote extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              'Preview only — buttons come alive in Phase 4.',
+              'Debug entry is live. Workout actions still come alive in Phase 4.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: palette.shade800,
                 fontWeight: FontWeight.w500,

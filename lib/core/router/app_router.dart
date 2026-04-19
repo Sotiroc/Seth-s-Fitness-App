@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/exercises/presentation/exercises_placeholder_screen.dart';
 import '../../features/history/presentation/history_placeholder_screen.dart';
 import '../../features/home/presentation/home_shell.dart';
+import '../../features/home/presentation/phase2_debug_screen.dart';
 import '../../features/workouts/presentation/workouts_placeholder_screen.dart';
 
 part 'app_router.g.dart';
@@ -59,6 +60,12 @@ GoRouter appRouter(Ref ref) {
                 pageBuilder: (context, state) => const NoTransitionPage<void>(
                   child: WorkoutsPlaceholderScreen(),
                 ),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: 'debug',
+                    builder: (context, state) => const Phase2DebugScreen(),
+                  ),
+                ],
               ),
             ],
           ),

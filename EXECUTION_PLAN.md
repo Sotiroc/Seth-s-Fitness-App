@@ -13,7 +13,7 @@ Lock these down before writing a single line. They're all small but they block e
 - [ Confirmed ] **Confirm exercise types:** `weighted` (reps + kg), `bodyweight` (reps only), `cardio` (distance km + time minutes).
 - [ Confirmed ] **Seed color & theme tokens:** jelly-bean `#289CB2` as seed. Default mode is light for first launch.
 - [ Confirmed ] **Pick a font:** Inter via `google_fonts` package with Manrope fallback.
-- [ ] **Decide default exercise list:** write out the 12-20 exercises to seed on first launch. Example starter set: Bench Press, Incline Dumbbell Press, Overhead Press, Pull-Up, Barbell Row, Lat Pulldown, Squat, Deadlift, Romanian Deadlift, Leg Press, Bicep Curl, Tricep Pushdown, Plank (bodyweight), Push-Up (bodyweight), Sit-Up (bodyweight), Treadmill (cardio), Stationary Bike (cardio).
+- [ Confirmed ] **Decide default exercise list:** Bench Press, Incline Dumbbell Press, Overhead Press, Pull-Up, Barbell Row, Lat Pulldown, Seated Cable Row, Squat, Deadlift, Romanian Deadlift, Leg Press, Bicep Curl, Tricep Pushdown, Plank, Push-Up, Sit-Up, Treadmill, Stationary Bike.
 
 ---
 
@@ -43,20 +43,20 @@ Goal: a running Flutter app on your phone with your brand theme applied. No feat
 
 Goal: local database with all tables and repositories, no UI wiring yet. "Repository interface" here IS the local DB - don't build a separate fake layer.
 
-- [ ] Define Drift tables:
+- [x] Define Drift tables:
   - `Exercises` - id, name, type (enum: weighted/bodyweight/cardio), thumbnailPath (nullable), isDefault (bool), createdAt.
   - `WorkoutTemplates` - id, name, createdAt, updatedAt.
   - `TemplateExercises` - id, templateId, exerciseId, orderIndex, defaultSets (int).
   - `Workouts` - id, startedAt, endedAt (nullable - null means in-progress), templateId (nullable), notes.
   - `WorkoutExercises` - id, workoutId, exerciseId, orderIndex.
   - `Sets` - id, workoutExerciseId, setNumber, weightKg (nullable), reps (nullable), distanceKm (nullable), durationSeconds (nullable), completed (bool).
-- [ ] Generate Drift code with `build_runner`.
-- [ ] Write repository classes:
+- [x] Generate Drift code with `build_runner`.
+- [x] Write repository classes:
   - `ExerciseRepository` - CRUD, list by type, seed defaults on first launch.
   - `WorkoutRepository` - start, end, cancel, list history, get with exercises & sets.
   - `TemplateRepository` - CRUD, duplicate into a new workout.
-- [ ] Seed the default exercise list on first launch (check a flag in a simple `AppSettings` table or shared_prefs).
-- [ ] Write a quick debug screen that dumps all exercises & workouts so you can confirm the DB works without UI polish.
+- [x] Seed the default exercise list on first launch with a Drift `AppSettings` flag.
+- [x] Write a quick debug screen that dumps all exercises & workouts so you can confirm the DB works without UI polish.
 
 ---
 

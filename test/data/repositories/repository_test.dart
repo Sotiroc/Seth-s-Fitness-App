@@ -1,0 +1,236 @@
+import 'package:drift/drift.dart' as drift;
+import 'package:drift/native.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:uuid/uuid.dart';
+
+import 'package:fitnessapp/data/db/app_database.dart';
+import 'package:fitnessapp/data/models/exercise.dart';
+import 'package:fitnessapp/data/models/exercise_type.dart';
+import 'package:fitnessapp/data/models/template_exercise.dart';
+import 'package:fitnessapp/data/models/workout.dart';
+import 'package:fitnessapp/data/models/workout_template.dart';
+import 'package:fitnessapp/data/repositories/exercise_repository.dart';
+import 'package:fitnessapp/data/repositories/repository_exceptions.dart';
+import 'package:fitnessapp/data/repositories/template_repository.dart';
+import 'package:fitnessapp/data/repositories/workout_repository.dart';
+import 'package:fitnessapp/data/seed/default_exercises.dart';
+
+void main() {
+  late AppDatabase database;
+  late ExerciseRepository exerciseRepository;
+  late WorkoutRepository workoutRepository;
+  late TemplateRepository templateRepository;
+  const Uuid uuid = Uuid();
+
+  setUp(() {
+    database = AppDatabase.forTesting(NativeDatabase.memory());
+    exerciseRepository = ExerciseRepository(database: database, uuid: uuid);
+    workoutRepository = WorkoutRepository(database: database, uuid: uuid);
+    templateRepository = TemplateRepository(database: database, uuid: uuid);
+  });
+
+  tearDown(() async {
+    await database.close();
+  });
+
+  group('ExerciseRepository', () {
+    test('seeds defaults once without duplicating rows', () async {
+      await exerciseRepository.seedDefaultsIfNeeded();
+      await exerciseRepository.seedDefaultsIfNeeded();
+
+      final List<Exercise> exercises = await exerciseRepository
+          .getAllExercises();
+
+      expect(exercises, hasLength(18));
+      expect(
+        exercises.where((exercise) => exercise.name == 'Bench Press'),
+        hasLength(1),
+      );
+    });
+
+    test('supports create, update, get, filter, and delete', () async {
+      final Exercise created = await exerciseRepository.createExercise(
+        name: 'Farmer Carry',
+        type: ExerciseType.cardio,
+      );
+
+      final Exercise updated = await exerciseRepository.updateExercise(
+        created.copyWith(
+          name: 'Farmer Carry Sled',
+          thumbnailPath: '/tmp/sled.png',
+        ),
+      );
+
+      final Exercise fetched = await exerciseRepository.getExerciseById(
+        updated.id,
+      );
+      final List<Exercise> cardioExercises = await exerciseRepository
+          .getExercisesByType(ExerciseType.cardio);
+
+      expect(fetched.name, 'Farmer Carry Sled');
+      expect(fetched.thumbnailPath, '/tmp/sled.png');
+      expect(
+        cardioExercises.any((exercise) => exercise.id == created.id),
+        isTrue,
+      );
+
+      await exerciseRepository.deleteExercise(created.id);
+
+      expect(
+        () => exerciseRepository.getExerciseById(created.id),
+        throwsA(isA<ExerciseNotFoundException>()),
+      );
+    });
+
+    test(
+      'blocks delete when the exercise is referenced by workout data',
+      () async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final String exerciseId = defaultExerciseSeeds.first.id;
+        final workout = await workoutRepository.startWorkout();
+
+        await database
+            .into(database.workoutExercises)
+            .insert(
+              WorkoutExercisesCompanion.insert(
+                id: uuid.v4(),
+                workoutId: workout.id,
+                exerciseId: exerciseId,
+                orderIndex: 0,
+              ),
+            );
+
+        expect(
+          () => exerciseRepository.deleteExercise(exerciseId),
+          throwsA(isA<ExerciseDeleteBlockedException>()),
+        );
+      },
+    );
+  });
+
+  group('WorkoutRepository', () {
+    test('starts only one active workout at a time', () async {
+      final workout = await workoutRepository.startWorkout();
+
+      expect(workout.isActive, isTrue);
+      expect(
+        workoutRepository.startWorkout(),
+        throwsA(isA<ActiveWorkoutAlreadyExistsException>()),
+      );
+    });
+
+    test('ends and cancels workouts correctly', () async {
+      final Workout first = await workoutRepository.startWorkout(
+        notes: 'Leg day',
+      );
+      final Workout ended = await workoutRepository.endWorkout(first.id);
+      final Workout second = await workoutRepository.startWorkout();
+
+      await workoutRepository.cancelWorkout(second.id);
+
+      final List workouts = await workoutRepository.listAllWorkouts();
+      final List history = await workoutRepository.listHistory();
+
+      expect(ended.endedAt, isNotNull);
+      expect(workouts, hasLength(1));
+      expect(history, hasLength(1));
+      expect(history.first.id, first.id);
+    });
+
+    test('returns history and nested workout detail', () async {
+      await exerciseRepository.seedDefaultsIfNeeded();
+      final Workout workout = await workoutRepository.startWorkout();
+      final String exerciseId = defaultExerciseSeeds.first.id;
+      final String workoutExerciseId = uuid.v4();
+
+      await database
+          .into(database.workoutExercises)
+          .insert(
+            WorkoutExercisesCompanion.insert(
+              id: workoutExerciseId,
+              workoutId: workout.id,
+              exerciseId: exerciseId,
+              orderIndex: 0,
+            ),
+          );
+
+      await database
+          .into(database.sets)
+          .insert(
+            SetsCompanion.insert(
+              id: uuid.v4(),
+              workoutExerciseId: workoutExerciseId,
+              setNumber: 1,
+              weightKg: const drift.Value<double>(80),
+              reps: const drift.Value<int>(5),
+              distanceKm: const drift.Value<double?>(null),
+              durationSeconds: const drift.Value<int?>(null),
+              completed: const drift.Value<bool>(true),
+            ),
+          );
+
+      await workoutRepository.endWorkout(workout.id);
+
+      final history = await workoutRepository.listHistory();
+      final detail = await workoutRepository.getWorkoutById(workout.id);
+
+      expect(history, hasLength(1));
+      expect(detail.exercises, hasLength(1));
+      expect(detail.exercises.first.exercise.name, 'Bench Press');
+      expect(detail.exercises.first.sets, hasLength(1));
+      expect(detail.exercises.first.sets.first.weightKg, 80);
+      expect(detail.exercises.first.sets.first.reps, 5);
+    });
+  });
+
+  group('TemplateRepository', () {
+    test('supports CRUD and creates workouts from templates', () async {
+      await exerciseRepository.seedDefaultsIfNeeded();
+      final WorkoutTemplate template = await templateRepository.createTemplate(
+        name: 'Push Day',
+        exercises: <TemplateExerciseDraft>[
+          TemplateExerciseDraft(
+            exerciseId: defaultExerciseSeeds[0].id,
+            orderIndex: 0,
+            defaultSets: 3,
+          ),
+          TemplateExerciseDraft(
+            exerciseId: defaultExerciseSeeds[1].id,
+            orderIndex: 1,
+            defaultSets: 4,
+          ),
+        ],
+      );
+
+      final WorkoutTemplate updated = await templateRepository.updateTemplate(
+        template: template.copyWith(name: 'Updated Push Day'),
+        exercises: <TemplateExerciseDraft>[
+          TemplateExerciseDraft(
+            exerciseId: defaultExerciseSeeds[2].id,
+            orderIndex: 0,
+            defaultSets: 5,
+          ),
+        ],
+      );
+
+      final detail = await templateRepository.getTemplateById(template.id);
+      final workout = await templateRepository.createWorkoutFromTemplate(
+        template.id,
+      );
+      final workoutDetail = await workoutRepository.getWorkoutById(workout.id);
+
+      expect(updated.name, 'Updated Push Day');
+      expect(detail.exercises, hasLength(1));
+      expect(detail.exercises.first.exercise.name, 'Overhead Press');
+      expect(detail.exercises.first.templateExercise.defaultSets, 5);
+      expect(workout.templateId, template.id);
+      expect(workoutDetail.exercises, hasLength(1));
+      expect(workoutDetail.exercises.first.exercise.name, 'Overhead Press');
+
+      await templateRepository.deleteTemplate(template.id);
+
+      final templates = await templateRepository.getAllTemplates();
+      expect(templates, isEmpty);
+    });
+  });
+}

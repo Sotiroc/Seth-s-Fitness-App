@@ -78,6 +78,31 @@ Dev: `drift_dev`, `build_runner`, `riverpod_generator`, `custom_lint`, `riverpod
 
 ---
 
+## Default exercise seed list
+
+The first-launch default exercise list for v1 is locked to these 18 exercises:
+
+- Bench Press
+- Incline Dumbbell Press
+- Overhead Press
+- Pull-Up
+- Barbell Row
+- Lat Pulldown
+- Seated Cable Row
+- Squat
+- Deadlift
+- Romanian Deadlift
+- Leg Press
+- Bicep Curl
+- Tricep Pushdown
+- Plank
+- Push-Up
+- Sit-Up
+- Treadmill
+- Stationary Bike
+
+---
+
 ## Domain model
 
 Three exercise types, and only three:
@@ -196,4 +221,4 @@ When asked to implement something:
 
 ## Current phase
 
-**Phase 1** - project scaffold and theme.
+**Phase 2** - data layer.
