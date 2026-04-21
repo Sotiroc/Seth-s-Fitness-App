@@ -52,7 +52,9 @@ class _SetRowState extends State<SetRow> {
   final FocusNode _distanceFocus = FocusNode();
   final FocusNode _durationFocus = FocusNode();
 
-  bool _busy = false;
+  bool _saving = false;
+  bool _completing = false;
+  bool _suppressNextBlurCommit = false;
 
   @override
   void initState() {
@@ -127,6 +129,10 @@ class _SetRowState extends State<SetRow> {
   }
 
   void _commitOnBlur(FocusNode node) {
+    if (_suppressNextBlurCommit) {
+      _suppressNextBlurCommit = false;
+      return;
+    }
     if (!node.hasFocus && !widget.set.completed) {
       _commit(completed: widget.set.completed);
     }
@@ -156,9 +162,15 @@ class _SetRowState extends State<SetRow> {
     return DurationFormatter.parseSeconds(text);
   }
 
-  Future<void> _commit({required bool completed}) async {
-    if (_busy) return;
-    setState(() => _busy = true);
+  Future<void> _commit({
+    required bool completed,
+    bool showCompletionBusy = false,
+  }) async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _completing = showCompletionBusy;
+    });
     try {
       switch (widget.exerciseType) {
         case ExerciseType.weighted:
@@ -190,11 +202,19 @@ class _SetRowState extends State<SetRow> {
       // Error surfaced by the parent via snackbar; keep local state intact so
       // the user can correct without losing input.
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _completing = false;
+        });
+      }
     }
   }
 
   Future<void> _toggleCompleted() async {
+    if (_saving) return;
+    _suppressNextBlurCommit = true;
+
     final bool next = !widget.set.completed;
     if (next) {
       // Validate client-side to give immediate feedback; backend validation
@@ -207,7 +227,7 @@ class _SetRowState extends State<SetRow> {
         return;
       }
     }
-    await _commit(completed: next);
+    await _commit(completed: next, showCompletionBusy: true);
   }
 
   String? _validateForCompletion() {
@@ -236,37 +256,40 @@ class _SetRowState extends State<SetRow> {
     final JellyBeanPalette palette = context.jellyBeanPalette;
     final bool completed = widget.set.completed;
 
-    return Opacity(
-      opacity: completed ? 0.6 : 1.0,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            _SetNumber(number: widget.set.setNumber, palette: palette),
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 3,
-              child: Text(
-                widget.previousSummary,
-                style: TextStyle(
-                  color: palette.shade700.withValues(alpha: 0.75),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w500,
+    return TextFieldTapRegion(
+      child: Opacity(
+        opacity: completed ? 0.6 : 1.0,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              _SetNumber(number: widget.set.setNumber, palette: palette),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  widget.previousSummary,
+                  style: TextStyle(
+                    color: palette.shade700.withValues(alpha: 0.75),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            const SizedBox(width: 8),
-            ..._valueFields(palette),
-            const SizedBox(width: 8),
-            _CompleteButton(
-              completed: completed,
-              busy: _busy,
-              palette: palette,
-              onTap: _toggleCompleted,
-            ),
-          ],
+              const SizedBox(width: 8),
+              ..._valueFields(palette),
+              const SizedBox(width: 8),
+              _CompleteButton(
+                completed: completed,
+                busy: _completing,
+                palette: palette,
+                onPressed: _toggleCompleted,
+                onPressStart: () => _suppressNextBlurCommit = true,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -515,13 +538,15 @@ class _CompleteButton extends StatelessWidget {
     required this.completed,
     required this.busy,
     required this.palette,
-    required this.onTap,
+    required this.onPressed,
+    required this.onPressStart,
   });
 
   final bool completed;
   final bool busy;
   final JellyBeanPalette palette;
-  final VoidCallback onTap;
+  final VoidCallback onPressed;
+  final VoidCallback onPressStart;
 
   @override
   Widget build(BuildContext context) {
@@ -533,7 +558,13 @@ class _CompleteButton extends StatelessWidget {
       label: completed ? 'Mark set incomplete' : 'Mark set complete',
       button: true,
       child: GestureDetector(
-        onTap: busy ? null : onTap,
+        behavior: HitTestBehavior.opaque,
+        onTapDown: busy
+            ? null
+            : (_) {
+                onPressStart();
+                onPressed();
+              },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: 38,
@@ -543,12 +574,7 @@ class _CompleteButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: border),
           ),
-          child: busy
-              ? Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: CircularProgressIndicator(strokeWidth: 2, color: fg),
-                )
-              : Icon(Icons.check_rounded, color: fg, size: 22),
+          child: Icon(Icons.check_rounded, color: fg, size: 22),
         ),
       ),
     );
