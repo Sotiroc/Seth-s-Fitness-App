@@ -327,6 +327,61 @@ void main() {
         );
       },
     );
+
+    test('watches a workout starting without manual invalidation', () async {
+      final Future<WorkoutDetail?> detailFuture = workoutRepository
+          .watchActiveWorkoutDetail()
+          .firstWhere((detail) => detail != null)
+          .timeout(const Duration(seconds: 2));
+
+      final Workout workout = await workoutRepository.startWorkout();
+      final WorkoutDetail detail = (await detailFuture)!;
+
+      expect(detail.workout.id, workout.id);
+      expect(detail.workout.isActive, isTrue);
+      expect(detail.exercises, isEmpty);
+    });
+
+    test('watches nested exercise and set updates for the active workout', () async {
+      await exerciseRepository.seedDefaultsIfNeeded();
+      final Workout workout = await workoutRepository.startWorkout();
+      final String exerciseId = defaultExerciseSeeds
+          .firstWhere((seed) => seed.name == 'Bench Press')
+          .id;
+
+      final Future<WorkoutDetail?> detailFuture = workoutRepository
+          .watchActiveWorkoutDetail()
+          .firstWhere(
+            (detail) =>
+                detail != null &&
+                detail.workout.id == workout.id &&
+                detail.exercises.length == 1 &&
+                detail.exercises.first.sets.length == 1 &&
+                detail.exercises.first.sets.first.completed,
+          )
+          .timeout(const Duration(seconds: 2));
+
+      final WorkoutExerciseDetail exerciseDetail = await workoutRepository
+          .addExerciseToWorkout(workoutId: workout.id, exerciseId: exerciseId);
+      final WorkoutSet workoutSet = await workoutRepository
+          .addSetToWorkoutExercise(exerciseDetail.workoutExercise.id);
+
+      await workoutRepository.updateWorkoutSet(
+        workoutSetId: workoutSet.id,
+        weightKg: 80,
+        reps: 5,
+        distanceKm: null,
+        durationSeconds: null,
+        completed: true,
+      );
+
+      final WorkoutDetail detail = (await detailFuture)!;
+
+      expect(detail.exercises.single.exercise.name, 'Bench Press');
+      expect(detail.exercises.single.sets.single.weightKg, 80);
+      expect(detail.exercises.single.sets.single.reps, 5);
+      expect(detail.exercises.single.sets.single.completed, isTrue);
+    });
   });
 
   group('TemplateRepository', () {

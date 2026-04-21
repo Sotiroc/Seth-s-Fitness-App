@@ -78,14 +78,15 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
     );
 
     try {
+      Exercise? result;
       if (widget.isEditing && _original != null) {
-        await controller.updateExercise(
+        result = await controller.updateExercise(
           exercise: _original!,
           name: _nameController.text.trim(),
           type: _type,
         );
       } else {
-        await controller.createExercise(
+        result = await controller.createExercise(
           name: _nameController.text.trim(),
           type: _type,
         );
@@ -99,7 +100,9 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
           ),
         ),
       );
-      if (context.canPop()) context.pop();
+      // Pop with the created/updated exercise so callers (like the
+      // add-exercise sheet) can react to the new value.
+      if (context.canPop()) context.pop<Exercise>(result);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(

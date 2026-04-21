@@ -1,23 +1,79 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/duration_formatter.dart';
+import '../../../data/models/workout.dart';
+import '../../../data/models/workout_detail.dart';
+import '../../../data/repositories/repository_exceptions.dart';
+import '../application/active_workout_provider.dart';
+import '../application/workout_session_controller.dart';
 
-class WorkoutsPlaceholderScreen extends StatelessWidget {
+class WorkoutsPlaceholderScreen extends ConsumerStatefulWidget {
   const WorkoutsPlaceholderScreen({super.key});
+
+  @override
+  ConsumerState<WorkoutsPlaceholderScreen> createState() =>
+      _WorkoutsPlaceholderScreenState();
+}
+
+class _WorkoutsPlaceholderScreenState
+    extends ConsumerState<WorkoutsPlaceholderScreen> {
+  bool _starting = false;
+
+  Future<void> _handleStart() async {
+    if (_starting) return;
+    setState(() => _starting = true);
+    try {
+      final WorkoutDetail? existing = await ref.read(
+        activeWorkoutDetailProvider.future,
+      );
+      if (existing != null) {
+        if (!mounted) return;
+        context.go('/workouts/active');
+        return;
+      }
+      await ref
+          .read(workoutSessionControllerProvider.notifier)
+          .startEmptyWorkout();
+      if (!mounted) return;
+      context.go('/workouts/active');
+    } on ActiveWorkoutAlreadyExistsException {
+      if (!mounted) return;
+      context.go('/workouts/active');
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not start workout: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final JellyBeanPalette palette = context.jellyBeanPalette;
+    final AsyncValue<WorkoutDetail?> activeAsync = ref.watch(
+      activeWorkoutDetailProvider,
+    );
+    final WorkoutDetail? active = activeAsync.asData?.value;
 
     return Scaffold(
       backgroundColor: palette.shade50,
       body: CustomScrollView(
         slivers: <Widget>[
           SliverToBoxAdapter(
-            child: _Hero(palette: palette, theme: theme),
+            child: _Hero(
+              palette: palette,
+              theme: theme,
+              starting: _starting,
+              onStart: _handleStart,
+              active: active,
+            ),
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
@@ -50,7 +106,7 @@ class WorkoutsPlaceholderScreen extends StatelessWidget {
                   index: '03',
                   title: 'Data layer online',
                   subtitle:
-                      'Drift schema, repositories, seeding, and inspection hooks are ready for Phase 3 feature work.',
+                      'Drift schema, repositories, seeding, and inspection hooks are ready for feature work.',
                   palette: palette,
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -65,10 +121,19 @@ class WorkoutsPlaceholderScreen extends StatelessWidget {
 }
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.palette, required this.theme});
+  const _Hero({
+    required this.palette,
+    required this.theme,
+    required this.starting,
+    required this.onStart,
+    required this.active,
+  });
 
   final JellyBeanPalette palette;
   final ThemeData theme;
+  final bool starting;
+  final VoidCallback onStart;
+  final WorkoutDetail? active;
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +183,7 @@ class _Hero extends StatelessWidget {
                     _GlassPill(
                       palette: palette,
                       icon: Icons.bolt_rounded,
-                      label: 'PHASE 2 · DATA',
+                      label: active == null ? 'READY' : 'LIVE SESSION',
                     ),
                     Container(
                       width: 40,
@@ -157,41 +222,23 @@ class _Hero extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: _StatTile(
-                        palette: palette,
-                        value: '18',
-                        label: 'Seed exercises',
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: _StatTile(
-                        palette: palette,
-                        value: 'kg · km',
-                        label: 'One unit system',
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: _StatTile(
-                        palette: palette,
-                        value: 'Drift',
-                        label: 'Local-first DB',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
+                if (active != null) ...<Widget>[
+                  _ContinueBanner(palette: palette, active: active!),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 Row(
                   children: <Widget>[
                     Expanded(
                       child: _PrimaryCta(
                         palette: palette,
-                        icon: Icons.play_arrow_rounded,
-                        label: 'Start Empty Workout',
+                        icon: active == null
+                            ? Icons.play_arrow_rounded
+                            : Icons.play_circle_rounded,
+                        label: active == null
+                            ? 'Start Empty Workout'
+                            : 'Resume workout',
+                        busy: starting,
+                        onTap: onStart,
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -206,6 +253,90 @@ class _Hero extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ContinueBanner extends StatelessWidget {
+  const _ContinueBanner({required this.palette, required this.active});
+
+  final JellyBeanPalette palette;
+  final WorkoutDetail active;
+
+  @override
+  Widget build(BuildContext context) {
+    final Workout workout = active.workout;
+    final Duration elapsed = DateTime.now().difference(workout.startedAt);
+    final int completedSets = active.exercises
+        .expand((e) => e.sets)
+        .where((s) => s.completed)
+        .length;
+
+    return InkWell(
+      onTap: () => context.go('/workouts/active'),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+        ),
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: palette.shade500.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: palette.shade300),
+              ),
+              child: Icon(
+                Icons.fitness_center_rounded,
+                color: palette.shade100,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Workout in progress',
+                    style: TextStyle(
+                      color: palette.shade100,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${DurationFormatter.elapsed(elapsed)} · '
+                    '${active.exercises.length} '
+                    '${active.exercises.length == 1 ? "exercise" : "exercises"} · '
+                    '$completedSets sets',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: palette.shade100,
+              size: 22,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -267,71 +398,26 @@ class _GlassPill extends StatelessWidget {
   }
 }
 
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.palette,
-    required this.value,
-    required this.label,
-  });
-
-  final JellyBeanPalette palette;
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.md,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: palette.shade200.withValues(alpha: 0.8),
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _PrimaryCta extends StatelessWidget {
   const _PrimaryCta({
     required this.palette,
     required this.icon,
     required this.label,
+    required this.busy,
+    required this.onTap,
   });
 
   final JellyBeanPalette palette;
   final IconData icon;
   final String label;
+  final bool busy;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 0.95,
+    return InkWell(
+      onTap: busy ? null : onTap,
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         height: 52,
         decoration: BoxDecoration(
@@ -348,7 +434,17 @@ class _PrimaryCta extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Icon(icon, color: palette.shade900, size: 22),
+            if (busy)
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: palette.shade900,
+                ),
+              )
+            else
+              Icon(icon, color: palette.shade900, size: 22),
             const SizedBox(width: 8),
             Text(
               label,
@@ -519,7 +615,7 @@ class _Footnote extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              'Debug entry is live. Workout actions still come alive in Phase 4.',
+              'History, templates and analytics unlock in later phases.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: palette.shade800,
                 fontWeight: FontWeight.w500,

@@ -29,8 +29,8 @@ Goal: make the app run as a browser-based PWA with local browser persistence.
 - [x] Replace native DB bootstrap with browser-safe local persistence
 - [x] Add the required web database assets/config
 - [x] Confirm `flutter build web` works
-- [ ] Confirm `flutter run -d chrome` works in a live browser session
-- [ ] Confirm seeded data persists after refresh in manual browser testing
+- [x] Confirm `flutter run -d chrome` works in a live browser session
+- [x] Confirm seeded data persists after refresh in manual browser testing
 
 **Claude frontend**
 - [ ] Review current web shell in browser and flag any frontend blockers caused by the runtime conversion
@@ -98,11 +98,11 @@ Goal: the app becomes practically useful for real workouts.
 - [x] Expose `workoutSessionControllerProvider` for workout mutations
 
 **Claude frontend**
-- [ ] Active workout screen
-- [ ] Add-exercise UI flow
-- [ ] Set-entry UI for weighted/bodyweight/cardio rows
-- [ ] Finish/cancel dialogs
-- [ ] Summary after finish
+- [x] Active workout screen
+- [x] Add-exercise UI flow
+- [x] Set-entry UI for weighted/bodyweight/cardio rows
+- [x] Finish/cancel dialogs
+- [x] Summary after finish
 
 **Order**
 - Codex backend for W4 is now in place.

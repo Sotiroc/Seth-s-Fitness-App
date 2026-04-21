@@ -6,7 +6,6 @@ import '../../../data/models/workout.dart';
 import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_set.dart';
 import '../../../data/repositories/workout_repository.dart';
-import 'active_workout_provider.dart';
 
 final AsyncNotifierProvider<WorkoutSessionController, void>
 workoutSessionControllerProvider =
@@ -23,7 +22,6 @@ class WorkoutSessionController extends AsyncNotifier<void> {
       final Workout workout = await ref
           .read(workoutRepositoryProvider)
           .startWorkout(notes: notes);
-      _invalidateWorkoutState();
       return workout;
     });
   }
@@ -36,7 +34,6 @@ class WorkoutSessionController extends AsyncNotifier<void> {
       final Workout workout = await ref
           .read(workoutRepositoryProvider)
           .updateWorkoutNotes(workoutId: workoutId, notes: notes);
-      _invalidateWorkoutState();
       return workout;
     });
   }
@@ -49,7 +46,6 @@ class WorkoutSessionController extends AsyncNotifier<void> {
       final WorkoutExerciseDetail detail = await ref
           .read(workoutRepositoryProvider)
           .addExerciseToWorkout(workoutId: workoutId, exerciseId: exerciseId);
-      _invalidateWorkoutState();
       return detail;
     });
   }
@@ -59,7 +55,6 @@ class WorkoutSessionController extends AsyncNotifier<void> {
       final WorkoutSet workoutSet = await ref
           .read(workoutRepositoryProvider)
           .addSetToWorkoutExercise(workoutExerciseId);
-      _invalidateWorkoutState();
       return workoutSet;
     });
   }
@@ -83,7 +78,6 @@ class WorkoutSessionController extends AsyncNotifier<void> {
             durationSeconds: durationSeconds,
             completed: completed,
           );
-      _invalidateWorkoutState();
       return workoutSet;
     });
   }
@@ -93,7 +87,6 @@ class WorkoutSessionController extends AsyncNotifier<void> {
       final Workout workout = await ref
           .read(workoutRepositoryProvider)
           .endWorkout(workoutId);
-      _invalidateWorkoutState();
       return workout;
     });
   }
@@ -101,12 +94,7 @@ class WorkoutSessionController extends AsyncNotifier<void> {
   Future<void> cancelWorkout(String workoutId) {
     return _runMutation(() async {
       await ref.read(workoutRepositoryProvider).cancelWorkout(workoutId);
-      _invalidateWorkoutState();
     });
-  }
-
-  void _invalidateWorkoutState() {
-    ref.invalidate(activeWorkoutDetailProvider);
   }
 
   Future<T> _runMutation<T>(Future<T> Function() action) async {

@@ -6,13 +6,15 @@ import 'app_colors.dart';
 abstract final class AppTheme {
   static const Color seedColor = Color(0xFF289CB2);
   static const List<String> _fontFamilyFallback = <String>['Manrope'];
+  static final ThemeData _lightTheme = _buildTheme(Brightness.light);
+  static final ThemeData _darkTheme = _buildTheme(Brightness.dark);
 
   static ThemeData light() {
-    return _buildTheme(Brightness.light);
+    return _lightTheme;
   }
 
   static ThemeData dark() {
-    return _buildTheme(Brightness.dark);
+    return _darkTheme;
   }
 
   static ThemeData _buildTheme(Brightness brightness) {

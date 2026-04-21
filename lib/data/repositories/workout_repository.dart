@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
@@ -75,6 +77,71 @@ class WorkoutRepository {
       return null;
     }
     return getWorkoutById(workout.id);
+  }
+
+  Stream<WorkoutDetail?> watchActiveWorkoutDetail() {
+    late final StreamController<WorkoutDetail?> controller;
+    final List<StreamSubscription<Object?>> subscriptions =
+        <StreamSubscription<Object?>>[];
+    bool closed = false;
+    bool loading = false;
+    bool queued = false;
+
+    Future<void> emitCurrent() async {
+      if (closed) {
+        return;
+      }
+      if (loading) {
+        queued = true;
+        return;
+      }
+
+      loading = true;
+      try {
+        controller.add(await getActiveWorkoutDetail());
+      } catch (error, stackTrace) {
+        controller.addError(error, stackTrace);
+      } finally {
+        loading = false;
+      }
+
+      if (queued && !closed) {
+        queued = false;
+        unawaited(emitCurrent());
+      }
+    }
+
+    void scheduleEmit() {
+      unawaited(emitCurrent());
+    }
+
+    controller = StreamController<WorkoutDetail?>.broadcast(
+      onListen: () {
+        subscriptions.addAll(<StreamSubscription<Object?>>[
+          _database.tableUpdates(
+            TableUpdateQuery.onTable(_database.workouts),
+          ).listen((_) => scheduleEmit()),
+          _database.tableUpdates(
+            TableUpdateQuery.onTable(_database.workoutExercises),
+          ).listen((_) => scheduleEmit()),
+          _database.tableUpdates(
+            TableUpdateQuery.onTable(_database.sets),
+          ).listen((_) => scheduleEmit()),
+          _database.tableUpdates(
+            TableUpdateQuery.onTable(_database.exercises),
+          ).listen((_) => scheduleEmit()),
+        ]);
+        scheduleEmit();
+      },
+      onCancel: () async {
+        closed = true;
+        for (final StreamSubscription<Object?> subscription in subscriptions) {
+          await subscription.cancel();
+        }
+      },
+    );
+
+    return controller.stream;
   }
 
   Future<Workout> updateWorkoutNotes({
@@ -265,43 +332,70 @@ class WorkoutRepository {
       throw WorkoutNotFoundException(workoutId);
     }
 
+    return _buildWorkoutDetail(workoutRow);
+  }
+
+  Future<WorkoutDetail> _buildWorkoutDetail(WorkoutRow workoutRow) async {
     final List<WorkoutExerciseRow> workoutExerciseRows =
-        await (_database.select(_database.workoutExercises)
-              ..where((tbl) => tbl.workoutId.equals(workoutId))
-              ..orderBy(<OrderingTerm Function(WorkoutExercises)>[
-                (tbl) => OrderingTerm(expression: tbl.orderIndex),
-              ]))
-            .get();
-
-    final List<String> exerciseIds = workoutExerciseRows
-        .map((row) => row.exerciseId)
-        .toList(growable: false);
+        await _loadWorkoutExerciseRows(workoutRow.id);
     final Map<String, ExerciseRow> exerciseMap = await _loadExerciseMap(
-      exerciseIds,
+      workoutExerciseRows.map((row) => row.exerciseId).toList(growable: false),
     );
+    final Map<String, List<WorkoutSet>> setsByWorkoutExerciseId =
+        await _loadWorkoutSetsByWorkoutExercise(
+          workoutExerciseRows.map((row) => row.id).toList(growable: false),
+        );
 
-    final List<WorkoutExerciseDetail> exercises = <WorkoutExerciseDetail>[];
-    for (final WorkoutExerciseRow workoutExerciseRow in workoutExerciseRows) {
-      final List<WorkoutSetRow> setRows =
-          await (_database.select(_database.sets)
-                ..where(
-                  (tbl) => tbl.workoutExerciseId.equals(workoutExerciseRow.id),
-                )
-                ..orderBy(<OrderingTerm Function(Sets)>[
-                  (tbl) => OrderingTerm(expression: tbl.setNumber),
-                ]))
-              .get();
-
-      exercises.add(
-        WorkoutExerciseDetail(
-          workoutExercise: workoutExerciseRow.toModel(),
-          exercise: exerciseMap[workoutExerciseRow.exerciseId]!.toModel(),
-          sets: setRows.map((row) => row.toModel()).toList(growable: false),
-        ),
+    final List<WorkoutExerciseDetail> exercises = workoutExerciseRows.map((row) {
+      return WorkoutExerciseDetail(
+        workoutExercise: row.toModel(),
+        exercise: exerciseMap[row.exerciseId]!.toModel(),
+        sets: setsByWorkoutExerciseId[row.id] ?? const <WorkoutSet>[],
       );
-    }
+    }).toList(growable: false);
 
     return WorkoutDetail(workout: workoutRow.toModel(), exercises: exercises);
+  }
+
+  Future<List<WorkoutExerciseRow>> _loadWorkoutExerciseRows(
+    String workoutId,
+  ) async {
+    return (_database.select(_database.workoutExercises)
+          ..where((tbl) => tbl.workoutId.equals(workoutId))
+          ..orderBy(<OrderingTerm Function(WorkoutExercises)>[
+            (tbl) => OrderingTerm(expression: tbl.orderIndex),
+          ]))
+        .get();
+  }
+
+  Future<Map<String, List<WorkoutSet>>> _loadWorkoutSetsByWorkoutExercise(
+    List<String> workoutExerciseIds,
+  ) async {
+    if (workoutExerciseIds.isEmpty) {
+      return <String, List<WorkoutSet>>{};
+    }
+
+    final List<WorkoutSetRow> setRows = await (_database.select(_database.sets)
+          ..where((tbl) => tbl.workoutExerciseId.isIn(workoutExerciseIds))
+          ..orderBy(<OrderingTerm Function(Sets)>[
+            (tbl) => OrderingTerm(expression: tbl.workoutExerciseId),
+            (tbl) => OrderingTerm(expression: tbl.setNumber),
+          ]))
+        .get();
+
+    final Map<String, List<WorkoutSet>> setsByWorkoutExerciseId =
+        <String, List<WorkoutSet>>{};
+    for (final WorkoutSetRow row in setRows) {
+      setsByWorkoutExerciseId
+          .putIfAbsent(row.workoutExerciseId, () => <WorkoutSet>[])
+          .add(row.toModel());
+    }
+
+    return <String, List<WorkoutSet>>{
+      for (final MapEntry<String, List<WorkoutSet>> entry
+          in setsByWorkoutExerciseId.entries)
+        entry.key: List<WorkoutSet>.unmodifiable(entry.value),
+    };
   }
 
   Future<Map<String, ExerciseRow>> _loadExerciseMap(List<String> ids) async {
