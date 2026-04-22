@@ -84,6 +84,10 @@ class Workouts extends Table {
 
   TextColumn get notes => text().nullable()();
 
+  /// User-assigned display name for the session (e.g. "Leg day – light").
+  /// Nullable — falls back to a date/template label in the UI.
+  TextColumn get name => text().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
 }
@@ -153,7 +157,17 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (Migrator m) => m.createAll(),
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 2) {
+        await m.addColumn(workouts, workouts.name);
+      }
+    },
+  );
 }
 
 QueryExecutor _openConnection() => openAppDatabaseConnection();

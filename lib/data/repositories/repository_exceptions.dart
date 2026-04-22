@@ -26,6 +26,11 @@ class WorkoutTemplateNotFoundException extends RepositoryException {
     : super('Workout template not found: $templateId');
 }
 
+class InvalidWorkoutTemplateNameException extends RepositoryException {
+  InvalidWorkoutTemplateNameException()
+    : super('Workout template name cannot be empty.');
+}
+
 class ActiveWorkoutAlreadyExistsException extends RepositoryException {
   ActiveWorkoutAlreadyExistsException(String workoutId)
     : super('An active workout already exists: $workoutId');

@@ -11,10 +11,15 @@ import '../../../data/models/exercise.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/models/workout.dart';
 import '../../../data/models/workout_detail.dart';
+import '../../../data/models/workout_template.dart';
+import '../../../data/repositories/repository_exceptions.dart';
 import '../../exercises/presentation/widgets/exercise_avatar.dart';
 import '../../exercises/presentation/widgets/exercise_type_badge.dart';
+import '../../templates/application/template_editor_controller.dart';
+import '../../templates/application/template_providers.dart';
 import '../application/active_workout_provider.dart';
 import '../application/workout_session_controller.dart';
+import '../application/workout_stats_provider.dart';
 import 'widgets/add_exercise_sheet.dart';
 import 'widgets/set_row.dart';
 
@@ -67,6 +72,34 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     }
   }
 
+  Future<void> _handleStartFromTemplate() async {
+    if (_starting) return;
+    final WorkoutTemplate? picked = await showModalBottomSheet<WorkoutTemplate>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _TemplatePickerSheet(),
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() => _starting = true);
+    try {
+      await ref
+          .read(templateEditorControllerProvider.notifier)
+          .startWorkoutFromTemplate(picked.id);
+    } on ActiveWorkoutAlreadyExistsException {
+      if (!mounted) return;
+      _showError(
+        'You already have an active workout — finish or cancel it first.',
+      );
+    } catch (error) {
+      if (!mounted) return;
+      _showError('Could not start: ${_humanError(error)}');
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
   Future<void> _handleAddSet(String workoutExerciseId) async {
     try {
       await ref
@@ -75,6 +108,17 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     } catch (error) {
       if (!mounted) return;
       _showError('Could not add set: $error');
+    }
+  }
+
+  Future<void> _handleRemoveSet(String workoutSetId) async {
+    try {
+      await ref
+          .read(workoutSessionControllerProvider.notifier)
+          .removeSet(workoutSetId);
+    } catch (error) {
+      if (!mounted) return;
+      _showError(_humanError(error));
     }
   }
 
@@ -245,7 +289,8 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
             return _NoActiveWorkout(
               palette: palette,
               busy: _starting,
-              onStart: _handleStart,
+              onQuickStart: _handleStart,
+              onStartFromTemplate: _handleStartFromTemplate,
             );
           }
           return _WorkoutBody(
@@ -254,6 +299,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
             onAddExercise: () => _handleAddExercise(detail.workout.id),
             onAddSet: _handleAddSet,
             onUpdateSet: _handleUpdateSet,
+            onRemoveSet: _handleRemoveSet,
             onFinish: () => _handleFinish(detail),
             onCancel: () => _handleCancel(detail),
           );
@@ -270,69 +316,598 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
   }
 }
 
-class _NoActiveWorkout extends StatelessWidget {
+class _NoActiveWorkout extends ConsumerWidget {
   const _NoActiveWorkout({
     required this.palette,
     required this.busy,
-    required this.onStart,
+    required this.onQuickStart,
+    required this.onStartFromTemplate,
   });
 
   final JellyBeanPalette palette;
   final bool busy;
-  final VoidCallback onStart;
+  final VoidCallback onQuickStart;
+  final VoidCallback onStartFromTemplate;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<WorkoutPeriodStats> monthlyStats = ref.watch(
+      monthlyWorkoutStatsProvider,
+    );
+
+    return CustomScrollView(
+      slivers: <Widget>[
+        SliverToBoxAdapter(
+          child: _ReadyToMoveHeader(palette: palette),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            0,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                _PrimaryStartButton(
+                  palette: palette,
+                  busy: busy,
+                  onTap: onQuickStart,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _SecondaryStartButton(
+                  palette: palette,
+                  busy: busy,
+                  onTap: onStartFromTemplate,
+                ),
+              ],
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.xl,
+            AppSpacing.lg,
+            MediaQuery.paddingOf(context).bottom + AppSpacing.xl,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: _MonthlyKpiSection(
+              palette: palette,
+              stats: monthlyStats.asData?.value ?? WorkoutPeriodStats.empty,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReadyToMoveHeader extends StatelessWidget {
+  const _ReadyToMoveHeader({required this.palette});
+
+  final JellyBeanPalette palette;
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    final ThemeData theme = Theme.of(context);
+    final double topPadding = MediaQuery.paddingOf(context).top;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[palette.shade950, palette.shade800, palette.shade600],
+          stops: const <double>[0.0, 0.55, 1.0],
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        topPadding + AppSpacing.sm,
+        AppSpacing.lg,
+        AppSpacing.xl,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
             children: <Widget>[
-              Icon(
-                Icons.hourglass_empty_rounded,
-                size: 48,
-                color: palette.shade600,
-              ),
-              const SizedBox(height: AppSpacing.sm),
+              Container(width: 2, height: 14, color: palette.shade300),
+              const SizedBox(width: 8),
               Text(
-                'No active workout',
+                'READY TO MOVE',
+                style: TextStyle(
+                  color: palette.shade200,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.6,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Workouts',
+            style: theme.textTheme.headlineLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.8,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Fire up a quick session or pull up one of your saved templates.',
+            style: TextStyle(
+              color: palette.shade100.withValues(alpha: 0.85),
+              fontSize: 13,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrimaryStartButton extends StatelessWidget {
+  const _PrimaryStartButton({
+    required this.palette,
+    required this.busy,
+    required this.onTap,
+  });
+
+  final JellyBeanPalette palette;
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 60,
+      child: FilledButton(
+        onPressed: busy ? null : onTap,
+        style: FilledButton.styleFrom(
+          backgroundColor: palette.shade900,
+          disabledBackgroundColor: palette.shade300,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: busy
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: Colors.white,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const <Widget>[
+                  Icon(Icons.bolt_rounded, size: 22),
+                  SizedBox(width: 8),
+                  Text(
+                    'Quick start',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+class _SecondaryStartButton extends StatelessWidget {
+  const _SecondaryStartButton({
+    required this.palette,
+    required this.busy,
+    required this.onTap,
+  });
+
+  final JellyBeanPalette palette;
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      child: OutlinedButton(
+        onPressed: busy ? null : onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: palette.shade950,
+          side: BorderSide(color: palette.shade200, width: 1.2),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Icon(Icons.auto_awesome_rounded, color: palette.shade800, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'Start from template',
+              style: TextStyle(
+                color: palette.shade950,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthlyKpiSection extends StatelessWidget {
+  const _MonthlyKpiSection({required this.palette, required this.stats});
+
+  final JellyBeanPalette palette;
+  final WorkoutPeriodStats stats;
+
+  static const List<String> _monthNames = <String>[
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
+  String _formatDuration(Duration d) {
+    final int totalMinutes = d.inMinutes;
+    if (totalMinutes <= 0) return '0m';
+    final int h = totalMinutes ~/ 60;
+    final int m = totalMinutes % 60;
+    if (h == 0) return '${m}m';
+    if (m == 0) return '${h}h';
+    return '${h}h ${m}m';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String monthLabel = _monthNames[DateTime.now().month - 1];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: AppSpacing.sm),
+          child: Text(
+            'This Month · $monthLabel',
+            style: TextStyle(
+              color: palette.shade950,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            ),
+          ),
+        ),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: _KpiCard(
+                palette: palette,
+                label: 'WORKOUTS',
+                value: '${stats.count}',
+                icon: Icons.calendar_today_rounded,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _KpiCard(
+                palette: palette,
+                label: 'DURATION',
+                value: _formatDuration(stats.totalDuration),
+                icon: Icons.access_time_rounded,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _KpiCard extends StatelessWidget {
+  const _KpiCard({
+    required this.palette,
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final JellyBeanPalette palette;
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final BorderRadius radius = BorderRadius.circular(22);
+    return ClipRRect(
+      borderRadius: radius,
+      child: Container(
+        height: 120,
+        decoration: BoxDecoration(
+          color: palette.shade100.withValues(alpha: 0.55),
+          borderRadius: radius,
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            // Decorative icon that bleeds into the bottom-right rounded
+            // corner. The outer ClipRRect trims the overflow so the glyph
+            // looks flush with the container's edge.
+            Positioned(
+              right: -10,
+              bottom: -10,
+              child: Icon(
+                icon,
+                size: 80,
+                color: palette.shade300.withValues(alpha: 0.55),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: palette.shade700,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.4,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: palette.shade950,
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.2,
+                      fontFeatures: const <FontFeature>[
+                        FontFeature.tabularFigures(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom-sheet list of saved templates for the "Start from template" action.
+class _TemplatePickerSheet extends ConsumerWidget {
+  const _TemplatePickerSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final JellyBeanPalette palette = context.jellyBeanPalette;
+    final AsyncValue<List<WorkoutTemplate>> templates = ref.watch(
+      templateListProvider,
+    );
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: palette.shade50,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(28),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: palette.shade300,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Pick a template',
                 style: TextStyle(
                   color: palette.shade950,
-                  fontWeight: FontWeight.w800,
                   fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 2),
               Text(
-                'Start a session to log exercises, sets, and cardio in one place.',
-                textAlign: TextAlign.center,
+                'Starts a new workout pre-loaded with that template\'s exercises.',
                 style: TextStyle(
-                  color: palette.shade800.withValues(alpha: 0.8),
+                  color: palette.shade700.withValues(alpha: 0.8),
+                  fontSize: 12.5,
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              FilledButton(
-                onPressed: busy ? null : onStart,
-                style: FilledButton.styleFrom(
-                  backgroundColor: palette.shade900,
-                  foregroundColor: Colors.white,
+              const SizedBox(height: AppSpacing.md),
+              Expanded(
+                child: templates.when(
+                  data: (items) {
+                    if (items.isEmpty) {
+                      return _EmptyTemplates(palette: palette);
+                    }
+                    return ListView.separated(
+                      controller: scrollController,
+                      itemCount: items.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final WorkoutTemplate t = items[index];
+                        return _TemplatePickerTile(
+                          palette: palette,
+                          template: t,
+                          onTap: () => Navigator.of(context).pop(t),
+                        );
+                      },
+                    );
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (err, _) => Center(
+                    child: Text(
+                      'Could not load templates: $err',
+                      style: TextStyle(color: palette.shade800),
+                    ),
+                  ),
                 ),
-                child: busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Start workout'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TemplatePickerTile extends StatelessWidget {
+  const _TemplatePickerTile({
+    required this.palette,
+    required this.template,
+    required this.onTap,
+  });
+
+  final JellyBeanPalette palette;
+  final WorkoutTemplate template;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: palette.shade100),
+          ),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: palette.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.auto_awesome_rounded,
+                  color: palette.shade800,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  template.name,
+                  style: TextStyle(
+                    color: palette.shade950,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: palette.shade600,
+                size: 22,
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _EmptyTemplates extends StatelessWidget {
+  const _EmptyTemplates({required this.palette});
+
+  final JellyBeanPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(
+            Icons.auto_awesome_outlined,
+            size: 40,
+            color: palette.shade400,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'No templates yet',
+            style: TextStyle(
+              color: palette.shade950,
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Create one from the Templates tab to start here.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: palette.shade800.withValues(alpha: 0.75),
+              fontSize: 12.5,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -345,6 +920,7 @@ class _WorkoutBody extends StatelessWidget {
     required this.onAddExercise,
     required this.onAddSet,
     required this.onUpdateSet,
+    required this.onRemoveSet,
     required this.onFinish,
     required this.onCancel,
   });
@@ -362,6 +938,7 @@ class _WorkoutBody extends StatelessWidget {
     required bool completed,
   })
   onUpdateSet;
+  final Future<void> Function(String workoutSetId) onRemoveSet;
   final VoidCallback onFinish;
   final VoidCallback onCancel;
 
@@ -415,6 +992,7 @@ class _WorkoutBody extends StatelessWidget {
                   palette: palette,
                   onAddSet: () => onAddSet(exerciseDetail.workoutExercise.id),
                   onUpdateSet: onUpdateSet,
+                  onRemoveSet: onRemoveSet,
                 );
               },
             ),
@@ -638,10 +1216,7 @@ class _ElapsedTimeTextState extends State<_ElapsedTimeText> {
   @override
   Widget build(BuildContext context) {
     final Duration elapsed = _now.difference(widget.startedAt);
-    return Text(
-      DurationFormatter.elapsed(elapsed),
-      style: widget.textStyle,
-    );
+    return Text(DurationFormatter.elapsed(elapsed), style: widget.textStyle);
   }
 }
 
@@ -781,6 +1356,7 @@ class _ExerciseCard extends StatelessWidget {
     required this.palette,
     required this.onAddSet,
     required this.onUpdateSet,
+    required this.onRemoveSet,
   });
 
   final WorkoutExerciseDetail detail;
@@ -795,6 +1371,7 @@ class _ExerciseCard extends StatelessWidget {
     required bool completed,
   })
   onUpdateSet;
+  final Future<void> Function(String workoutSetId) onRemoveSet;
 
   @override
   Widget build(BuildContext context) {
@@ -850,28 +1427,37 @@ class _ExerciseCard extends StatelessWidget {
             )
           else
             ...detail.sets.map(
-              (set) => SetRow(
-                key: ValueKey<String>(set.id),
-                set: set,
-                exerciseType: detail.exercise.type,
-                previousSummary: '-',
-                onCommit:
-                    ({
-                      required bool completed,
-                      double? distanceKm,
-                      int? durationSeconds,
-                      int? reps,
-                      double? weightKg,
-                    }) {
-                      return onUpdateSet(
-                        workoutSetId: set.id,
-                        weightKg: weightKg,
-                        reps: reps,
-                        distanceKm: distanceKm,
-                        durationSeconds: durationSeconds,
-                        completed: completed,
-                      );
-                    },
+              (set) => Dismissible(
+                key: ValueKey<String>('dismiss-${set.id}'),
+                direction: DismissDirection.startToEnd,
+                dismissThresholds: const <DismissDirection, double>{
+                  DismissDirection.startToEnd: 0.35,
+                },
+                background: const _SwipeDeleteBackground(),
+                onDismissed: (_) => onRemoveSet(set.id),
+                child: SetRow(
+                  key: ValueKey<String>(set.id),
+                  set: set,
+                  exerciseType: detail.exercise.type,
+                  previousSummary: '-',
+                  onCommit:
+                      ({
+                        required bool completed,
+                        double? distanceKm,
+                        int? durationSeconds,
+                        int? reps,
+                        double? weightKg,
+                      }) {
+                        return onUpdateSet(
+                          workoutSetId: set.id,
+                          weightKg: weightKg,
+                          reps: reps,
+                          distanceKm: distanceKm,
+                          durationSeconds: durationSeconds,
+                          completed: completed,
+                        );
+                      },
+                ),
               ),
             ),
           const SizedBox(height: AppSpacing.xs),
@@ -932,9 +1518,19 @@ class _SetTableHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
         children: <Widget>[
-          SizedBox(width: 30, child: Text('#', style: headerStyle)),
+          SizedBox(
+            width: 30,
+            child: Text('#', textAlign: TextAlign.center, style: headerStyle),
+          ),
           const SizedBox(width: 8),
-          Expanded(flex: 3, child: Text('PREVIOUS', style: headerStyle)),
+          Expanded(
+            flex: 3,
+            child: Text(
+              'PREVIOUS',
+              textAlign: TextAlign.center,
+              style: headerStyle,
+            ),
+          ),
           const SizedBox(width: 8),
           ...valueHeaders,
           const SizedBox(width: 8),
@@ -1017,6 +1613,39 @@ class _AddExerciseButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SwipeDeleteBackground extends StatelessWidget {
+  const _SwipeDeleteBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: Colors.redAccent.shade200,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const <Widget>[
+          Icon(Icons.delete_rounded, color: Colors.white, size: 22),
+          SizedBox(width: 8),
+          Text(
+            'Delete set',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
       ),
     );
   }

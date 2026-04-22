@@ -4,9 +4,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/exercises/presentation/exercise_form_screen.dart';
 import '../../features/exercises/presentation/exercise_list_screen.dart';
-import '../../features/history/presentation/history_placeholder_screen.dart';
+import '../../features/history/presentation/history_list_screen.dart';
+import '../../features/history/presentation/workout_detail_screen.dart';
 import '../../features/home/presentation/home_shell.dart';
 import '../../features/home/presentation/phase2_debug_screen.dart';
+import '../../features/templates/presentation/template_form_screen.dart';
+import '../../features/templates/presentation/template_list_screen.dart';
 import '../../features/workouts/presentation/active_workout_screen.dart';
 import '../../features/workouts/presentation/workout_summary_screen.dart';
 
@@ -24,6 +27,12 @@ enum AppTab {
     icon: Icons.insights_outlined,
     selectedIcon: Icons.insights,
     path: '/history',
+  ),
+  templates(
+    label: 'Templates',
+    icon: Icons.auto_awesome_outlined,
+    selectedIcon: Icons.auto_awesome,
+    path: '/templates',
   ),
   exercises(
     label: 'Exercises',
@@ -85,8 +94,37 @@ GoRouter appRouter(Ref ref) {
               GoRoute(
                 path: AppTab.history.path,
                 pageBuilder: (context, state) => const NoTransitionPage<void>(
-                  child: HistoryPlaceholderScreen(),
+                  child: HistoryListScreen(),
                 ),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: ':id',
+                    builder: (context, state) => WorkoutDetailScreen(
+                      workoutId: state.pathParameters['id']!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                path: AppTab.templates.path,
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage<void>(child: TemplateListScreen()),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: 'new',
+                    builder: (context, state) => const TemplateFormScreen(),
+                  ),
+                  GoRoute(
+                    path: ':id/edit',
+                    builder: (context, state) => TemplateFormScreen(
+                      templateId: state.pathParameters['id'],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

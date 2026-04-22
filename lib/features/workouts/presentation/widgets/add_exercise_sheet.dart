@@ -44,11 +44,13 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
 
   List<Exercise> _filter(List<Exercise> items) {
     final String q = _query.trim().toLowerCase();
-    return items.where((e) {
-      if (_typeFilter != null && e.type != _typeFilter) return false;
-      if (q.isEmpty) return true;
-      return e.name.toLowerCase().contains(q);
-    }).toList(growable: false);
+    return items
+        .where((e) {
+          if (_typeFilter != null && e.type != _typeFilter) return false;
+          if (q.isEmpty) return true;
+          return e.name.toLowerCase().contains(q);
+        })
+        .toList(growable: false);
   }
 
   Future<void> _createNew() async {
@@ -76,9 +78,7 @@ class _AddExerciseSheetState extends ConsumerState<_AddExerciseSheet> {
         return Container(
           decoration: BoxDecoration(
             color: palette.shade50,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(24),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: <Widget>[
@@ -443,9 +443,7 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         children: <Widget>[
           Icon(
-            hasQuery
-                ? Icons.search_off_rounded
-                : Icons.fitness_center_rounded,
+            hasQuery ? Icons.search_off_rounded : Icons.fitness_center_rounded,
             size: 32,
             color: palette.shade600,
           ),
@@ -459,9 +457,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            hasQuery
-                ? 'Try a different search.'
-                : 'Create one to get started.',
+            hasQuery ? 'Try a different search.' : 'Create one to get started.',
             style: TextStyle(
               color: palette.shade800.withValues(alpha: 0.75),
               fontSize: 12,

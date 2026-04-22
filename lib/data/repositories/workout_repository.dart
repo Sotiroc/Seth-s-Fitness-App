@@ -58,6 +58,7 @@ class WorkoutRepository {
             endedAt: const Value<DateTime?>(null),
             templateId: Value<String?>(workout.templateId),
             notes: Value<String?>(workout.notes),
+            name: Value<String?>(workout.name),
           ),
         );
 
@@ -118,18 +119,20 @@ class WorkoutRepository {
     controller = StreamController<WorkoutDetail?>.broadcast(
       onListen: () {
         subscriptions.addAll(<StreamSubscription<Object?>>[
-          _database.tableUpdates(
-            TableUpdateQuery.onTable(_database.workouts),
-          ).listen((_) => scheduleEmit()),
-          _database.tableUpdates(
-            TableUpdateQuery.onTable(_database.workoutExercises),
-          ).listen((_) => scheduleEmit()),
-          _database.tableUpdates(
-            TableUpdateQuery.onTable(_database.sets),
-          ).listen((_) => scheduleEmit()),
-          _database.tableUpdates(
-            TableUpdateQuery.onTable(_database.exercises),
-          ).listen((_) => scheduleEmit()),
+          _database
+              .tableUpdates(TableUpdateQuery.onTable(_database.workouts))
+              .listen((_) => scheduleEmit()),
+          _database
+              .tableUpdates(
+                TableUpdateQuery.onTable(_database.workoutExercises),
+              )
+              .listen((_) => scheduleEmit()),
+          _database
+              .tableUpdates(TableUpdateQuery.onTable(_database.sets))
+              .listen((_) => scheduleEmit()),
+          _database
+              .tableUpdates(TableUpdateQuery.onTable(_database.exercises))
+              .listen((_) => scheduleEmit()),
         ]);
         scheduleEmit();
       },
@@ -156,6 +159,26 @@ class WorkoutRepository {
     await (_database.update(_database.workouts)
           ..where((tbl) => tbl.id.equals(workoutId)))
         .write(WorkoutsCompanion(notes: Value<String?>(updated.notes)));
+
+    return updated;
+  }
+
+  /// Updates the workout's user-assigned name. Works for both active and
+  /// finished workouts, since naming can happen on the summary screen.
+  Future<Workout> updateWorkoutName({
+    required String workoutId,
+    required String? name,
+  }) async {
+    final WorkoutRow workoutRow = await _getWorkoutRow(workoutId);
+    final String? trimmed = _trimmed(name);
+    final Workout updated = workoutRow.toModel().copyWith(
+      name: trimmed,
+      clearName: trimmed == null,
+    );
+
+    await (_database.update(_database.workouts)
+          ..where((tbl) => tbl.id.equals(workoutId)))
+        .write(WorkoutsCompanion(name: Value<String?>(updated.name)));
 
     return updated;
   }
@@ -272,6 +295,42 @@ class WorkoutRepository {
     return updated;
   }
 
+  /// Deletes a single set and renumbers the remaining sets for that exercise
+  /// so setNumber stays contiguous (1, 2, 3...). Only allowed while the
+  /// workout is active.
+  Future<void> deleteWorkoutSet(String workoutSetId) async {
+    final WorkoutSetRow setRow = await _getWorkoutSetRow(workoutSetId);
+    final _WorkoutExerciseContext context = await _getWorkoutExerciseContext(
+      setRow.workoutExerciseId,
+    );
+    _ensureWorkoutIsActive(context.workout);
+
+    await _database.transaction(() async {
+      await (_database.delete(
+        _database.sets,
+      )..where((tbl) => tbl.id.equals(workoutSetId))).go();
+
+      // Renumber any sets with a higher setNumber for this workoutExercise.
+      final List<WorkoutSetRow> following =
+          await (_database.select(_database.sets)
+                ..where(
+                  (tbl) =>
+                      tbl.workoutExerciseId.equals(setRow.workoutExerciseId) &
+                      tbl.setNumber.isBiggerThanValue(setRow.setNumber),
+                )
+                ..orderBy(<OrderingTerm Function(Sets)>[
+                  (tbl) => OrderingTerm(expression: tbl.setNumber),
+                ]))
+              .get();
+
+      for (final WorkoutSetRow row in following) {
+        await (_database.update(_database.sets)
+              ..where((tbl) => tbl.id.equals(row.id)))
+            .write(SetsCompanion(setNumber: Value<int>(row.setNumber - 1)));
+      }
+    });
+  }
+
   Future<Workout> endWorkout(String workoutId, {DateTime? endedAt}) async {
     final Workout existing = (await getWorkoutById(workoutId)).workout;
     _ensureWorkoutIsActive(existing);
@@ -310,6 +369,23 @@ class WorkoutRepository {
     return rows.map((row) => row.toModel()).toList(growable: false);
   }
 
+  Stream<List<Workout>> watchHistory() {
+    final Stream<List<WorkoutRow>> rows =
+        (_database.select(_database.workouts)
+              ..where((tbl) => tbl.endedAt.isNotNull())
+              ..orderBy(<OrderingTerm Function(Workouts)>[
+                (tbl) => OrderingTerm(
+                  expression: tbl.endedAt,
+                  mode: OrderingMode.desc,
+                ),
+              ]))
+            .watch();
+
+    return rows.map(
+      (items) => items.map((row) => row.toModel()).toList(growable: false),
+    );
+  }
+
   Future<List<Workout>> listAllWorkouts() async {
     final List<WorkoutRow> rows =
         await (_database.select(_database.workouts)
@@ -335,6 +411,73 @@ class WorkoutRepository {
     return _buildWorkoutDetail(workoutRow);
   }
 
+  Stream<WorkoutDetail> watchWorkoutDetail(String workoutId) {
+    late final StreamController<WorkoutDetail> controller;
+    final List<StreamSubscription<Object?>> subscriptions =
+        <StreamSubscription<Object?>>[];
+    bool closed = false;
+    bool loading = false;
+    bool queued = false;
+
+    Future<void> emitCurrent() async {
+      if (closed) {
+        return;
+      }
+      if (loading) {
+        queued = true;
+        return;
+      }
+
+      loading = true;
+      try {
+        controller.add(await getWorkoutById(workoutId));
+      } catch (error, stackTrace) {
+        controller.addError(error, stackTrace);
+      } finally {
+        loading = false;
+      }
+
+      if (queued && !closed) {
+        queued = false;
+        unawaited(emitCurrent());
+      }
+    }
+
+    void scheduleEmit() {
+      unawaited(emitCurrent());
+    }
+
+    controller = StreamController<WorkoutDetail>.broadcast(
+      onListen: () {
+        subscriptions.addAll(<StreamSubscription<Object?>>[
+          _database
+              .tableUpdates(TableUpdateQuery.onTable(_database.workouts))
+              .listen((_) => scheduleEmit()),
+          _database
+              .tableUpdates(
+                TableUpdateQuery.onTable(_database.workoutExercises),
+              )
+              .listen((_) => scheduleEmit()),
+          _database
+              .tableUpdates(TableUpdateQuery.onTable(_database.sets))
+              .listen((_) => scheduleEmit()),
+          _database
+              .tableUpdates(TableUpdateQuery.onTable(_database.exercises))
+              .listen((_) => scheduleEmit()),
+        ]);
+        scheduleEmit();
+      },
+      onCancel: () async {
+        closed = true;
+        for (final StreamSubscription<Object?> subscription in subscriptions) {
+          await subscription.cancel();
+        }
+      },
+    );
+
+    return controller.stream;
+  }
+
   Future<WorkoutDetail> _buildWorkoutDetail(WorkoutRow workoutRow) async {
     final List<WorkoutExerciseRow> workoutExerciseRows =
         await _loadWorkoutExerciseRows(workoutRow.id);
@@ -346,13 +489,15 @@ class WorkoutRepository {
           workoutExerciseRows.map((row) => row.id).toList(growable: false),
         );
 
-    final List<WorkoutExerciseDetail> exercises = workoutExerciseRows.map((row) {
-      return WorkoutExerciseDetail(
-        workoutExercise: row.toModel(),
-        exercise: exerciseMap[row.exerciseId]!.toModel(),
-        sets: setsByWorkoutExerciseId[row.id] ?? const <WorkoutSet>[],
-      );
-    }).toList(growable: false);
+    final List<WorkoutExerciseDetail> exercises = workoutExerciseRows
+        .map((row) {
+          return WorkoutExerciseDetail(
+            workoutExercise: row.toModel(),
+            exercise: exerciseMap[row.exerciseId]!.toModel(),
+            sets: setsByWorkoutExerciseId[row.id] ?? const <WorkoutSet>[],
+          );
+        })
+        .toList(growable: false);
 
     return WorkoutDetail(workout: workoutRow.toModel(), exercises: exercises);
   }
@@ -375,13 +520,14 @@ class WorkoutRepository {
       return <String, List<WorkoutSet>>{};
     }
 
-    final List<WorkoutSetRow> setRows = await (_database.select(_database.sets)
-          ..where((tbl) => tbl.workoutExerciseId.isIn(workoutExerciseIds))
-          ..orderBy(<OrderingTerm Function(Sets)>[
-            (tbl) => OrderingTerm(expression: tbl.workoutExerciseId),
-            (tbl) => OrderingTerm(expression: tbl.setNumber),
-          ]))
-        .get();
+    final List<WorkoutSetRow> setRows =
+        await (_database.select(_database.sets)
+              ..where((tbl) => tbl.workoutExerciseId.isIn(workoutExerciseIds))
+              ..orderBy(<OrderingTerm Function(Sets)>[
+                (tbl) => OrderingTerm(expression: tbl.workoutExerciseId),
+                (tbl) => OrderingTerm(expression: tbl.setNumber),
+              ]))
+            .get();
 
     final Map<String, List<WorkoutSet>> setsByWorkoutExerciseId =
         <String, List<WorkoutSet>>{};

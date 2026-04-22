@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'package:fitnessapp/data/db/app_database.dart';
 import 'package:fitnessapp/data/models/exercise.dart';
 import 'package:fitnessapp/data/models/exercise_type.dart';
+import 'package:fitnessapp/data/models/template_detail.dart';
 import 'package:fitnessapp/data/models/template_exercise.dart';
 import 'package:fitnessapp/data/models/workout.dart';
 import 'package:fitnessapp/data/models/workout_detail.dart';
@@ -342,46 +343,81 @@ void main() {
       expect(detail.exercises, isEmpty);
     });
 
-    test('watches nested exercise and set updates for the active workout', () async {
-      await exerciseRepository.seedDefaultsIfNeeded();
-      final Workout workout = await workoutRepository.startWorkout();
-      final String exerciseId = defaultExerciseSeeds
-          .firstWhere((seed) => seed.name == 'Bench Press')
-          .id;
+    test(
+      'watches nested exercise and set updates for the active workout',
+      () async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final Workout workout = await workoutRepository.startWorkout();
+        final String exerciseId = defaultExerciseSeeds
+            .firstWhere((seed) => seed.name == 'Bench Press')
+            .id;
 
-      final Future<WorkoutDetail?> detailFuture = workoutRepository
-          .watchActiveWorkoutDetail()
-          .firstWhere(
-            (detail) =>
-                detail != null &&
-                detail.workout.id == workout.id &&
-                detail.exercises.length == 1 &&
-                detail.exercises.first.sets.length == 1 &&
-                detail.exercises.first.sets.first.completed,
-          )
-          .timeout(const Duration(seconds: 2));
+        final Future<WorkoutDetail?> detailFuture = workoutRepository
+            .watchActiveWorkoutDetail()
+            .firstWhere(
+              (detail) =>
+                  detail != null &&
+                  detail.workout.id == workout.id &&
+                  detail.exercises.length == 1 &&
+                  detail.exercises.first.sets.length == 1 &&
+                  detail.exercises.first.sets.first.completed,
+            )
+            .timeout(const Duration(seconds: 2));
 
-      final WorkoutExerciseDetail exerciseDetail = await workoutRepository
-          .addExerciseToWorkout(workoutId: workout.id, exerciseId: exerciseId);
-      final WorkoutSet workoutSet = await workoutRepository
-          .addSetToWorkoutExercise(exerciseDetail.workoutExercise.id);
+        final WorkoutExerciseDetail exerciseDetail = await workoutRepository
+            .addExerciseToWorkout(
+              workoutId: workout.id,
+              exerciseId: exerciseId,
+            );
+        final WorkoutSet workoutSet = await workoutRepository
+            .addSetToWorkoutExercise(exerciseDetail.workoutExercise.id);
 
-      await workoutRepository.updateWorkoutSet(
-        workoutSetId: workoutSet.id,
-        weightKg: 80,
-        reps: 5,
-        distanceKm: null,
-        durationSeconds: null,
-        completed: true,
-      );
+        await workoutRepository.updateWorkoutSet(
+          workoutSetId: workoutSet.id,
+          weightKg: 80,
+          reps: 5,
+          distanceKm: null,
+          durationSeconds: null,
+          completed: true,
+        );
 
-      final WorkoutDetail detail = (await detailFuture)!;
+        final WorkoutDetail detail = (await detailFuture)!;
 
-      expect(detail.exercises.single.exercise.name, 'Bench Press');
-      expect(detail.exercises.single.sets.single.weightKg, 80);
-      expect(detail.exercises.single.sets.single.reps, 5);
-      expect(detail.exercises.single.sets.single.completed, isTrue);
-    });
+        expect(detail.exercises.single.exercise.name, 'Bench Press');
+        expect(detail.exercises.single.sets.single.weightKg, 80);
+        expect(detail.exercises.single.sets.single.reps, 5);
+        expect(detail.exercises.single.sets.single.completed, isTrue);
+      },
+    );
+
+    test(
+      'watchHistory emits completed workouts in newest-first order',
+      () async {
+        final List<List<Workout>> emissions = <List<Workout>>[];
+        final subscription = workoutRepository.watchHistory().listen(
+          emissions.add,
+        );
+        addTearDown(subscription.cancel);
+
+        final Workout first = await workoutRepository.startWorkout();
+        await workoutRepository.endWorkout(
+          first.id,
+          endedAt: DateTime.utc(2026, 4, 21, 8),
+        );
+        final Workout second = await workoutRepository.startWorkout();
+        await workoutRepository.endWorkout(
+          second.id,
+          endedAt: DateTime.utc(2026, 4, 21, 9),
+        );
+        await pumpEventQueue();
+
+        expect(emissions, isNotEmpty);
+        expect(emissions.last.map((workout) => workout.id).toList(), <String>[
+          second.id,
+          first.id,
+        ]);
+      },
+    );
   });
 
   group('TemplateRepository', () {
@@ -427,11 +463,64 @@ void main() {
       expect(workout.templateId, template.id);
       expect(workoutDetail.exercises, hasLength(1));
       expect(workoutDetail.exercises.first.exercise.name, 'Overhead Press');
+      expect(workoutDetail.exercises.first.sets, hasLength(5));
+      expect(workoutDetail.exercises.first.sets.first.setNumber, 1);
+      expect(workoutDetail.exercises.first.sets.last.setNumber, 5);
+      expect(
+        workoutDetail.exercises.first.sets.every((set) => !set.completed),
+        isTrue,
+      );
 
       await templateRepository.deleteTemplate(template.id);
 
       final templates = await templateRepository.getAllTemplates();
       expect(templates, isEmpty);
     });
+
+    test('rejects blank template names', () async {
+      expect(
+        () => templateRepository.createTemplate(name: '   '),
+        throwsA(isA<InvalidWorkoutTemplateNameException>()),
+      );
+    });
+
+    test(
+      'watches template detail updates without manual invalidation',
+      () async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final WorkoutTemplate template = await templateRepository
+            .createTemplate(name: 'Pull Day');
+        final String exerciseId = defaultExerciseSeeds
+            .firstWhere((seed) => seed.name == 'Lat Pulldown')
+            .id;
+
+        final Future<TemplateDetail> detailFuture = templateRepository
+            .watchTemplateById(template.id)
+            .firstWhere(
+              (detail) =>
+                  detail.template.id == template.id &&
+                  detail.template.name == 'Pull Day Updated' &&
+                  detail.exercises.length == 1,
+            )
+            .timeout(const Duration(seconds: 2));
+
+        await templateRepository.updateTemplate(
+          template: template.copyWith(name: 'Pull Day Updated'),
+          exercises: <TemplateExerciseDraft>[
+            TemplateExerciseDraft(
+              exerciseId: exerciseId,
+              orderIndex: 0,
+              defaultSets: 4,
+            ),
+          ],
+        );
+
+        final TemplateDetail detail = await detailFuture;
+
+        expect(detail.template.name, 'Pull Day Updated');
+        expect(detail.exercises.single.exercise.name, 'Lat Pulldown');
+        expect(detail.exercises.single.templateExercise.defaultSets, 4);
+      },
+    );
   });
 }

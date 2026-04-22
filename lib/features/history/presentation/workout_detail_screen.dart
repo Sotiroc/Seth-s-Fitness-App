@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,112 +10,78 @@ import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_set.dart';
 import '../../exercises/presentation/widgets/exercise_avatar.dart';
 import '../../exercises/presentation/widgets/exercise_type_badge.dart';
-import '../../history/application/history_providers.dart';
-import '../application/workout_session_controller.dart';
+import '../application/history_providers.dart';
 
-/// Shown after a workout is finished. Streams the workout via
-/// [workoutDetailProvider] so name edits reflect immediately, and lets the
-/// user give the session a custom name that surfaces in history.
-class WorkoutSummaryScreen extends ConsumerStatefulWidget {
-  const WorkoutSummaryScreen({super.key, required this.workoutId});
+/// Read-only detail view of a completed (or in-progress) workout. Reuses the
+/// streaming [workoutDetailProvider] so edits from the active workout flow
+/// appear immediately.
+class WorkoutDetailScreen extends ConsumerWidget {
+  const WorkoutDetailScreen({super.key, required this.workoutId});
 
   final String workoutId;
 
   @override
-  ConsumerState<WorkoutSummaryScreen> createState() =>
-      _WorkoutSummaryScreenState();
-}
-
-class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
-  final TextEditingController _nameController = TextEditingController();
-  final FocusNode _nameFocus = FocusNode();
-  Timer? _saveDebounce;
-  String? _lastSavedName;
-  bool _seeded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameFocus.addListener(_onFocusChange);
-  }
-
-  @override
-  void dispose() {
-    _saveDebounce?.cancel();
-    _nameFocus.removeListener(_onFocusChange);
-    _nameFocus.dispose();
-    _nameController.dispose();
-    super.dispose();
-  }
-
-  void _onFocusChange() {
-    if (!_nameFocus.hasFocus) {
-      _flushSave();
-    }
-  }
-
-  void _seedIfNeeded(String? serverName) {
-    if (_seeded) return;
-    _seeded = true;
-    _nameController.text = serverName ?? '';
-    _lastSavedName = serverName;
-  }
-
-  void _onNameChanged(String _) {
-    _saveDebounce?.cancel();
-    _saveDebounce = Timer(const Duration(milliseconds: 700), _flushSave);
-  }
-
-  Future<void> _flushSave() async {
-    _saveDebounce?.cancel();
-    final String trimmed = _nameController.text.trim();
-    final String? normalized = trimmed.isEmpty ? null : trimmed;
-    if (normalized == _lastSavedName) return;
-    _lastSavedName = normalized;
-    try {
-      await ref
-          .read(workoutSessionControllerProvider.notifier)
-          .updateWorkoutName(
-            workoutId: widget.workoutId,
-            name: normalized,
-          );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not save name: ${error.toString().replaceFirst('Exception: ', '')}'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final JellyBeanPalette palette = context.jellyBeanPalette;
     final AsyncValue<WorkoutDetail> detailAsync = ref.watch(
-      workoutDetailProvider(widget.workoutId),
+      workoutDetailProvider(workoutId),
     );
 
     return Scaffold(
       backgroundColor: palette.shade50,
       body: detailAsync.when(
-        data: (detail) {
-          _seedIfNeeded(detail.workout.name);
-          return _SummaryBody(
-            detail: detail,
-            palette: palette,
-            nameController: _nameController,
-            nameFocus: _nameFocus,
-            onNameChanged: _onNameChanged,
-            onSubmitted: _flushSave,
-          );
-        },
+        data: (detail) => _DetailBody(detail: detail, palette: palette),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Text('Could not load summary: $err'),
+        error: (err, _) => _ErrorView(palette: palette, error: err),
+      ),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  const _ErrorView({required this.palette, required this.error});
+
+  final JellyBeanPalette palette;
+  final Object error;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                Icons.error_outline_rounded,
+                size: 40,
+                color: palette.shade600,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Could not load workout',
+                style: TextStyle(
+                  color: palette.shade950,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$error',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: palette.shade800),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FilledButton(
+                onPressed: () => context.go('/history'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: palette.shade900,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Back to History'),
+              ),
+            ],
           ),
         ),
       ),
@@ -125,38 +89,22 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
   }
 }
 
-class _SummaryBody extends StatelessWidget {
-  const _SummaryBody({
-    required this.detail,
-    required this.palette,
-    required this.nameController,
-    required this.nameFocus,
-    required this.onNameChanged,
-    required this.onSubmitted,
-  });
+class _DetailBody extends StatelessWidget {
+  const _DetailBody({required this.detail, required this.palette});
 
   final WorkoutDetail detail;
   final JellyBeanPalette palette;
-  final TextEditingController nameController;
-  final FocusNode nameFocus;
-  final ValueChanged<String> onNameChanged;
-  final VoidCallback onSubmitted;
 
   Duration get _duration {
     final DateTime end = detail.workout.endedAt ?? DateTime.now();
     return end.difference(detail.workout.startedAt);
   }
 
-  int get _completedSets {
-    return detail.exercises
-        .expand<WorkoutSet>((e) => e.sets)
-        .where((s) => s.completed)
-        .length;
-  }
+  int get _completedSets =>
+      detail.exercises.expand((e) => e.sets).where((s) => s.completed).length;
 
-  int get _totalSets {
-    return detail.exercises.fold<int>(0, (sum, e) => sum + e.sets.length);
-  }
+  int get _totalSets =>
+      detail.exercises.fold<int>(0, (sum, e) => sum + e.sets.length);
 
   double get _totalVolumeKg {
     double total = 0;
@@ -164,9 +112,7 @@ class _SummaryBody extends StatelessWidget {
       if (e.exercise.type != ExerciseType.weighted) continue;
       for (final WorkoutSet s in e.sets) {
         if (!s.completed) continue;
-        final double w = s.weightKg ?? 0;
-        final int r = s.reps ?? 0;
-        total += w * r;
+        total += (s.weightKg ?? 0) * (s.reps ?? 0);
       }
     }
     return total;
@@ -184,6 +130,12 @@ class _SummaryBody extends StatelessWidget {
     return total;
   }
 
+  static String? _cleanedName(String? value) {
+    if (value == null) return null;
+    final String trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(
@@ -191,6 +143,9 @@ class _SummaryBody extends StatelessWidget {
         SliverToBoxAdapter(
           child: _Hero(
             palette: palette,
+            workoutName: _cleanedName(detail.workout.name),
+            workoutDate: detail.workout.startedAt.toLocal(),
+            isActive: detail.workout.isActive,
             duration: _duration,
             completedSets: _completedSets,
             totalSets: _totalSets,
@@ -198,23 +153,22 @@ class _SummaryBody extends StatelessWidget {
             totalDistanceKm: _totalDistanceKm,
           ),
         ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.lg,
-            AppSpacing.lg,
-            0,
-          ),
-          sliver: SliverToBoxAdapter(
-            child: _NameInputCard(
-              palette: palette,
-              controller: nameController,
-              focusNode: nameFocus,
-              onChanged: onNameChanged,
-              onSubmitted: onSubmitted,
+        if (detail.workout.notes != null &&
+            detail.workout.notes!.trim().isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              0,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: _NotesCard(
+                palette: palette,
+                notes: detail.workout.notes!,
+              ),
             ),
           ),
-        ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
@@ -232,7 +186,7 @@ class _SummaryBody extends StatelessWidget {
               AppSpacing.lg,
               0,
               AppSpacing.lg,
-              AppSpacing.lg,
+              AppSpacing.xl,
             ),
             sliver: SliverToBoxAdapter(
               child: Text(
@@ -253,8 +207,9 @@ class _SummaryBody extends StatelessWidget {
             ),
             sliver: SliverList.separated(
               itemCount: detail.exercises.length,
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (context, index) => _SummaryExerciseCard(
+              separatorBuilder: (_, _) =>
+                  const SizedBox(height: AppSpacing.sm),
+              itemBuilder: (context, index) => _DetailExerciseCard(
                 detail: detail.exercises[index],
                 palette: palette,
               ),
@@ -268,11 +223,14 @@ class _SummaryBody extends StatelessWidget {
             MediaQuery.paddingOf(context).bottom + AppSpacing.xl,
           ),
           sliver: SliverToBoxAdapter(
-            child: _DoneButton(
+            child: _BackButton(
               palette: palette,
               onTap: () {
-                onSubmitted();
-                context.go('/workouts');
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/history');
+                }
               },
             ),
           ),
@@ -285,6 +243,9 @@ class _SummaryBody extends StatelessWidget {
 class _Hero extends StatelessWidget {
   const _Hero({
     required this.palette,
+    required this.workoutName,
+    required this.workoutDate,
+    required this.isActive,
     required this.duration,
     required this.completedSets,
     required this.totalSets,
@@ -293,6 +254,9 @@ class _Hero extends StatelessWidget {
   });
 
   final JellyBeanPalette palette;
+  final String? workoutName;
+  final DateTime workoutDate;
+  final bool isActive;
   final Duration duration;
   final int completedSets;
   final int totalSets;
@@ -311,6 +275,33 @@ class _Hero extends StatelessWidget {
     return value.toStringAsFixed(value == value.roundToDouble() ? 0 : 2);
   }
 
+  String _formatDate(DateTime d) {
+    const List<String> weekdays = <String>[
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    const List<String> months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${weekdays[d.weekday - 1]}, ${d.day} ${months[d.month - 1]} ${d.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -325,7 +316,9 @@ class _Hero extends StatelessWidget {
           colors: <Color>[palette.shade950, palette.shade800, palette.shade500],
           stops: const <double>[0.0, 0.55, 1.0],
         ),
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(32),
+        ),
       ),
       padding: EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -338,6 +331,34 @@ class _Hero extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
+              InkWell(
+                onTap: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    context.go('/history');
+                  }
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.arrow_back_rounded,
+                    color: palette.shade100,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -354,13 +375,15 @@ class _Hero extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
                     Icon(
-                      Icons.check_circle_rounded,
+                      isActive
+                          ? Icons.bolt_rounded
+                          : Icons.check_circle_rounded,
                       size: 14,
                       color: palette.shade100,
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'WORKOUT COMPLETE',
+                      isActive ? 'IN PROGRESS' : 'COMPLETED',
                       style: TextStyle(
                         color: palette.shade100,
                         fontSize: 11,
@@ -374,20 +397,32 @@ class _Hero extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text(
-            'Nice work.',
-            style: theme.textTheme.displaySmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -1.2,
+          if (workoutName != null) ...<Widget>[
+            Text(
+              workoutName!,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.6,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-          ),
-          const SizedBox(height: 4),
+            const SizedBox(height: 2),
+          ],
           Text(
-            'Here is how the session shook out.',
-            style: TextStyle(
-              color: palette.shade100.withValues(alpha: 0.85),
-              fontSize: 13.5,
+            _formatDate(workoutDate),
+            style: (workoutName != null
+                    ? theme.textTheme.titleSmall
+                    : theme.textTheme.titleLarge)
+                ?.copyWith(
+              color: workoutName != null
+                  ? palette.shade100.withValues(alpha: 0.85)
+                  : Colors.white,
+              fontWeight: workoutName != null
+                  ? FontWeight.w600
+                  : FontWeight.w800,
+              letterSpacing: workoutName != null ? 0.0 : -0.6,
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -424,7 +459,8 @@ class _Hero extends StatelessWidget {
               Expanded(
                 child: _HeroStat(
                   palette: palette,
-                  value: hasCardio ? '${_formatKm(totalDistanceKm)} km' : '—',
+                  value:
+                      hasCardio ? '${_formatKm(totalDistanceKm)} km' : '—',
                   label: 'Distance',
                 ),
               ),
@@ -487,6 +523,41 @@ class _HeroStat extends StatelessWidget {
   }
 }
 
+class _NotesCard extends StatelessWidget {
+  const _NotesCard({required this.palette, required this.notes});
+
+  final JellyBeanPalette palette;
+  final String notes;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: palette.shade100.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(Icons.sticky_note_2_outlined, color: palette.shade700, size: 18),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              notes,
+              style: TextStyle(
+                color: palette.shade900,
+                fontSize: 13.5,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel({required this.text, required this.palette});
 
@@ -513,8 +584,8 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _SummaryExerciseCard extends StatelessWidget {
-  const _SummaryExerciseCard({required this.detail, required this.palette});
+class _DetailExerciseCard extends StatelessWidget {
+  const _DetailExerciseCard({required this.detail, required this.palette});
 
   final WorkoutExerciseDetail detail;
   final JellyBeanPalette palette;
@@ -522,9 +593,7 @@ class _SummaryExerciseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final List<WorkoutSet> completed = detail.sets
-        .where((s) => s.completed)
-        .toList(growable: false);
+    final int completed = detail.sets.where((s) => s.completed).length;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -559,7 +628,7 @@ class _SummaryExerciseCard extends StatelessWidget {
                 ),
               ),
               Text(
-                '${completed.length} / ${detail.sets.length}',
+                '$completed / ${detail.sets.length}',
                 style: TextStyle(
                   color: palette.shade700,
                   fontWeight: FontWeight.w700,
@@ -568,11 +637,11 @@ class _SummaryExerciseCard extends StatelessWidget {
               ),
             ],
           ),
-          if (completed.isEmpty)
+          if (detail.sets.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.sm),
               child: Text(
-                'No completed sets.',
+                'No sets recorded.',
                 style: TextStyle(
                   color: palette.shade700.withValues(alpha: 0.7),
                   fontSize: 12.5,
@@ -581,10 +650,10 @@ class _SummaryExerciseCard extends StatelessWidget {
             )
           else ...<Widget>[
             const SizedBox(height: AppSpacing.sm),
-            for (final WorkoutSet set in completed)
+            for (final WorkoutSet set in detail.sets)
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: _SummarySetLine(
+                child: _SetLine(
                   set: set,
                   type: detail.exercise.type,
                   palette: palette,
@@ -597,8 +666,8 @@ class _SummaryExerciseCard extends StatelessWidget {
   }
 }
 
-class _SummarySetLine extends StatelessWidget {
-  const _SummarySetLine({
+class _SetLine extends StatelessWidget {
+  const _SetLine({
     required this.set,
     required this.type,
     required this.palette,
@@ -631,136 +700,59 @@ class _SummarySetLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Container(
-          width: 26,
-          height: 26,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: palette.shade100,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '${set.setNumber}',
-            style: TextStyle(
-              color: palette.shade800,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(
-            _formatSet(),
-            style: TextStyle(
-              color: palette.shade950,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _NameInputCard extends StatelessWidget {
-  const _NameInputCard({
-    required this.palette,
-    required this.controller,
-    required this.focusNode,
-    required this.onChanged,
-    required this.onSubmitted,
-  });
-
-  final JellyBeanPalette palette;
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onSubmitted;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.sm,
-        AppSpacing.md,
-        AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: palette.shade100),
-      ),
+    final bool completed = set.completed;
+    return Opacity(
+      opacity: completed ? 1.0 : 0.55,
       child: Row(
         children: <Widget>[
           Container(
-            width: 36,
-            height: 36,
+            width: 26,
+            height: 26,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: palette.shade100,
-              borderRadius: BorderRadius.circular(10),
+              color: completed ? palette.shade100 : palette.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: completed
+                  ? null
+                  : Border.all(color: palette.shade200),
             ),
-            child: Icon(
-              Icons.label_outline_rounded,
-              color: palette.shade800,
-              size: 18,
+            child: Text(
+              '${set.setNumber}',
+              style: TextStyle(
+                color: palette.shade800,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'NAME THIS WORKOUT',
-                  style: TextStyle(
-                    color: palette.shade700,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  maxLength: 60,
-                  textInputAction: TextInputAction.done,
-                  onChanged: onChanged,
-                  onSubmitted: (_) => onSubmitted(),
-                  style: TextStyle(
-                    color: palette.shade950,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                    counterText: '',
-                    hintText: 'e.g. Leg day — light',
-                    hintStyle: TextStyle(
-                      color: palette.shade700.withValues(alpha: 0.5),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
+            child: Text(
+              _formatSet(),
+              style: TextStyle(
+                color: palette.shade950,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
           ),
+          if (!completed)
+            Text(
+              'skipped',
+              style: TextStyle(
+                color: palette.shade700.withValues(alpha: 0.6),
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _DoneButton extends StatelessWidget {
-  const _DoneButton({required this.palette, required this.onTap});
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.palette, required this.onTap});
 
   final JellyBeanPalette palette;
   final VoidCallback onTap;
@@ -768,7 +760,7 @@ class _DoneButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 56,
+      height: 52,
       width: double.infinity,
       child: FilledButton(
         onPressed: onTap,
@@ -776,11 +768,11 @@ class _DoneButton extends StatelessWidget {
           backgroundColor: palette.shade900,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
         child: const Text(
-          'Done',
+          'Back',
           style: TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 15,

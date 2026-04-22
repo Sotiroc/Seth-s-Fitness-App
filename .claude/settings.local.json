@@ -3,7 +3,14 @@
     "allow": [
       "Bash(flutter analyze *)",
       "Bash(dart run *)",
-      "Bash(flutter build *)"
+      "Bash(flutter build *)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(mkdir -p \"C:/tmp/claude-design\")",
+      "Read(//c/tmp/**)",
+      "Bash(tar -xzvf \"C:\\\\Users\\\\seths\\\\.claude\\\\projects\\\\C--Dev-FitnessApp\\\\187d8cc9-280d-4272-9c34-9a9d27692635\\\\tool-results\\\\webfetch-1776886624204-rurobl.bin\" -C \"C:/tmp/claude-design\")",
+      "Bash(cp \"C:\\\\Users\\\\seths\\\\.claude\\\\projects\\\\C--Dev-FitnessApp\\\\187d8cc9-280d-4272-9c34-9a9d27692635\\\\tool-results\\\\webfetch-1776886624204-rurobl.bin\" /tmp/design.tgz)",
+      "Bash(mkdir -p /tmp/design)",
+      "Bash(tar -xzvf /tmp/design.tgz -C /tmp/design)"
     ]
   }
 }

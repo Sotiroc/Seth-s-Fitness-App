@@ -51,6 +51,7 @@ extension WorkoutRowMapper on WorkoutRow {
       endedAt: endedAt,
       templateId: templateId,
       notes: notes,
+      name: name,
     );
   }
 }

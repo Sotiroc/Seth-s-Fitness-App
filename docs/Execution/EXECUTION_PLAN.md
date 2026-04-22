@@ -98,11 +98,11 @@ Goal: the app becomes practically useful for real workouts.
 - [x] Expose `workoutSessionControllerProvider` for workout mutations
 
 **Claude frontend**
-- [ ] Active workout screen
-- [ ] Add-exercise UI flow
-- [ ] Set-entry UI for weighted/bodyweight/cardio rows
-- [ ] Finish/cancel dialogs
-- [ ] Summary after finish
+- [x] Active workout screen
+- [x] Add-exercise UI flow
+- [x] Set-entry UI for weighted/bodyweight/cardio rows
+- [x] Finish/cancel dialogs
+- [x] Summary after finish
 
 **Order**
 - Codex backend for W4 is now in place.
@@ -114,10 +114,16 @@ Goal: the app becomes practically useful for real workouts.
 ## Phase W5 - History and templates
 
 **Codex backend**
-- [ ] Workout history queries
-- [ ] Workout detail data assembly
-- [ ] Template create/edit/delete logic
-- [ ] Start workout from template
+- [x] Workout history queries
+- [x] Workout detail data assembly
+- [x] Template create/edit/delete logic
+- [x] Start workout from template
+- [x] Expose `workoutHistoryProvider` for history list data
+- [x] Expose `workoutDetailProvider` for workout detail data
+- [x] Expose `templateListProvider` for template list data
+- [x] Expose `templateDetailProvider` for template detail data
+- [x] Expose `templateExerciseOptionsProvider` for template exercise pickers
+- [x] Expose `templateEditorControllerProvider` for template mutations and starting workouts from templates
 
 **Claude frontend**
 - [ ] Workout history list
@@ -125,9 +131,9 @@ Goal: the app becomes practically useful for real workouts.
 - [ ] Template list/create/edit screens
 
 **Order**
-- Start with Codex for history/template data contracts.
-- Claude can begin layout work in parallel if the screen structure is obvious, but real integration should follow Codex.
-- If split is unclear, default to Codex.
+- Codex backend for W5 is now in place.
+- Claude should work next against the history/template providers and controller instead of reaching into repositories directly.
+- Further W5 backend work should only happen if Claude finds a missing contract.
 
 ---
 

@@ -38,6 +38,18 @@ class WorkoutSessionController extends AsyncNotifier<void> {
     });
   }
 
+  Future<Workout> updateWorkoutName({
+    required String workoutId,
+    required String? name,
+  }) {
+    return _runMutation(() async {
+      final Workout workout = await ref
+          .read(workoutRepositoryProvider)
+          .updateWorkoutName(workoutId: workoutId, name: name);
+      return workout;
+    });
+  }
+
   Future<WorkoutExerciseDetail> addExercise({
     required String workoutId,
     required String exerciseId,
@@ -56,6 +68,14 @@ class WorkoutSessionController extends AsyncNotifier<void> {
           .read(workoutRepositoryProvider)
           .addSetToWorkoutExercise(workoutExerciseId);
       return workoutSet;
+    });
+  }
+
+  Future<void> removeSet(String workoutSetId) {
+    return _runMutation(() async {
+      await ref
+          .read(workoutRepositoryProvider)
+          .deleteWorkoutSet(workoutSetId);
     });
   }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/router/app_router.dart';
+import 'widgets/indicator_line_nav_bar.dart';
 
 class HomeShell extends StatelessWidget {
   const HomeShell({super.key, required this.navigationShell});
@@ -12,16 +12,9 @@ class HomeShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: _goBranch,
-        destinations: AppTab.values.map((tab) {
-          return NavigationDestination(
-            icon: Icon(tab.icon),
-            selectedIcon: Icon(tab.selectedIcon),
-            label: tab.label,
-          );
-        }).toList(),
+      bottomNavigationBar: IndicatorLineNavBar(
+        currentIndex: navigationShell.currentIndex,
+        onTabSelected: _goBranch,
       ),
     );
   }

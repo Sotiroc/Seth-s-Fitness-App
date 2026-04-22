@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
@@ -42,6 +44,22 @@ class TemplateRepository {
     return rows.map((row) => row.toModel()).toList(growable: false);
   }
 
+  Stream<List<WorkoutTemplate>> watchAllTemplates() {
+    final Stream<List<WorkoutTemplateRow>> rows =
+        (_database.select(_database.workoutTemplates)
+              ..orderBy(<OrderingTerm Function(WorkoutTemplates)>[
+                (tbl) => OrderingTerm(
+                  expression: tbl.updatedAt,
+                  mode: OrderingMode.desc,
+                ),
+              ]))
+            .watch();
+
+    return rows.map(
+      (items) => items.map((row) => row.toModel()).toList(growable: false),
+    );
+  }
+
   Future<TemplateDetail> getTemplateById(String templateId) async {
     final WorkoutTemplateRow? templateRow = await (_database.select(
       _database.workoutTemplates,
@@ -79,6 +97,72 @@ class TemplateRepository {
     );
   }
 
+  Stream<TemplateDetail> watchTemplateById(String templateId) {
+    late final StreamController<TemplateDetail> controller;
+    final List<StreamSubscription<Object?>> subscriptions =
+        <StreamSubscription<Object?>>[];
+    bool closed = false;
+    bool loading = false;
+    bool queued = false;
+
+    Future<void> emitCurrent() async {
+      if (closed) {
+        return;
+      }
+      if (loading) {
+        queued = true;
+        return;
+      }
+
+      loading = true;
+      try {
+        controller.add(await getTemplateById(templateId));
+      } catch (error, stackTrace) {
+        controller.addError(error, stackTrace);
+      } finally {
+        loading = false;
+      }
+
+      if (queued && !closed) {
+        queued = false;
+        unawaited(emitCurrent());
+      }
+    }
+
+    void scheduleEmit() {
+      unawaited(emitCurrent());
+    }
+
+    controller = StreamController<TemplateDetail>.broadcast(
+      onListen: () {
+        subscriptions.addAll(<StreamSubscription<Object?>>[
+          _database
+              .tableUpdates(
+                TableUpdateQuery.onTable(_database.workoutTemplates),
+              )
+              .listen((_) => scheduleEmit()),
+          _database
+              .tableUpdates(
+                TableUpdateQuery.onTable(_database.templateExercises),
+              )
+              .listen((_) => scheduleEmit()),
+          _database
+              .tableUpdates(TableUpdateQuery.onTable(_database.exercises))
+              .listen((_) => scheduleEmit()),
+        ]);
+        scheduleEmit();
+      },
+      onCancel: () async {
+        closed = true;
+        for (final StreamSubscription<Object?> subscription in subscriptions) {
+          await subscription.cancel();
+        }
+      },
+    );
+
+    return controller.stream;
+  }
+
   Future<WorkoutTemplate> createTemplate({
     required String name,
     List<TemplateExerciseDraft> exercises = const <TemplateExerciseDraft>[],
@@ -86,7 +170,7 @@ class TemplateRepository {
     final DateTime now = _utcNow();
     final WorkoutTemplate template = WorkoutTemplate(
       id: _uuid.v4(),
-      name: name.trim(),
+      name: _validatedName(name),
       createdAt: now,
       updatedAt: now,
     );
@@ -121,7 +205,7 @@ class TemplateRepository {
         _database.workoutTemplates,
       )..where((tbl) => tbl.id.equals(updated.id))).write(
         WorkoutTemplatesCompanion(
-          name: Value<String>(updated.name.trim()),
+          name: Value<String>(_validatedName(updated.name)),
           updatedAt: Value<DateTime>(updated.updatedAt),
         ),
       );
@@ -178,16 +262,38 @@ class TemplateRepository {
 
       for (final TemplateExerciseDetail exerciseDetail
           in templateDetail.exercises) {
+        final String workoutExerciseId = _uuid.v4();
         await _database
             .into(_database.workoutExercises)
             .insert(
               WorkoutExercisesCompanion.insert(
-                id: _uuid.v4(),
+                id: workoutExerciseId,
                 workoutId: workout.id,
                 exerciseId: exerciseDetail.exercise.id,
                 orderIndex: exerciseDetail.templateExercise.orderIndex,
               ),
             );
+
+        for (
+          int setIndex = 0;
+          setIndex < exerciseDetail.templateExercise.defaultSets;
+          setIndex++
+        ) {
+          await _database
+              .into(_database.sets)
+              .insert(
+                SetsCompanion.insert(
+                  id: _uuid.v4(),
+                  workoutExerciseId: workoutExerciseId,
+                  setNumber: setIndex + 1,
+                  weightKg: const Value<double?>(null),
+                  reps: const Value<int?>(null),
+                  distanceKm: const Value<double?>(null),
+                  durationSeconds: const Value<int?>(null),
+                  completed: const Value<bool>(false),
+                ),
+              );
+        }
       }
     });
 
@@ -227,4 +333,12 @@ class TemplateRepository {
   }
 
   DateTime _utcNow() => DateTime.now().toUtc();
+
+  String _validatedName(String name) {
+    final String trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      throw InvalidWorkoutTemplateNameException();
+    }
+    return trimmedName;
+  }
 }

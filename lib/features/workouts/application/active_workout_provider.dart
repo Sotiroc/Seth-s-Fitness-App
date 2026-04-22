@@ -19,8 +19,10 @@ final FutureProvider<List<Exercise>> workoutExerciseOptionsProvider =
     });
 
 /// One-shot loader for a finished workout (summary screen).
-final workoutDetailByIdProvider =
-    FutureProvider.family<WorkoutDetail, String>((Ref ref, String id) async {
-      await ref.watch(databaseBootstrapProvider.future);
-      return ref.watch(workoutRepositoryProvider).getWorkoutById(id);
-    });
+final workoutDetailByIdProvider = FutureProvider.family<WorkoutDetail, String>((
+  Ref ref,
+  String id,
+) async {
+  await ref.watch(databaseBootstrapProvider.future);
+  return ref.watch(workoutRepositoryProvider).getWorkoutById(id);
+});

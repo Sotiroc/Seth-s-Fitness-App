@@ -270,6 +270,7 @@ class _SetRowState extends State<SetRow> {
                 flex: 3,
                 child: Text(
                   widget.previousSummary,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: palette.shade700.withValues(alpha: 0.75),
                     fontSize: 12.5,
