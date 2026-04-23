@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 
+import '../models/exercise_muscle_group.dart';
 import '../models/exercise_type.dart';
+import '../seed/default_exercises.dart';
 import 'database_connection.dart';
 
 part 'app_database.g.dart';
@@ -17,6 +19,21 @@ class ExerciseTypeConverter extends TypeConverter<ExerciseType, String> {
   String toSql(ExerciseType value) => value.name;
 }
 
+class ExerciseMuscleGroupConverter
+    extends TypeConverter<ExerciseMuscleGroup, String> {
+  const ExerciseMuscleGroupConverter();
+
+  @override
+  ExerciseMuscleGroup fromSql(String fromDb) {
+    return ExerciseMuscleGroup.values.firstWhere(
+      (value) => value.name == fromDb,
+    );
+  }
+
+  @override
+  String toSql(ExerciseMuscleGroup value) => value.name;
+}
+
 @DataClassName('ExerciseRow')
 class Exercises extends Table {
   TextColumn get id => text()();
@@ -24,6 +41,10 @@ class Exercises extends Table {
   TextColumn get name => text().withLength(min: 1, max: 120)();
 
   TextColumn get type => text().map(const ExerciseTypeConverter())();
+
+  TextColumn get muscleGroup => text()
+      .map(const ExerciseMuscleGroupConverter())
+      .withDefault(const Constant('cardio'))();
 
   TextColumn get thumbnailPath => text().nullable()();
 
@@ -157,7 +178,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -165,6 +186,25 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (Migrator m, int from, int to) async {
       if (from < 2) {
         await m.addColumn(workouts, workouts.name);
+      }
+      if (from < 3) {
+        await m.addColumn(exercises, exercises.muscleGroup);
+        await customStatement('''
+          UPDATE exercises
+          SET muscle_group = CASE
+            WHEN type = 'cardio' THEN 'cardio'
+            ELSE 'chest'
+          END
+          ''');
+        for (final DefaultExerciseSeed seed in defaultExerciseSeeds) {
+          await (update(
+            exercises,
+          )..where((tbl) => tbl.id.equals(seed.id))).write(
+            ExercisesCompanion(
+              muscleGroup: Value<ExerciseMuscleGroup>(seed.muscleGroup),
+            ),
+          );
+        }
       }
     },
   );

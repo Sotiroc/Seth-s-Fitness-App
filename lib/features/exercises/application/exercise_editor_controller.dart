@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../data/models/exercise.dart';
+import '../../../data/models/exercise_muscle_group.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/repositories/exercise_repository.dart';
 
@@ -16,12 +17,17 @@ class ExerciseEditorController extends _$ExerciseEditorController {
   Future<Exercise> createExercise({
     required String name,
     required ExerciseType type,
+    required ExerciseMuscleGroup muscleGroup,
   }) {
     return _runMutation(() async {
       final ExerciseRepository repository = ref.read(
         exerciseRepositoryProvider,
       );
-      return repository.createExercise(name: name, type: type);
+      return repository.createExercise(
+        name: name,
+        type: type,
+        muscleGroup: muscleGroup,
+      );
     });
   }
 
@@ -29,13 +35,14 @@ class ExerciseEditorController extends _$ExerciseEditorController {
     required Exercise exercise,
     required String name,
     required ExerciseType type,
+    required ExerciseMuscleGroup muscleGroup,
   }) {
     return _runMutation(() async {
       final ExerciseRepository repository = ref.read(
         exerciseRepositoryProvider,
       );
       return repository.updateExercise(
-        exercise.copyWith(name: name, type: type),
+        exercise.copyWith(name: name, type: type, muscleGroup: muscleGroup),
       );
     });
   }

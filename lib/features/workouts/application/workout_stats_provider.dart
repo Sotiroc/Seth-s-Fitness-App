@@ -5,10 +5,7 @@ import '../../history/application/history_providers.dart';
 
 /// Aggregate stats for a bucket of workouts (month, week, etc.).
 class WorkoutPeriodStats {
-  const WorkoutPeriodStats({
-    required this.count,
-    required this.totalDuration,
-  });
+  const WorkoutPeriodStats({required this.count, required this.totalDuration});
 
   final int count;
   final Duration totalDuration;
@@ -23,8 +20,9 @@ class WorkoutPeriodStats {
 /// underlying history stream emits — e.g. after finishing a workout.
 final Provider<AsyncValue<WorkoutPeriodStats>> monthlyWorkoutStatsProvider =
     Provider<AsyncValue<WorkoutPeriodStats>>((Ref ref) {
-      final AsyncValue<List<Workout>> history =
-          ref.watch(workoutHistoryProvider);
+      final AsyncValue<List<Workout>> history = ref.watch(
+        workoutHistoryProvider,
+      );
       return history.whenData((List<Workout> workouts) {
         final DateTime now = DateTime.now();
         final int y = now.year;

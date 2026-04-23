@@ -9,6 +9,7 @@ import '../../../data/models/exercise_type.dart';
 import '../../../data/models/template_detail.dart';
 import '../../../data/models/template_exercise.dart';
 import '../../exercises/presentation/widgets/exercise_avatar.dart';
+import '../../exercises/presentation/widgets/exercise_muscle_group_badge.dart';
 import '../../exercises/presentation/widgets/exercise_type_badge.dart';
 import '../application/template_editor_controller.dart';
 import '../application/template_providers.dart';
@@ -66,9 +67,10 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
   }
 
   Future<void> _pickExercise() async {
-    final List<Exercise>? options = ref.read(
-      templateExerciseOptionsProvider,
-    ).asData?.value;
+    final List<Exercise>? options = ref
+        .read(templateExerciseOptionsProvider)
+        .asData
+        ?.value;
     if (options == null) return;
 
     final Exercise? picked = await showModalBottomSheet<Exercise>(
@@ -140,7 +142,9 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(widget.isEditing ? 'Template updated.' : 'Template created.'),
+          content: Text(
+            widget.isEditing ? 'Template updated.' : 'Template created.',
+          ),
         ),
       );
       if (context.canPop()) context.pop();
@@ -314,11 +318,10 @@ class _DraftRow {
   final Exercise exercise;
   final int defaultSets;
 
-  _DraftRow copyWith({Exercise? exercise, int? defaultSets}) =>
-      _DraftRow(
-        exercise: exercise ?? this.exercise,
-        defaultSets: defaultSets ?? this.defaultSets,
-      );
+  _DraftRow copyWith({Exercise? exercise, int? defaultSets}) => _DraftRow(
+    exercise: exercise ?? this.exercise,
+    defaultSets: defaultSets ?? this.defaultSets,
+  );
 }
 
 class _FieldLabel extends StatelessWidget {
@@ -395,7 +398,16 @@ class _DraftRowCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  ExerciseTypeBadge(type: row.exercise.type),
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: <Widget>[
+                      ExerciseTypeBadge(type: row.exercise.type),
+                      ExerciseMuscleGroupBadge(
+                        muscleGroup: row.exercise.muscleGroup,
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -604,11 +616,13 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
 
   List<Exercise> get _filtered {
     final String q = _query.trim().toLowerCase();
-    return widget.options.where((e) {
-      if (_typeFilter != null && e.type != _typeFilter) return false;
-      if (q.isEmpty) return true;
-      return e.name.toLowerCase().contains(q);
-    }).toList(growable: false);
+    return widget.options
+        .where((e) {
+          if (_typeFilter != null && e.type != _typeFilter) return false;
+          if (q.isEmpty) return true;
+          return e.name.toLowerCase().contains(q);
+        })
+        .toList(growable: false);
   }
 
   @override
@@ -716,7 +730,8 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
                       onTap: () => setState(() => _typeFilter = null),
                     ),
                     const SizedBox(width: 6),
-                    for (final ExerciseType t in ExerciseType.values) ...<Widget>[
+                    for (final ExerciseType t
+                        in ExerciseType.values) ...<Widget>[
                       _FilterChip(
                         palette: palette,
                         label: t.label,
@@ -771,10 +786,7 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
                               ),
                               child: Row(
                                 children: <Widget>[
-                                  ExerciseAvatar(
-                                    exercise: exercise,
-                                    size: 40,
-                                  ),
+                                  ExerciseAvatar(exercise: exercise, size: 40),
                                   const SizedBox(width: AppSpacing.sm),
                                   Expanded(
                                     child: Column(
@@ -791,7 +803,18 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                         const SizedBox(height: 4),
-                                        ExerciseTypeBadge(type: exercise.type),
+                                        Wrap(
+                                          spacing: AppSpacing.xs,
+                                          runSpacing: AppSpacing.xs,
+                                          children: <Widget>[
+                                            ExerciseTypeBadge(
+                                              type: exercise.type,
+                                            ),
+                                            ExerciseMuscleGroupBadge(
+                                              muscleGroup: exercise.muscleGroup,
+                                            ),
+                                          ],
+                                        ),
                                       ],
                                     ),
                                   ),

@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/exercise.dart';
+import '../../../data/models/exercise_muscle_group.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/repositories/exercise_repository.dart';
 import '../application/exercise_editor_controller.dart';
 import 'widgets/exercise_avatar.dart';
+import 'widgets/exercise_muscle_group_badge.dart';
+import 'widgets/exercise_type_badge.dart';
 
 class ExerciseFormScreen extends ConsumerStatefulWidget {
   const ExerciseFormScreen({super.key, this.exerciseId});
@@ -26,6 +29,7 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
   final TextEditingController _nameController = TextEditingController();
 
   ExerciseType _type = ExerciseType.weighted;
+  ExerciseMuscleGroup _muscleGroup = ExerciseMuscleGroup.chest;
   bool _loading = false;
   bool _loadingInitial = false;
   bool _isDefault = false;
@@ -56,6 +60,7 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
         _original = exercise;
         _nameController.text = exercise.name;
         _type = exercise.type;
+        _muscleGroup = exercise.muscleGroup;
         _isDefault = exercise.isDefault;
         _loadingInitial = false;
       });
@@ -84,11 +89,13 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
           exercise: _original!,
           name: _nameController.text.trim(),
           type: _type,
+          muscleGroup: _muscleGroup,
         );
       } else {
         result = await controller.createExercise(
           name: _nameController.text.trim(),
           type: _type,
+          muscleGroup: _muscleGroup,
         );
       }
 
@@ -142,6 +149,7 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
                         ? 'New'
                         : _nameController.text,
                     previewType: _type,
+                    previewMuscleGroup: _muscleGroup,
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   _FieldLabel(text: 'Name', palette: palette),
@@ -188,6 +196,14 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
                     palette: palette,
                     selected: _type,
                     onChanged: (value) => setState(() => _type = value),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _FieldLabel(text: 'Muscle Group', palette: palette),
+                  const SizedBox(height: AppSpacing.xs),
+                  _MuscleGroupPicker(
+                    palette: palette,
+                    selected: _muscleGroup,
+                    onChanged: (value) => setState(() => _muscleGroup = value),
                   ),
                   if (_isDefault) ...<Widget>[
                     const SizedBox(height: AppSpacing.lg),
@@ -284,11 +300,13 @@ class _WebAvatarNotice extends StatelessWidget {
     required this.palette,
     required this.previewName,
     required this.previewType,
+    required this.previewMuscleGroup,
   });
 
   final JellyBeanPalette palette;
   final String previewName;
   final ExerciseType previewType;
+  final ExerciseMuscleGroup previewMuscleGroup;
 
   @override
   Widget build(BuildContext context) {
@@ -297,6 +315,7 @@ class _WebAvatarNotice extends StatelessWidget {
       id: 'preview',
       name: previewName,
       type: previewType,
+      muscleGroup: previewMuscleGroup,
       thumbnailPath: null,
       isDefault: false,
       createdAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
@@ -332,6 +351,15 @@ class _WebAvatarNotice extends StatelessWidget {
                     color: palette.shade800.withValues(alpha: 0.75),
                     fontSize: 12,
                   ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: <Widget>[
+                    ExerciseTypeBadge(type: previewType),
+                    ExerciseMuscleGroupBadge(muscleGroup: previewMuscleGroup),
+                  ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
@@ -378,6 +406,77 @@ class _TypePicker extends StatelessWidget {
             const SizedBox(width: AppSpacing.xs),
         ],
       ],
+    );
+  }
+}
+
+class _MuscleGroupPicker extends StatelessWidget {
+  const _MuscleGroupPicker({
+    required this.palette,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final JellyBeanPalette palette;
+  final ExerciseMuscleGroup selected;
+  final ValueChanged<ExerciseMuscleGroup> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: ExerciseMuscleGroup.values
+          .map(
+            (group) => _MuscleGroupOption(
+              palette: palette,
+              muscleGroup: group,
+              selected: selected == group,
+              onTap: () => onChanged(group),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+}
+
+class _MuscleGroupOption extends StatelessWidget {
+  const _MuscleGroupOption({
+    required this.palette,
+    required this.muscleGroup,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final JellyBeanPalette palette;
+  final ExerciseMuscleGroup muscleGroup;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? palette.shade900 : Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? palette.shade900 : palette.shade100,
+            width: 1.2,
+          ),
+        ),
+        child: Text(
+          muscleGroup.label,
+          style: TextStyle(
+            color: selected ? Colors.white : palette.shade900,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 }

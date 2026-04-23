@@ -14,6 +14,7 @@ import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_template.dart';
 import '../../../data/repositories/repository_exceptions.dart';
 import '../../exercises/presentation/widgets/exercise_avatar.dart';
+import '../../exercises/presentation/widgets/exercise_muscle_group_badge.dart';
 import '../../exercises/presentation/widgets/exercise_type_badge.dart';
 import '../../templates/application/template_editor_controller.dart';
 import '../../templates/application/template_providers.dart';
@@ -337,9 +338,7 @@ class _NoActiveWorkout extends ConsumerWidget {
 
     return CustomScrollView(
       slivers: <Widget>[
-        SliverToBoxAdapter(
-          child: _ReadyToMoveHeader(palette: palette),
-        ),
+        SliverToBoxAdapter(child: _ReadyToMoveHeader(palette: palette)),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
@@ -724,9 +723,7 @@ class _TemplatePickerSheet extends ConsumerWidget {
         return Container(
           decoration: BoxDecoration(
             color: palette.shade50,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(28),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
@@ -884,11 +881,7 @@ class _EmptyTemplates extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(
-            Icons.auto_awesome_outlined,
-            size: 40,
-            color: palette.shade400,
-          ),
+          Icon(Icons.auto_awesome_outlined, size: 40, color: palette.shade400),
           const SizedBox(height: AppSpacing.sm),
           Text(
             'No templates yet',
@@ -1405,7 +1398,16 @@ class _ExerciseCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    ExerciseTypeBadge(type: detail.exercise.type),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: <Widget>[
+                        ExerciseTypeBadge(type: detail.exercise.type),
+                        ExerciseMuscleGroupBadge(
+                          muscleGroup: detail.exercise.muscleGroup,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

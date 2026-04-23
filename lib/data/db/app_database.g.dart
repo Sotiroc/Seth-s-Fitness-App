@@ -40,6 +40,16 @@ class $ExercisesTable extends Exercises
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       ).withConverter<ExerciseType>($ExercisesTable.$convertertype);
+  @override
+  late final GeneratedColumnWithTypeConverter<ExerciseMuscleGroup, String>
+  muscleGroup = GeneratedColumn<String>(
+    'muscle_group',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('cardio'),
+  ).withConverter<ExerciseMuscleGroup>($ExercisesTable.$convertermuscleGroup);
   static const VerificationMeta _thumbnailPathMeta = const VerificationMeta(
     'thumbnailPath',
   );
@@ -93,6 +103,7 @@ class $ExercisesTable extends Exercises
     id,
     name,
     type,
+    muscleGroup,
     thumbnailPath,
     isDefault,
     createdAt,
@@ -177,6 +188,12 @@ class $ExercisesTable extends Exercises
           data['${effectivePrefix}type'],
         )!,
       ),
+      muscleGroup: $ExercisesTable.$convertermuscleGroup.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}muscle_group'],
+        )!,
+      ),
       thumbnailPath: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}thumbnail_path'],
@@ -203,12 +220,15 @@ class $ExercisesTable extends Exercises
 
   static TypeConverter<ExerciseType, String> $convertertype =
       const ExerciseTypeConverter();
+  static TypeConverter<ExerciseMuscleGroup, String> $convertermuscleGroup =
+      const ExerciseMuscleGroupConverter();
 }
 
 class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
   final String id;
   final String name;
   final ExerciseType type;
+  final ExerciseMuscleGroup muscleGroup;
   final String? thumbnailPath;
   final bool isDefault;
   final DateTime createdAt;
@@ -217,6 +237,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     required this.id,
     required this.name,
     required this.type,
+    required this.muscleGroup,
     this.thumbnailPath,
     required this.isDefault,
     required this.createdAt,
@@ -230,6 +251,11 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     {
       map['type'] = Variable<String>(
         $ExercisesTable.$convertertype.toSql(type),
+      );
+    }
+    {
+      map['muscle_group'] = Variable<String>(
+        $ExercisesTable.$convertermuscleGroup.toSql(muscleGroup),
       );
     }
     if (!nullToAbsent || thumbnailPath != null) {
@@ -246,6 +272,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       id: Value(id),
       name: Value(name),
       type: Value(type),
+      muscleGroup: Value(muscleGroup),
       thumbnailPath: thumbnailPath == null && nullToAbsent
           ? const Value.absent()
           : Value(thumbnailPath),
@@ -264,6 +291,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       type: serializer.fromJson<ExerciseType>(json['type']),
+      muscleGroup: serializer.fromJson<ExerciseMuscleGroup>(
+        json['muscleGroup'],
+      ),
       thumbnailPath: serializer.fromJson<String?>(json['thumbnailPath']),
       isDefault: serializer.fromJson<bool>(json['isDefault']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -277,6 +307,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'type': serializer.toJson<ExerciseType>(type),
+      'muscleGroup': serializer.toJson<ExerciseMuscleGroup>(muscleGroup),
       'thumbnailPath': serializer.toJson<String?>(thumbnailPath),
       'isDefault': serializer.toJson<bool>(isDefault),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -288,6 +319,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     String? id,
     String? name,
     ExerciseType? type,
+    ExerciseMuscleGroup? muscleGroup,
     Value<String?> thumbnailPath = const Value.absent(),
     bool? isDefault,
     DateTime? createdAt,
@@ -296,6 +328,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     id: id ?? this.id,
     name: name ?? this.name,
     type: type ?? this.type,
+    muscleGroup: muscleGroup ?? this.muscleGroup,
     thumbnailPath: thumbnailPath.present
         ? thumbnailPath.value
         : this.thumbnailPath,
@@ -308,6 +341,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
+      muscleGroup: data.muscleGroup.present
+          ? data.muscleGroup.value
+          : this.muscleGroup,
       thumbnailPath: data.thumbnailPath.present
           ? data.thumbnailPath.value
           : this.thumbnailPath,
@@ -323,6 +359,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
+          ..write('muscleGroup: $muscleGroup, ')
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
@@ -336,6 +373,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     id,
     name,
     type,
+    muscleGroup,
     thumbnailPath,
     isDefault,
     createdAt,
@@ -348,6 +386,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
           other.id == this.id &&
           other.name == this.name &&
           other.type == this.type &&
+          other.muscleGroup == this.muscleGroup &&
           other.thumbnailPath == this.thumbnailPath &&
           other.isDefault == this.isDefault &&
           other.createdAt == this.createdAt &&
@@ -358,6 +397,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
   final Value<String> id;
   final Value<String> name;
   final Value<ExerciseType> type;
+  final Value<ExerciseMuscleGroup> muscleGroup;
   final Value<String?> thumbnailPath;
   final Value<bool> isDefault;
   final Value<DateTime> createdAt;
@@ -367,6 +407,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
+    this.muscleGroup = const Value.absent(),
     this.thumbnailPath = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -377,6 +418,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     required String id,
     required String name,
     required ExerciseType type,
+    this.muscleGroup = const Value.absent(),
     this.thumbnailPath = const Value.absent(),
     this.isDefault = const Value.absent(),
     required DateTime createdAt,
@@ -391,6 +433,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? type,
+    Expression<String>? muscleGroup,
     Expression<String>? thumbnailPath,
     Expression<bool>? isDefault,
     Expression<DateTime>? createdAt,
@@ -401,6 +444,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (type != null) 'type': type,
+      if (muscleGroup != null) 'muscle_group': muscleGroup,
       if (thumbnailPath != null) 'thumbnail_path': thumbnailPath,
       if (isDefault != null) 'is_default': isDefault,
       if (createdAt != null) 'created_at': createdAt,
@@ -413,6 +457,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     Value<String>? id,
     Value<String>? name,
     Value<ExerciseType>? type,
+    Value<ExerciseMuscleGroup>? muscleGroup,
     Value<String?>? thumbnailPath,
     Value<bool>? isDefault,
     Value<DateTime>? createdAt,
@@ -423,6 +468,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
       id: id ?? this.id,
       name: name ?? this.name,
       type: type ?? this.type,
+      muscleGroup: muscleGroup ?? this.muscleGroup,
       thumbnailPath: thumbnailPath ?? this.thumbnailPath,
       isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt ?? this.createdAt,
@@ -443,6 +489,11 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     if (type.present) {
       map['type'] = Variable<String>(
         $ExercisesTable.$convertertype.toSql(type.value),
+      );
+    }
+    if (muscleGroup.present) {
+      map['muscle_group'] = Variable<String>(
+        $ExercisesTable.$convertermuscleGroup.toSql(muscleGroup.value),
       );
     }
     if (thumbnailPath.present) {
@@ -469,6 +520,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
+          ..write('muscleGroup: $muscleGroup, ')
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
@@ -2723,6 +2775,7 @@ typedef $$ExercisesTableCreateCompanionBuilder =
       required String id,
       required String name,
       required ExerciseType type,
+      Value<ExerciseMuscleGroup> muscleGroup,
       Value<String?> thumbnailPath,
       Value<bool> isDefault,
       required DateTime createdAt,
@@ -2734,6 +2787,7 @@ typedef $$ExercisesTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> name,
       Value<ExerciseType> type,
+      Value<ExerciseMuscleGroup> muscleGroup,
       Value<String?> thumbnailPath,
       Value<bool> isDefault,
       Value<DateTime> createdAt,
@@ -2817,6 +2871,16 @@ class $$ExercisesTableFilterComposer
         column: $table.type,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  ColumnWithTypeConverterFilters<
+    ExerciseMuscleGroup,
+    ExerciseMuscleGroup,
+    String
+  >
+  get muscleGroup => $composableBuilder(
+    column: $table.muscleGroup,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 
   ColumnFilters<String> get thumbnailPath => $composableBuilder(
     column: $table.thumbnailPath,
@@ -2913,6 +2977,11 @@ class $$ExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get muscleGroup => $composableBuilder(
+    column: $table.muscleGroup,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get thumbnailPath => $composableBuilder(
     column: $table.thumbnailPath,
     builder: (column) => ColumnOrderings(column),
@@ -2951,6 +3020,12 @@ class $$ExercisesTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<ExerciseType, String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<ExerciseMuscleGroup, String>
+  get muscleGroup => $composableBuilder(
+    column: $table.muscleGroup,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get thumbnailPath => $composableBuilder(
     column: $table.thumbnailPath,
@@ -3052,6 +3127,7 @@ class $$ExercisesTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<ExerciseType> type = const Value.absent(),
+                Value<ExerciseMuscleGroup> muscleGroup = const Value.absent(),
                 Value<String?> thumbnailPath = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -3061,6 +3137,7 @@ class $$ExercisesTableTableManager
                 id: id,
                 name: name,
                 type: type,
+                muscleGroup: muscleGroup,
                 thumbnailPath: thumbnailPath,
                 isDefault: isDefault,
                 createdAt: createdAt,
@@ -3072,6 +3149,7 @@ class $$ExercisesTableTableManager
                 required String id,
                 required String name,
                 required ExerciseType type,
+                Value<ExerciseMuscleGroup> muscleGroup = const Value.absent(),
                 Value<String?> thumbnailPath = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 required DateTime createdAt,
@@ -3081,6 +3159,7 @@ class $$ExercisesTableTableManager
                 id: id,
                 name: name,
                 type: type,
+                muscleGroup: muscleGroup,
                 thumbnailPath: thumbnailPath,
                 isDefault: isDefault,
                 createdAt: createdAt,

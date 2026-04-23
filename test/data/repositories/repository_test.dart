@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:fitnessapp/data/db/app_database.dart';
 import 'package:fitnessapp/data/models/exercise.dart';
+import 'package:fitnessapp/data/models/exercise_muscle_group.dart';
 import 'package:fitnessapp/data/models/exercise_type.dart';
 import 'package:fitnessapp/data/models/template_detail.dart';
 import 'package:fitnessapp/data/models/template_exercise.dart';
@@ -55,11 +56,13 @@ void main() {
       final Exercise created = await exerciseRepository.createExercise(
         name: 'Farmer Carry',
         type: ExerciseType.cardio,
+        muscleGroup: ExerciseMuscleGroup.cardio,
       );
 
       final Exercise updated = await exerciseRepository.updateExercise(
         created.copyWith(
           name: 'Farmer Carry Sled',
+          muscleGroup: ExerciseMuscleGroup.back,
           thumbnailPath: '/tmp/sled.png',
         ),
       );
@@ -71,6 +74,7 @@ void main() {
           .getExercisesByType(ExerciseType.cardio);
 
       expect(fetched.name, 'Farmer Carry Sled');
+      expect(fetched.muscleGroup, ExerciseMuscleGroup.back);
       expect(fetched.thumbnailPath, '/tmp/sled.png');
       expect(
         cardioExercises.any((exercise) => exercise.id == created.id),
@@ -90,9 +94,29 @@ void main() {
         () => exerciseRepository.createExercise(
           name: '   ',
           type: ExerciseType.weighted,
+          muscleGroup: ExerciseMuscleGroup.chest,
         ),
         throwsA(isA<InvalidExerciseNameException>()),
       );
+    });
+
+    test('stores muscle groups for seeded and custom exercises', () async {
+      await exerciseRepository.seedDefaultsIfNeeded();
+
+      final Exercise seededBench = (await exerciseRepository.getAllExercises())
+          .firstWhere((exercise) => exercise.name == 'Bench Press');
+      final Exercise custom = await exerciseRepository.createExercise(
+        name: 'Cable Crunch',
+        type: ExerciseType.bodyweight,
+        muscleGroup: ExerciseMuscleGroup.abs,
+      );
+
+      final Exercise updated = await exerciseRepository.updateExercise(
+        custom.copyWith(muscleGroup: ExerciseMuscleGroup.chest),
+      );
+
+      expect(seededBench.muscleGroup, ExerciseMuscleGroup.chest);
+      expect(updated.muscleGroup, ExerciseMuscleGroup.chest);
     });
 
     test(

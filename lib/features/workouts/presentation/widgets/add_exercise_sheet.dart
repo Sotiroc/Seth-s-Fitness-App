@@ -7,6 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../data/models/exercise.dart';
 import '../../../../data/models/exercise_type.dart';
 import '../../../exercises/presentation/widgets/exercise_avatar.dart';
+import '../../../exercises/presentation/widgets/exercise_muscle_group_badge.dart';
 import '../../../exercises/presentation/widgets/exercise_type_badge.dart';
 import '../../application/active_workout_provider.dart';
 
@@ -413,7 +414,16 @@ class _ExerciseOption extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    ExerciseTypeBadge(type: exercise.type),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: <Widget>[
+                        ExerciseTypeBadge(type: exercise.type),
+                        ExerciseMuscleGroupBadge(
+                          muscleGroup: exercise.muscleGroup,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

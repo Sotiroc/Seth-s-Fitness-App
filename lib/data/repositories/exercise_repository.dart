@@ -6,6 +6,7 @@ import '../db/app_database.dart';
 import '../db/database_providers.dart';
 import '../models/database_mappers.dart';
 import '../models/exercise.dart';
+import '../models/exercise_muscle_group.dart';
 import '../models/exercise_type.dart';
 import '../seed/default_exercises.dart';
 import 'repository_exceptions.dart';
@@ -51,6 +52,7 @@ class ExerciseRepository {
                 id: seed.id,
                 name: seed.name,
                 type: seed.type,
+                muscleGroup: Value<ExerciseMuscleGroup>(seed.muscleGroup),
                 thumbnailPath: const Value<String?>(null),
                 isDefault: const Value<bool>(true),
                 createdAt: now,
@@ -127,6 +129,7 @@ class ExerciseRepository {
   Future<Exercise> createExercise({
     required String name,
     required ExerciseType type,
+    required ExerciseMuscleGroup muscleGroup,
     String? thumbnailPath,
     bool isDefault = false,
   }) async {
@@ -136,6 +139,7 @@ class ExerciseRepository {
       id: _uuid.v4(),
       name: trimmedName,
       type: type,
+      muscleGroup: muscleGroup,
       thumbnailPath: thumbnailPath,
       isDefault: isDefault,
       createdAt: now,
@@ -149,6 +153,7 @@ class ExerciseRepository {
             id: exercise.id,
             name: exercise.name,
             type: exercise.type,
+            muscleGroup: Value<ExerciseMuscleGroup>(exercise.muscleGroup),
             thumbnailPath: Value<String?>(exercise.thumbnailPath),
             isDefault: Value<bool>(exercise.isDefault),
             createdAt: exercise.createdAt,
@@ -173,6 +178,7 @@ class ExerciseRepository {
       ExercisesCompanion(
         name: Value<String>(updatedExercise.name.trim()),
         type: Value<ExerciseType>(updatedExercise.type),
+        muscleGroup: Value<ExerciseMuscleGroup>(updatedExercise.muscleGroup),
         thumbnailPath: Value<String?>(updatedExercise.thumbnailPath),
         isDefault: Value<bool>(updatedExercise.isDefault),
         updatedAt: Value<DateTime>(updatedExercise.updatedAt),

@@ -34,7 +34,7 @@ final class ExerciseEditorControllerProvider
 }
 
 String _$exerciseEditorControllerHash() =>
-    r'85959169b5afc452f14033f93aa4b3b606e6eca9';
+    r'768d81fd977532190e00578de1c5fa089b988849';
 
 abstract class _$ExerciseEditorController extends $AsyncNotifier<void> {
   FutureOr<void> build();

@@ -15,16 +15,17 @@ class HistoryListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final JellyBeanPalette palette = context.jellyBeanPalette;
-    final AsyncValue<List<Workout>> history = ref.watch(
-      workoutHistoryProvider,
-    );
+    final AsyncValue<List<Workout>> history = ref.watch(workoutHistoryProvider);
 
     return Scaffold(
       backgroundColor: palette.shade50,
       body: CustomScrollView(
         slivers: <Widget>[
           SliverToBoxAdapter(
-            child: _Header(palette: palette, count: history.asData?.value.length),
+            child: _Header(
+              palette: palette,
+              count: history.asData?.value.length,
+            ),
           ),
           history.when(
             data: (items) {
@@ -58,16 +59,14 @@ class HistoryListScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          _SectionLabel(
-                            text: section.title,
-                            palette: palette,
-                          ),
+                          _SectionLabel(text: section.title, palette: palette),
                           const SizedBox(height: AppSpacing.sm),
                           for (int i = 0; i < section.workouts.length; i++)
                             Padding(
                               padding: EdgeInsets.only(
-                                bottom:
-                                    i == section.workouts.length - 1 ? 0 : 8,
+                                bottom: i == section.workouts.length - 1
+                                    ? 0
+                                    : 8,
                               ),
                               child: _HistoryTile(
                                 workout: section.workouts[i],
@@ -107,8 +106,7 @@ class HistoryListScreen extends ConsumerWidget {
     final Map<String, List<Workout>> buckets = <String, List<Workout>>{};
     for (final Workout w in workouts) {
       final DateTime d = w.startedAt.toLocal();
-      final String key =
-          '${d.year}-${d.month.toString().padLeft(2, '0')}';
+      final String key = '${d.year}-${d.month.toString().padLeft(2, '0')}';
       buckets.putIfAbsent(key, () => <Workout>[]).add(w);
     }
     final List<String> keys = buckets.keys.toList()
@@ -288,8 +286,9 @@ class _HistoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final DateTime started = workout.startedAt.toLocal();
-    final Duration duration =
-        (workout.endedAt ?? DateTime.now()).difference(workout.startedAt);
+    final Duration duration = (workout.endedAt ?? DateTime.now()).difference(
+      workout.startedAt,
+    );
     final String? name = _cleaned(workout.name);
     // If the user named the session, make the name the primary line and
     // relegate the weekday/date to the sub-line alongside the time.
@@ -459,11 +458,7 @@ class _EmptyState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           const SizedBox(height: AppSpacing.xl),
-          Icon(
-            Icons.history_rounded,
-            size: 48,
-            color: palette.shade400,
-          ),
+          Icon(Icons.history_rounded, size: 48, color: palette.shade400),
           const SizedBox(height: AppSpacing.sm),
           Text(
             'No workouts yet',
@@ -477,9 +472,7 @@ class _EmptyState extends StatelessWidget {
           Text(
             'Finish a session and it will show up here.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: palette.shade800.withValues(alpha: 0.8),
-            ),
+            style: TextStyle(color: palette.shade800.withValues(alpha: 0.8)),
           ),
         ],
       ),

@@ -1,3 +1,4 @@
+import 'exercise_muscle_group.dart';
 import 'exercise_type.dart';
 
 class Exercise {
@@ -5,6 +6,7 @@ class Exercise {
     required this.id,
     required this.name,
     required this.type,
+    required this.muscleGroup,
     required this.isDefault,
     required this.createdAt,
     required this.updatedAt,
@@ -14,6 +16,7 @@ class Exercise {
   final String id;
   final String name;
   final ExerciseType type;
+  final ExerciseMuscleGroup muscleGroup;
   final String? thumbnailPath;
   final bool isDefault;
   final DateTime createdAt;
@@ -23,6 +26,7 @@ class Exercise {
     String? id,
     String? name,
     ExerciseType? type,
+    ExerciseMuscleGroup? muscleGroup,
     String? thumbnailPath,
     bool? isDefault,
     DateTime? createdAt,
@@ -33,6 +37,7 @@ class Exercise {
       id: id ?? this.id,
       name: name ?? this.name,
       type: type ?? this.type,
+      muscleGroup: muscleGroup ?? this.muscleGroup,
       thumbnailPath: clearThumbnailPath
           ? null
           : thumbnailPath ?? this.thumbnailPath,

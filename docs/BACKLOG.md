@@ -2,6 +2,16 @@
 
 ### Seth Ideas
 
+-> Remove icons from the pills for muscle group and exercise types
+-> Please don't display the exercise type on the add or pick exercise screens (weighted, bodyweight and cardio)
+
+===============
+Delete Options
+===============
+During a workout, you should be able to delete a exercise you accidentally added 
+- also want to fix the slide to delete for each rep. I want it from the right to left side instead of left to right, also want it to be more smoother and better colors. 
+
+
 =============
 Muscle Groups
 ============= 

@@ -9,6 +9,7 @@ import 'package:fitnessapp/data/db/app_database.dart';
 import 'package:fitnessapp/data/database_bootstrap.dart';
 import 'package:fitnessapp/data/db/database_providers.dart';
 import 'package:fitnessapp/data/models/exercise.dart';
+import 'package:fitnessapp/data/models/exercise_muscle_group.dart';
 import 'package:fitnessapp/data/models/exercise_type.dart';
 import 'package:fitnessapp/data/repositories/exercise_repository.dart';
 import 'package:fitnessapp/data/repositories/repository_exceptions.dart';
@@ -83,7 +84,11 @@ void main() {
   test('createExercise stores a new exercise through the controller', () async {
     final Exercise created = await container
         .read(exerciseEditorControllerProvider.notifier)
-        .createExercise(name: 'Cable Fly', type: ExerciseType.weighted);
+        .createExercise(
+          name: 'Cable Fly',
+          type: ExerciseType.weighted,
+          muscleGroup: ExerciseMuscleGroup.chest,
+        );
 
     final Exercise stored = await container
         .read(exerciseRepositoryProvider)
@@ -91,6 +96,7 @@ void main() {
 
     expect(stored.name, 'Cable Fly');
     expect(stored.type, ExerciseType.weighted);
+    expect(stored.muscleGroup, ExerciseMuscleGroup.chest);
     expect(stored.thumbnailPath, isNull);
   });
 
@@ -103,7 +109,11 @@ void main() {
 
       final Exercise created = await container
           .read(exerciseEditorControllerProvider.notifier)
-          .createExercise(name: 'Row Machine', type: ExerciseType.cardio);
+          .createExercise(
+            name: 'Row Machine',
+            type: ExerciseType.cardio,
+            muscleGroup: ExerciseMuscleGroup.cardio,
+          );
 
       final Exercise updated = await container
           .read(exerciseEditorControllerProvider.notifier)
@@ -111,9 +121,11 @@ void main() {
             exercise: created,
             name: 'Row Machine Sprint',
             type: ExerciseType.cardio,
+            muscleGroup: ExerciseMuscleGroup.back,
           );
 
       expect(updated.name, 'Row Machine Sprint');
+      expect(updated.muscleGroup, ExerciseMuscleGroup.back);
       expect(updated.thumbnailPath, isNull);
 
       await container

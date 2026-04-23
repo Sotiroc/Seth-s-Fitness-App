@@ -11,6 +11,7 @@ import '../../../data/models/exercise_type.dart';
 import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_set.dart';
 import '../../exercises/presentation/widgets/exercise_avatar.dart';
+import '../../exercises/presentation/widgets/exercise_muscle_group_badge.dart';
 import '../../exercises/presentation/widgets/exercise_type_badge.dart';
 import '../../history/application/history_providers.dart';
 import '../application/workout_session_controller.dart';
@@ -77,15 +78,14 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
     try {
       await ref
           .read(workoutSessionControllerProvider.notifier)
-          .updateWorkoutName(
-            workoutId: widget.workoutId,
-            name: normalized,
-          );
+          .updateWorkoutName(workoutId: widget.workoutId, name: normalized);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not save name: ${error.toString().replaceFirst('Exception: ', '')}'),
+          content: Text(
+            'Could not save name: ${error.toString().replaceFirst('Exception: ', '')}',
+          ),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -554,7 +554,16 @@ class _SummaryExerciseCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    ExerciseTypeBadge(type: detail.exercise.type),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: <Widget>[
+                        ExerciseTypeBadge(type: detail.exercise.type),
+                        ExerciseMuscleGroupBadge(
+                          muscleGroup: detail.exercise.muscleGroup,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

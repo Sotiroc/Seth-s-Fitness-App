@@ -9,6 +9,7 @@ import '../../../data/models/exercise_type.dart';
 import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_set.dart';
 import '../../exercises/presentation/widgets/exercise_avatar.dart';
+import '../../exercises/presentation/widgets/exercise_muscle_group_badge.dart';
 import '../../exercises/presentation/widgets/exercise_type_badge.dart';
 import '../application/history_providers.dart';
 
@@ -163,10 +164,7 @@ class _DetailBody extends StatelessWidget {
               0,
             ),
             sliver: SliverToBoxAdapter(
-              child: _NotesCard(
-                palette: palette,
-                notes: detail.workout.notes!,
-              ),
+              child: _NotesCard(palette: palette, notes: detail.workout.notes!),
             ),
           ),
         SliverPadding(
@@ -207,8 +205,7 @@ class _DetailBody extends StatelessWidget {
             ),
             sliver: SliverList.separated(
               itemCount: detail.exercises.length,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(height: AppSpacing.sm),
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
               itemBuilder: (context, index) => _DetailExerciseCard(
                 detail: detail.exercises[index],
                 palette: palette,
@@ -316,9 +313,7 @@ class _Hero extends StatelessWidget {
           colors: <Color>[palette.shade950, palette.shade800, palette.shade500],
           stops: const <double>[0.0, 0.55, 1.0],
         ),
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(32),
-        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
       padding: EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -412,18 +407,19 @@ class _Hero extends StatelessWidget {
           ],
           Text(
             _formatDate(workoutDate),
-            style: (workoutName != null
-                    ? theme.textTheme.titleSmall
-                    : theme.textTheme.titleLarge)
-                ?.copyWith(
-              color: workoutName != null
-                  ? palette.shade100.withValues(alpha: 0.85)
-                  : Colors.white,
-              fontWeight: workoutName != null
-                  ? FontWeight.w600
-                  : FontWeight.w800,
-              letterSpacing: workoutName != null ? 0.0 : -0.6,
-            ),
+            style:
+                (workoutName != null
+                        ? theme.textTheme.titleSmall
+                        : theme.textTheme.titleLarge)
+                    ?.copyWith(
+                      color: workoutName != null
+                          ? palette.shade100.withValues(alpha: 0.85)
+                          : Colors.white,
+                      fontWeight: workoutName != null
+                          ? FontWeight.w600
+                          : FontWeight.w800,
+                      letterSpacing: workoutName != null ? 0.0 : -0.6,
+                    ),
           ),
           const SizedBox(height: AppSpacing.lg),
           Row(
@@ -459,8 +455,7 @@ class _Hero extends StatelessWidget {
               Expanded(
                 child: _HeroStat(
                   palette: palette,
-                  value:
-                      hasCardio ? '${_formatKm(totalDistanceKm)} km' : '—',
+                  value: hasCardio ? '${_formatKm(totalDistanceKm)} km' : '—',
                   label: 'Distance',
                 ),
               ),
@@ -623,7 +618,16 @@ class _DetailExerciseCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    ExerciseTypeBadge(type: detail.exercise.type),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: <Widget>[
+                        ExerciseTypeBadge(type: detail.exercise.type),
+                        ExerciseMuscleGroupBadge(
+                          muscleGroup: detail.exercise.muscleGroup,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -712,9 +716,7 @@ class _SetLine extends StatelessWidget {
             decoration: BoxDecoration(
               color: completed ? palette.shade100 : palette.shade50,
               borderRadius: BorderRadius.circular(8),
-              border: completed
-                  ? null
-                  : Border.all(color: palette.shade200),
+              border: completed ? null : Border.all(color: palette.shade200),
             ),
             child: Text(
               '${set.setNumber}',

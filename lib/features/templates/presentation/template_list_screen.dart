@@ -59,10 +59,8 @@ class TemplateListScreen extends ConsumerWidget {
                   itemCount: items.length,
                   separatorBuilder: (_, _) =>
                       const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (context, index) => _TemplateCard(
-                    template: items[index],
-                    palette: palette,
-                  ),
+                  itemBuilder: (context, index) =>
+                      _TemplateCard(template: items[index], palette: palette),
                 ),
               );
             },
@@ -217,9 +215,7 @@ class _TemplateCard extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: palette.shade50,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Delete "${template.name}"?',
           style: TextStyle(
@@ -491,11 +487,7 @@ class _EmptyState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           const SizedBox(height: AppSpacing.xl),
-          Icon(
-            Icons.auto_awesome_rounded,
-            size: 48,
-            color: palette.shade400,
-          ),
+          Icon(Icons.auto_awesome_rounded, size: 48, color: palette.shade400),
           const SizedBox(height: AppSpacing.sm),
           Text(
             'No templates yet',
@@ -509,9 +501,7 @@ class _EmptyState extends StatelessWidget {
           Text(
             'Build a routine once, run it as often as you like.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: palette.shade800.withValues(alpha: 0.8),
-            ),
+            style: TextStyle(color: palette.shade800.withValues(alpha: 0.8)),
           ),
         ],
       ),

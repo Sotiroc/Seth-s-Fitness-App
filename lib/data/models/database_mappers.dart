@@ -12,6 +12,7 @@ extension ExerciseRowMapper on ExerciseRow {
       id: id,
       name: name,
       type: type,
+      muscleGroup: muscleGroup,
       thumbnailPath: thumbnailPath,
       isDefault: isDefault,
       createdAt: createdAt,

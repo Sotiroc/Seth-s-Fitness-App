@@ -126,8 +126,18 @@ Exercise types:
 - `bodyweight`
 - `cardio`
 
+Exercise muscle groups:
+- `legs`
+- `biceps`
+- `triceps`
+- `chest`
+- `back`
+- `shoulders`
+- `abs`
+- `cardio`
+
 Entities:
-- **Exercise** - `id`, `name`, `type`, `thumbnailPath?`, `isDefault`, `createdAt`, `updatedAt`
+- **Exercise** - `id`, `name`, `type`, `muscleGroup`, `thumbnailPath?`, `isDefault`, `createdAt`, `updatedAt`
 - **WorkoutTemplate** - `id`, `name`, `createdAt`, `updatedAt`
 - **TemplateExercise** - `id`, `templateId`, `exerciseId`, `orderIndex`, `defaultSets`
 - **Workout** - `id`, `startedAt`, `endedAt?`, `templateId?`, `notes?`

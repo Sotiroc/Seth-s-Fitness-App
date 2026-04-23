@@ -93,9 +93,8 @@ GoRouter appRouter(Ref ref) {
             routes: <RouteBase>[
               GoRoute(
                 path: AppTab.history.path,
-                pageBuilder: (context, state) => const NoTransitionPage<void>(
-                  child: HistoryListScreen(),
-                ),
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage<void>(child: HistoryListScreen()),
                 routes: <RouteBase>[
                   GoRoute(
                     path: ':id',

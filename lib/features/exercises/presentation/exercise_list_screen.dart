@@ -10,6 +10,7 @@ import '../../../data/repositories/repository_exceptions.dart';
 import '../application/exercise_editor_controller.dart';
 import '../application/exercise_list_provider.dart';
 import 'widgets/exercise_avatar.dart';
+import 'widgets/exercise_muscle_group_badge.dart';
 import 'widgets/exercise_type_badge.dart';
 
 class ExerciseListScreen extends ConsumerWidget {
@@ -541,7 +542,16 @@ class _ExerciseTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    ExerciseTypeBadge(type: exercise.type),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: <Widget>[
+                        ExerciseTypeBadge(type: exercise.type),
+                        ExerciseMuscleGroupBadge(
+                          muscleGroup: exercise.muscleGroup,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

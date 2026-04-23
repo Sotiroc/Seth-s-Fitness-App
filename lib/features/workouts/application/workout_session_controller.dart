@@ -73,9 +73,7 @@ class WorkoutSessionController extends AsyncNotifier<void> {
 
   Future<void> removeSet(String workoutSetId) {
     return _runMutation(() async {
-      await ref
-          .read(workoutRepositoryProvider)
-          .deleteWorkoutSet(workoutSetId);
+      await ref.read(workoutRepositoryProvider).deleteWorkoutSet(workoutSetId);
     });
   }
 
