@@ -5,6 +5,24 @@
 -> Remove icons from the pills for muscle group and exercise types
 -> Please don't display the exercise type on the add or pick exercise screens (weighted, bodyweight and cardio)
 
+==================
+Workout Intensity Score
+==================
+On the workout summary screen (the same screen where the user gives the
+session a name), let the user assign an intensity score for the session.
+
+- Numeric scale, no emojis (RPE-style 1–10 feels right).
+- Optional, not required — skipping should be friction-free.
+- Lives next to the name input on the summary screen.
+- Value should also surface in the summary (and later, in history) so the
+  user can see effort over time.
+- Stored as a nullable int on the workout row (simple migration).
+
+Future use cases this unlocks:
+- weekly average intensity charts
+- auto-deload / "consider an easier week" nudges
+- correlate intensity with volume / soreness once we have those signals
+
 ===============
 Delete Options
 ===============

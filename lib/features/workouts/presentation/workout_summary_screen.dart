@@ -692,77 +692,81 @@ class _NameInputCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.sm,
-        AppSpacing.md,
-        AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: palette.shade100),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: palette.shade100,
-              borderRadius: BorderRadius.circular(10),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => focusNode.requestFocus(),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.md,
+          AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: palette.shade100),
+        ),
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: palette.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.label_outline_rounded,
+                color: palette.shade800,
+                size: 18,
+              ),
             ),
-            child: Icon(
-              Icons.label_outline_rounded,
-              color: palette.shade800,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'NAME THIS WORKOUT',
-                  style: TextStyle(
-                    color: palette.shade700,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  maxLength: 60,
-                  textInputAction: TextInputAction.done,
-                  onChanged: onChanged,
-                  onSubmitted: (_) => onSubmitted(),
-                  style: TextStyle(
-                    color: palette.shade950,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                    counterText: '',
-                    hintText: 'e.g. Leg day — light',
-                    hintStyle: TextStyle(
-                      color: palette.shade700.withValues(alpha: 0.5),
-                      fontWeight: FontWeight.w500,
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'NAME THIS WORKOUT',
+                    style: TextStyle(
+                      color: palette.shade700,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
                     ),
                   ),
-                ),
-              ],
+                  TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    maxLength: 60,
+                    textInputAction: TextInputAction.done,
+                    onChanged: onChanged,
+                    onSubmitted: (_) => onSubmitted(),
+                    style: TextStyle(
+                      color: palette.shade950,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      counterText: '',
+                      hintText: 'e.g. Leg day — light',
+                      hintStyle: TextStyle(
+                        color: palette.shade700.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -618,45 +618,82 @@ class _MuscleGroupPicker extends StatelessWidget {
   final ExerciseMuscleGroup selected;
   final ValueChanged<ExerciseMuscleGroup> onChanged;
 
+  Future<void> _openSheet(BuildContext context) async {
+    final ExerciseMuscleGroup? picked =
+        await showModalBottomSheet<ExerciseMuscleGroup>(
+          context: context,
+          backgroundColor: Colors.white,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          builder: (BuildContext sheetContext) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    for (final ExerciseMuscleGroup group
+                        in ExerciseMuscleGroup.values)
+                      ListTile(
+                        title: Text(
+                          group.label,
+                          style: TextStyle(
+                            color: palette.shade950,
+                            fontWeight: group == selected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                          ),
+                        ),
+                        trailing: group == selected
+                            ? Icon(
+                                Icons.check_rounded,
+                                color: palette.shade700,
+                              )
+                            : null,
+                        onTap: () =>
+                            Navigator.of(sheetContext).pop(group),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+    if (picked != null) onChanged(picked);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<ExerciseMuscleGroup>(
-      initialValue: selected,
-      isExpanded: true,
-      icon: Icon(Icons.expand_more_rounded, color: palette.shade700),
-      dropdownColor: Colors.white,
+    return InkWell(
       borderRadius: BorderRadius.circular(14),
-      style: TextStyle(
-        color: palette.shade950,
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
+      onTap: () => _openSheet(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.md,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: palette.shade100),
+        ),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                selected.label,
+                style: TextStyle(
+                  color: palette.shade950,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(Icons.expand_more_rounded, color: palette.shade700),
+          ],
+        ),
       ),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: palette.shade100),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: palette.shade100),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: palette.shade500, width: 1.5),
-        ),
-      ),
-      items: <DropdownMenuItem<ExerciseMuscleGroup>>[
-        for (final ExerciseMuscleGroup group in ExerciseMuscleGroup.values)
-          DropdownMenuItem<ExerciseMuscleGroup>(
-            value: group,
-            child: Text(group.label),
-          ),
-      ],
-      onChanged: (ExerciseMuscleGroup? value) {
-        if (value != null) onChanged(value);
-      },
     );
   }
 }
@@ -720,12 +757,18 @@ class _TypeOption extends StatelessWidget {
               size: 20,
             ),
             const SizedBox(height: AppSpacing.sm),
-            Text(
-              type.label,
-              style: TextStyle(
-                color: selected ? Colors.white : palette.shade950,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.2,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                type.label,
+                maxLines: 1,
+                style: TextStyle(
+                  color: selected ? Colors.white : palette.shade950,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                ),
               ),
             ),
             const SizedBox(height: 2),

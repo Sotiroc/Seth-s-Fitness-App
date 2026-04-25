@@ -30,8 +30,6 @@ class ExerciseAvatar extends StatelessWidget {
     }
 
     final JellyBeanPalette palette = context.jellyBeanPalette;
-    final Color background = _backgroundColorFor(exercise.name, palette);
-    final Color foreground = _foregroundColorFor(background);
     final String letter = _firstLetter(exercise.name);
 
     return Container(
@@ -39,17 +37,16 @@ class ExerciseAvatar extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: background,
+        color: palette.shade500,
         borderRadius: radius,
       ),
       child: Text(
         letter,
-        style: TextStyle(
-          color: foreground,
+        style: const TextStyle(
+          color: Colors.white,
           fontWeight: FontWeight.w800,
-          fontSize: size * 0.42,
           letterSpacing: -0.5,
-        ),
+        ).copyWith(fontSize: size * 0.42),
       ),
     );
   }
@@ -62,26 +59,5 @@ class ExerciseAvatar extends StatelessWidget {
       }
     }
     return '?';
-  }
-
-  static Color _backgroundColorFor(String name, JellyBeanPalette palette) {
-    final List<Color> options = <Color>[
-      palette.shade300,
-      palette.shade400,
-      palette.shade500,
-      palette.shade600,
-      palette.shade700,
-      palette.shade800,
-    ];
-    int hash = 0;
-    for (final int unit in name.toLowerCase().codeUnits) {
-      hash = (hash * 31 + unit) & 0x7fffffff;
-    }
-    return options[hash % options.length];
-  }
-
-  static Color _foregroundColorFor(Color background) {
-    final double luminance = background.computeLuminance();
-    return luminance > 0.55 ? const Color(0xFF0F2630) : Colors.white;
   }
 }

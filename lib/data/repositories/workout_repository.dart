@@ -399,6 +399,98 @@ class WorkoutRepository {
     return rows.map((row) => row.toModel()).toList(growable: false);
   }
 
+  /// For each [exerciseIds], returns the sets from the most recent *completed*
+  /// workout that included that exercise — used to populate the "Previous"
+  /// column on the active workout screen. Pass [excludeWorkoutId] to skip the
+  /// in-progress workout.
+  Future<Map<String, List<WorkoutSet>>> getLastCompletedSetsForExercises({
+    required List<String> exerciseIds,
+    String? excludeWorkoutId,
+  }) async {
+    if (exerciseIds.isEmpty) return const <String, List<WorkoutSet>>{};
+
+    final SimpleSelectStatement<Workouts, WorkoutRow> query =
+        _database.select(_database.workouts)
+          ..where((tbl) => tbl.endedAt.isNotNull())
+          ..orderBy(<OrderingTerm Function(Workouts)>[
+            (tbl) => OrderingTerm(
+              expression: tbl.endedAt,
+              mode: OrderingMode.desc,
+            ),
+          ]);
+    if (excludeWorkoutId != null) {
+      query.where((tbl) => tbl.id.equals(excludeWorkoutId).not());
+    }
+    final List<WorkoutRow> workouts = await query.get();
+    if (workouts.isEmpty) return const <String, List<WorkoutSet>>{};
+
+    final Set<String> remaining = exerciseIds.toSet();
+    final Map<String, String> pickedWorkoutExerciseIdByExerciseId =
+        <String, String>{};
+
+    // Walk newest → oldest; first hit per exercise wins.
+    for (final WorkoutRow workout in workouts) {
+      if (remaining.isEmpty) break;
+      final List<WorkoutExerciseRow> rows =
+          await (_database.select(_database.workoutExercises)..where(
+                (tbl) =>
+                    tbl.workoutId.equals(workout.id) &
+                    tbl.exerciseId.isIn(remaining.toList()),
+              ))
+              .get();
+      for (final WorkoutExerciseRow row in rows) {
+        if (remaining.remove(row.exerciseId)) {
+          pickedWorkoutExerciseIdByExerciseId[row.exerciseId] = row.id;
+        }
+      }
+    }
+
+    if (pickedWorkoutExerciseIdByExerciseId.isEmpty) {
+      return const <String, List<WorkoutSet>>{};
+    }
+
+    final Map<String, List<WorkoutSet>> setsByWorkoutExerciseId =
+        await _loadWorkoutSetsByWorkoutExercise(
+          pickedWorkoutExerciseIdByExerciseId.values.toList(growable: false),
+        );
+
+    return <String, List<WorkoutSet>>{
+      for (final MapEntry<String, String> entry
+          in pickedWorkoutExerciseIdByExerciseId.entries)
+        entry.key:
+            setsByWorkoutExerciseId[entry.value] ?? const <WorkoutSet>[],
+    };
+  }
+
+  /// Counts completed sets for each of the given [workoutIds]. Used by the
+  /// history list to surface a "sets" tally on each workout tile. Workouts
+  /// with zero completed sets are omitted from the result map.
+  Future<Map<String, int>> getCompletedSetCountsForWorkouts(
+    List<String> workoutIds,
+  ) async {
+    if (workoutIds.isEmpty) return const <String, int>{};
+
+    final String placeholders = List<String>.filled(
+      workoutIds.length,
+      '?',
+    ).join(',');
+    final List<QueryRow> rows = await _database.customSelect(
+      'SELECT we.workout_id AS workout_id, COUNT(s.id) AS set_count '
+      'FROM sets s '
+      'INNER JOIN workout_exercises we ON s.workout_exercise_id = we.id '
+      'WHERE s.completed = 1 AND we.workout_id IN ($placeholders) '
+      'GROUP BY we.workout_id',
+      variables: <Variable<Object>>[
+        for (final String id in workoutIds) Variable<String>(id),
+      ],
+    ).get();
+
+    return <String, int>{
+      for (final QueryRow row in rows)
+        row.read<String>('workout_id'): row.read<int>('set_count'),
+    };
+  }
+
   Future<WorkoutDetail> getWorkoutById(String workoutId) async {
     final WorkoutRow? workoutRow = await (_database.select(
       _database.workouts,

@@ -11,6 +11,7 @@ import '../../../data/models/exercise.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/models/workout.dart';
 import '../../../data/models/workout_detail.dart';
+import '../../../data/models/workout_set.dart';
 import '../../../data/models/workout_template.dart';
 import '../../../data/repositories/repository_exceptions.dart';
 import '../../exercises/presentation/widgets/exercise_avatar.dart';
@@ -281,6 +282,11 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     final AsyncValue<WorkoutDetail?> detailAsync = ref.watch(
       activeWorkoutDetailProvider,
     );
+    final Map<String, List<WorkoutSet>> previousSetsByExerciseId = ref
+            .watch(activeWorkoutPreviousSetsProvider)
+            .asData
+            ?.value ??
+        const <String, List<WorkoutSet>>{};
 
     return Scaffold(
       backgroundColor: palette.shade50,
@@ -297,6 +303,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
           return _WorkoutBody(
             detail: detail,
             palette: palette,
+            previousSetsByExerciseId: previousSetsByExerciseId,
             onAddExercise: () => _handleAddExercise(detail.workout.id),
             onAddSet: _handleAddSet,
             onUpdateSet: _handleUpdateSet,
@@ -910,6 +917,7 @@ class _WorkoutBody extends StatelessWidget {
   const _WorkoutBody({
     required this.detail,
     required this.palette,
+    required this.previousSetsByExerciseId,
     required this.onAddExercise,
     required this.onAddSet,
     required this.onUpdateSet,
@@ -920,6 +928,7 @@ class _WorkoutBody extends StatelessWidget {
 
   final WorkoutDetail detail;
   final JellyBeanPalette palette;
+  final Map<String, List<WorkoutSet>> previousSetsByExerciseId;
   final VoidCallback onAddExercise;
   final Future<void> Function(String workoutExerciseId) onAddSet;
   final Future<void> Function({
@@ -983,6 +992,9 @@ class _WorkoutBody extends StatelessWidget {
                 return _ExerciseCard(
                   detail: exerciseDetail,
                   palette: palette,
+                  previousSets:
+                      previousSetsByExerciseId[exerciseDetail.exercise.id] ??
+                      const <WorkoutSet>[],
                   onAddSet: () => onAddSet(exerciseDetail.workoutExercise.id),
                   onUpdateSet: onUpdateSet,
                   onRemoveSet: onRemoveSet,
@@ -1343,10 +1355,33 @@ class _EmptyExercises extends StatelessWidget {
   }
 }
 
+String _formatPreviousSetSummary(WorkoutSet? set, ExerciseType type) {
+  // Only completed sets contribute to "previous"; in-progress / abandoned
+  // sets shouldn't surface as a target the user is trying to match.
+  if (set == null || !set.completed) return '-';
+  switch (type) {
+    case ExerciseType.weighted:
+      return '${_formatNum(set.weightKg ?? 0)} kg · ${set.reps ?? 0} reps';
+    case ExerciseType.bodyweight:
+      return '${set.reps ?? 0} reps';
+    case ExerciseType.cardio:
+      final String time = DurationFormatter.formatSeconds(
+        set.durationSeconds ?? 0,
+      );
+      return '${_formatNum(set.distanceKm ?? 0)} km · $time';
+  }
+}
+
+String _formatNum(double value) {
+  if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+  return value.toString();
+}
+
 class _ExerciseCard extends StatelessWidget {
   const _ExerciseCard({
     required this.detail,
     required this.palette,
+    required this.previousSets,
     required this.onAddSet,
     required this.onUpdateSet,
     required this.onRemoveSet,
@@ -1354,6 +1389,7 @@ class _ExerciseCard extends StatelessWidget {
 
   final WorkoutExerciseDetail detail;
   final JellyBeanPalette palette;
+  final List<WorkoutSet> previousSets;
   final VoidCallback onAddSet;
   final Future<void> Function({
     required String workoutSetId,
@@ -1428,40 +1464,58 @@ class _ExerciseCard extends StatelessWidget {
               ),
             )
           else
-            ...detail.sets.map(
-              (set) => Dismissible(
-                key: ValueKey<String>('dismiss-${set.id}'),
-                direction: DismissDirection.startToEnd,
-                dismissThresholds: const <DismissDirection, double>{
-                  DismissDirection.startToEnd: 0.35,
+            for (int i = 0; i < detail.sets.length; i++)
+              Builder(
+                key: ValueKey<String>('dismiss-${detail.sets[i].id}'),
+                builder: (BuildContext context) {
+                  final WorkoutSet set = detail.sets[i];
+                  final bool prevCompleted =
+                      i > 0 && detail.sets[i - 1].completed;
+                  final bool nextCompleted =
+                      i < detail.sets.length - 1 &&
+                      detail.sets[i + 1].completed;
+                  final WorkoutSet? previousSet = previousSets
+                      .where((s) => s.setNumber == set.setNumber)
+                      .firstOrNull;
+                  return Dismissible(
+                    key: ValueKey<String>('dismiss-${set.id}'),
+                    direction: DismissDirection.startToEnd,
+                    dismissThresholds: const <DismissDirection, double>{
+                      DismissDirection.startToEnd: 0.35,
+                    },
+                    background: const _SwipeDeleteBackground(),
+                    onDismissed: (_) => onRemoveSet(set.id),
+                    child: SetRow(
+                      key: ValueKey<String>(set.id),
+                      set: set,
+                      exerciseType: detail.exercise.type,
+                      previousSummary: _formatPreviousSetSummary(
+                        previousSet,
+                        detail.exercise.type,
+                      ),
+                      roundTop: !prevCompleted,
+                      roundBottom: !nextCompleted,
+                      onCommit:
+                          ({
+                            required bool completed,
+                            double? distanceKm,
+                            int? durationSeconds,
+                            int? reps,
+                            double? weightKg,
+                          }) {
+                            return onUpdateSet(
+                              workoutSetId: set.id,
+                              weightKg: weightKg,
+                              reps: reps,
+                              distanceKm: distanceKm,
+                              durationSeconds: durationSeconds,
+                              completed: completed,
+                            );
+                          },
+                    ),
+                  );
                 },
-                background: const _SwipeDeleteBackground(),
-                onDismissed: (_) => onRemoveSet(set.id),
-                child: SetRow(
-                  key: ValueKey<String>(set.id),
-                  set: set,
-                  exerciseType: detail.exercise.type,
-                  previousSummary: '-',
-                  onCommit:
-                      ({
-                        required bool completed,
-                        double? distanceKm,
-                        int? durationSeconds,
-                        int? reps,
-                        double? weightKg,
-                      }) {
-                        return onUpdateSet(
-                          workoutSetId: set.id,
-                          weightKg: weightKg,
-                          reps: reps,
-                          distanceKm: distanceKm,
-                          durationSeconds: durationSeconds,
-                          completed: completed,
-                        );
-                      },
-                ),
               ),
-            ),
           const SizedBox(height: AppSpacing.xs),
           _AddSetButton(palette: palette, onTap: onAddSet),
         ],
@@ -1673,8 +1727,10 @@ class _FinishButton extends StatelessWidget {
         onPressed: enabled ? onTap : null,
         style: FilledButton.styleFrom(
           backgroundColor: palette.shade900,
-          disabledBackgroundColor: palette.shade200,
-          disabledForegroundColor: palette.shade700,
+          // Cool-tinted neutral grey when disabled — keeps the surface clearly
+          // inactive instead of reading as a muted "active" blue.
+          disabledBackgroundColor: const Color(0xFFE2E6E8),
+          disabledForegroundColor: const Color(0xFF8A969C),
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),

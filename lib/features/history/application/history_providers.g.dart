@@ -122,3 +122,114 @@ final class WorkoutDetailFamily extends $Family
   @override
   String toString() => r'workoutDetailProvider';
 }
+
+/// Stable, ordered comma-joined string of finished workout ids. Recomputes on
+/// every history emission, but only changes value when the *set* of finished
+/// workouts itself changes — so the set-count provider keyed off this doesn't
+/// refetch on unrelated workout-row updates (e.g. a renamed past session).
+
+@ProviderFor(historyWorkoutIdsSignature)
+const historyWorkoutIdsSignatureProvider =
+    HistoryWorkoutIdsSignatureProvider._();
+
+/// Stable, ordered comma-joined string of finished workout ids. Recomputes on
+/// every history emission, but only changes value when the *set* of finished
+/// workouts itself changes — so the set-count provider keyed off this doesn't
+/// refetch on unrelated workout-row updates (e.g. a renamed past session).
+
+final class HistoryWorkoutIdsSignatureProvider
+    extends $FunctionalProvider<String, String, String>
+    with $Provider<String> {
+  /// Stable, ordered comma-joined string of finished workout ids. Recomputes on
+  /// every history emission, but only changes value when the *set* of finished
+  /// workouts itself changes — so the set-count provider keyed off this doesn't
+  /// refetch on unrelated workout-row updates (e.g. a renamed past session).
+  const HistoryWorkoutIdsSignatureProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'historyWorkoutIdsSignatureProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$historyWorkoutIdsSignatureHash();
+
+  @$internal
+  @override
+  $ProviderElement<String> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  String create(Ref ref) {
+    return historyWorkoutIdsSignature(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String>(value),
+    );
+  }
+}
+
+String _$historyWorkoutIdsSignatureHash() =>
+    r'0d4d30cd44ef292729b51a76e5d2fc77d623e8ab';
+
+/// Map of workoutId → completed-set count for every workout in history.
+/// Used by the history list to render a sets tally on each tile. Depends on
+/// [historyWorkoutIdsSignatureProvider] so it only re-runs when workouts are
+/// added or removed.
+
+@ProviderFor(historyCompletedSetCounts)
+const historyCompletedSetCountsProvider = HistoryCompletedSetCountsProvider._();
+
+/// Map of workoutId → completed-set count for every workout in history.
+/// Used by the history list to render a sets tally on each tile. Depends on
+/// [historyWorkoutIdsSignatureProvider] so it only re-runs when workouts are
+/// added or removed.
+
+final class HistoryCompletedSetCountsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, int>>,
+          Map<String, int>,
+          FutureOr<Map<String, int>>
+        >
+    with $FutureModifier<Map<String, int>>, $FutureProvider<Map<String, int>> {
+  /// Map of workoutId → completed-set count for every workout in history.
+  /// Used by the history list to render a sets tally on each tile. Depends on
+  /// [historyWorkoutIdsSignatureProvider] so it only re-runs when workouts are
+  /// added or removed.
+  const HistoryCompletedSetCountsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'historyCompletedSetCountsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$historyCompletedSetCountsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Map<String, int>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Map<String, int>> create(Ref ref) {
+    return historyCompletedSetCounts(ref);
+  }
+}
+
+String _$historyCompletedSetCountsHash() =>
+    r'76638e999c022b34df84929b8bf91f848e01e309';

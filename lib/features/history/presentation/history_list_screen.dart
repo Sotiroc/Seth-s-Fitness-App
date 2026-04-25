@@ -16,6 +16,9 @@ class HistoryListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final JellyBeanPalette palette = context.jellyBeanPalette;
     final AsyncValue<List<Workout>> history = ref.watch(workoutHistoryProvider);
+    final Map<String, int> setCounts =
+        ref.watch(historyCompletedSetCountsProvider).asData?.value ??
+        const <String, int>{};
 
     return Scaffold(
       backgroundColor: palette.shade50,
@@ -71,6 +74,7 @@ class HistoryListScreen extends ConsumerWidget {
                               child: _HistoryTile(
                                 workout: section.workouts[i],
                                 palette: palette,
+                                setCount: setCounts[section.workouts[i].id] ?? 0,
                                 onTap: () => context.push(
                                   '/history/${section.workouts[i].id}',
                                 ),
@@ -275,11 +279,13 @@ class _HistoryTile extends StatelessWidget {
   const _HistoryTile({
     required this.workout,
     required this.palette,
+    required this.setCount,
     required this.onTap,
   });
 
   final Workout workout;
   final JellyBeanPalette palette;
+  final int setCount;
   final VoidCallback onTap;
 
   @override
@@ -311,7 +317,7 @@ class _HistoryTile extends StatelessWidget {
           ),
           child: Row(
             children: <Widget>[
-              _DateBadge(date: started, palette: palette),
+              _SetCountBadge(count: setCount, palette: palette),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
@@ -415,10 +421,10 @@ class _HistoryTile extends StatelessWidget {
   }
 }
 
-class _DateBadge extends StatelessWidget {
-  const _DateBadge({required this.date, required this.palette});
+class _SetCountBadge extends StatelessWidget {
+  const _SetCountBadge({required this.count, required this.palette});
 
-  final DateTime date;
+  final int count;
   final JellyBeanPalette palette;
 
   @override
@@ -432,14 +438,31 @@ class _DateBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: palette.shade200),
       ),
-      child: Text(
-        '${date.day}',
-        style: TextStyle(
-          color: palette.shade900,
-          fontWeight: FontWeight.w800,
-          fontSize: 18,
-          letterSpacing: -0.4,
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Text(
+            '$count',
+            style: TextStyle(
+              color: palette.shade900,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              letterSpacing: -0.4,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            count == 1 ? 'set' : 'sets',
+            style: TextStyle(
+              color: palette.shade700,
+              fontWeight: FontWeight.w700,
+              fontSize: 9,
+              letterSpacing: 0.4,
+              height: 1,
+            ),
+          ),
+        ],
       ),
     );
   }

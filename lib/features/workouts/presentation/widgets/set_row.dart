@@ -18,6 +18,8 @@ class SetRow extends StatefulWidget {
     required this.exerciseType,
     required this.previousSummary,
     required this.onCommit,
+    this.roundTop = true,
+    this.roundBottom = true,
   });
 
   final WorkoutSet set;
@@ -36,6 +38,13 @@ class SetRow extends StatefulWidget {
     required bool completed,
   })
   onCommit;
+
+  /// Whether the completed-state overlay should round its top corners. The
+  /// parent sets these to false when the neighbouring row is also completed,
+  /// so a run of completed rows reads as a single rounded block instead of a
+  /// stack of individually-rounded pills.
+  final bool roundTop;
+  final bool roundBottom;
 
   @override
   State<SetRow> createState() => _SetRowState();
@@ -257,41 +266,65 @@ class _SetRowState extends State<SetRow> {
     final bool completed = widget.set.completed;
 
     return TextFieldTapRegion(
-      child: Opacity(
-        opacity: completed ? 0.6 : 1.0,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-              _SetNumber(number: widget.set.setNumber, palette: palette),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  widget.previousSummary,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: palette.shade700.withValues(alpha: 0.75),
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
+      child: Stack(
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                _SetNumber(number: widget.set.setNumber, palette: palette),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    widget.previousSummary,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: palette.shade700.withValues(alpha: 0.75),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(width: 8),
+                ..._valueFields(palette),
+                const SizedBox(width: 8),
+                _CompleteButton(
+                  completed: completed,
+                  busy: _completing,
+                  palette: palette,
+                  onPressed: _toggleCompleted,
+                  onPressStart: () => _suppressNextBlurCommit = true,
+                ),
+              ],
+            ),
+          ),
+          // Experimental: when a set is marked complete, drop a translucent
+          // tint over the whole row so the "done" state reads at a glance,
+          // instead of relying solely on the disabled input fill colour.
+          // Lets pointer events through so the complete-toggle remains tappable.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 180),
+                opacity: completed ? 1.0 : 0.0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: palette.shade300.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(widget.roundTop ? 10 : 0),
+                      topRight: Radius.circular(widget.roundTop ? 10 : 0),
+                      bottomLeft: Radius.circular(widget.roundBottom ? 10 : 0),
+                      bottomRight: Radius.circular(widget.roundBottom ? 10 : 0),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              ..._valueFields(palette),
-              const SizedBox(width: 8),
-              _CompleteButton(
-                completed: completed,
-                busy: _completing,
-                palette: palette,
-                onPressed: _toggleCompleted,
-                onPressStart: () => _suppressNextBlurCommit = true,
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

@@ -89,6 +89,130 @@ final class WorkoutExerciseOptionsProvider
 String _$workoutExerciseOptionsHash() =>
     r'62671c3ca16e554a2e2f949117bca93c85c4aaf2';
 
+/// Stable identity of the active workout: workout id plus an ordered list of
+/// exercise ids. Recomputes whenever [activeWorkoutDetailProvider] emits, but
+/// only changes value when the workout itself or its exercise list changes —
+/// so dependents that key off this don't rebuild on every set edit.
+
+@ProviderFor(activeWorkoutSignature)
+const activeWorkoutSignatureProvider = ActiveWorkoutSignatureProvider._();
+
+/// Stable identity of the active workout: workout id plus an ordered list of
+/// exercise ids. Recomputes whenever [activeWorkoutDetailProvider] emits, but
+/// only changes value when the workout itself or its exercise list changes —
+/// so dependents that key off this don't rebuild on every set edit.
+
+final class ActiveWorkoutSignatureProvider
+    extends $FunctionalProvider<String, String, String>
+    with $Provider<String> {
+  /// Stable identity of the active workout: workout id plus an ordered list of
+  /// exercise ids. Recomputes whenever [activeWorkoutDetailProvider] emits, but
+  /// only changes value when the workout itself or its exercise list changes —
+  /// so dependents that key off this don't rebuild on every set edit.
+  const ActiveWorkoutSignatureProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'activeWorkoutSignatureProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$activeWorkoutSignatureHash();
+
+  @$internal
+  @override
+  $ProviderElement<String> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  String create(Ref ref) {
+    return activeWorkoutSignature(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String>(value),
+    );
+  }
+}
+
+String _$activeWorkoutSignatureHash() =>
+    r'00d18afff4ce90bfafda36db660accc1dfac059b';
+
+/// Most recent completed-workout sets for each exercise in the active
+/// workout, keyed by exerciseId. Powers the "Previous" column on the
+/// active workout screen.
+///
+/// Depends on [activeWorkoutSignatureProvider] (a stable string), not on the
+/// full workout detail, so per-set edits — which emit a new detail on every
+/// keystroke — do not trigger a refetch. The query only re-runs when the
+/// active workout itself changes, or when an exercise is added / removed.
+
+@ProviderFor(activeWorkoutPreviousSets)
+const activeWorkoutPreviousSetsProvider = ActiveWorkoutPreviousSetsProvider._();
+
+/// Most recent completed-workout sets for each exercise in the active
+/// workout, keyed by exerciseId. Powers the "Previous" column on the
+/// active workout screen.
+///
+/// Depends on [activeWorkoutSignatureProvider] (a stable string), not on the
+/// full workout detail, so per-set edits — which emit a new detail on every
+/// keystroke — do not trigger a refetch. The query only re-runs when the
+/// active workout itself changes, or when an exercise is added / removed.
+
+final class ActiveWorkoutPreviousSetsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, List<WorkoutSet>>>,
+          Map<String, List<WorkoutSet>>,
+          FutureOr<Map<String, List<WorkoutSet>>>
+        >
+    with
+        $FutureModifier<Map<String, List<WorkoutSet>>>,
+        $FutureProvider<Map<String, List<WorkoutSet>>> {
+  /// Most recent completed-workout sets for each exercise in the active
+  /// workout, keyed by exerciseId. Powers the "Previous" column on the
+  /// active workout screen.
+  ///
+  /// Depends on [activeWorkoutSignatureProvider] (a stable string), not on the
+  /// full workout detail, so per-set edits — which emit a new detail on every
+  /// keystroke — do not trigger a refetch. The query only re-runs when the
+  /// active workout itself changes, or when an exercise is added / removed.
+  const ActiveWorkoutPreviousSetsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'activeWorkoutPreviousSetsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$activeWorkoutPreviousSetsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<Map<String, List<WorkoutSet>>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Map<String, List<WorkoutSet>>> create(Ref ref) {
+    return activeWorkoutPreviousSets(ref);
+  }
+}
+
+String _$activeWorkoutPreviousSetsHash() =>
+    r'cfd3722a08e3006ce079fad3e7760046ecc1317d';
+
 /// One-shot loader for a finished workout (summary screen).
 
 @ProviderFor(workoutDetailById)
