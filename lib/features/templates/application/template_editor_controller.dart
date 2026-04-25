@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../data/models/template_exercise.dart';
 import '../../../data/models/workout.dart';
@@ -8,13 +8,10 @@ import '../../../data/models/workout_template.dart';
 import '../../../data/repositories/template_repository.dart';
 import 'template_providers.dart';
 
-final AsyncNotifierProvider<TemplateEditorController, void>
-templateEditorControllerProvider =
-    AsyncNotifierProvider<TemplateEditorController, void>(
-      TemplateEditorController.new,
-    );
+part 'template_editor_controller.g.dart';
 
-class TemplateEditorController extends AsyncNotifier<void> {
+@Riverpod(keepAlive: true)
+class TemplateEditorController extends _$TemplateEditorController {
   @override
   FutureOr<void> build() {}
 

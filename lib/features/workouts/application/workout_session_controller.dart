@@ -1,19 +1,16 @@
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../data/models/workout.dart';
 import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_set.dart';
 import '../../../data/repositories/workout_repository.dart';
 
-final AsyncNotifierProvider<WorkoutSessionController, void>
-workoutSessionControllerProvider =
-    AsyncNotifierProvider<WorkoutSessionController, void>(
-      WorkoutSessionController.new,
-    );
+part 'workout_session_controller.g.dart';
 
-class WorkoutSessionController extends AsyncNotifier<void> {
+@Riverpod(keepAlive: true)
+class WorkoutSessionController extends _$WorkoutSessionController {
   @override
   FutureOr<void> build() {}
 
