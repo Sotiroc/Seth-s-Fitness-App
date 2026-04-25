@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -11,6 +13,22 @@ class ExerciseAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Uint8List? bytes = exercise.thumbnailBytes;
+    final BorderRadius radius = BorderRadius.circular(size / 4);
+
+    if (bytes != null && bytes.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: radius,
+        child: Image.memory(
+          bytes,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+        ),
+      );
+    }
+
     final JellyBeanPalette palette = context.jellyBeanPalette;
     final Color background = _backgroundColorFor(exercise.name, palette);
     final Color foreground = _foregroundColorFor(background);
@@ -22,7 +40,7 @@ class ExerciseAvatar extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(size / 4),
+        borderRadius: radius,
       ),
       child: Text(
         letter,

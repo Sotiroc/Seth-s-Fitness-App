@@ -61,6 +61,18 @@ class $ExercisesTable extends Exercises
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _thumbnailBytesMeta = const VerificationMeta(
+    'thumbnailBytes',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> thumbnailBytes =
+      GeneratedColumn<Uint8List>(
+        'thumbnail_bytes',
+        aliasedName,
+        true,
+        type: DriftSqlType.blob,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _isDefaultMeta = const VerificationMeta(
     'isDefault',
   );
@@ -105,6 +117,7 @@ class $ExercisesTable extends Exercises
     type,
     muscleGroup,
     thumbnailPath,
+    thumbnailBytes,
     isDefault,
     createdAt,
     updatedAt,
@@ -140,6 +153,15 @@ class $ExercisesTable extends Exercises
         thumbnailPath.isAcceptableOrUnknown(
           data['thumbnail_path']!,
           _thumbnailPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('thumbnail_bytes')) {
+      context.handle(
+        _thumbnailBytesMeta,
+        thumbnailBytes.isAcceptableOrUnknown(
+          data['thumbnail_bytes']!,
+          _thumbnailBytesMeta,
         ),
       );
     }
@@ -198,6 +220,10 @@ class $ExercisesTable extends Exercises
         DriftSqlType.string,
         data['${effectivePrefix}thumbnail_path'],
       ),
+      thumbnailBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}thumbnail_bytes'],
+      ),
       isDefault: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_default'],
@@ -230,6 +256,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
   final ExerciseType type;
   final ExerciseMuscleGroup muscleGroup;
   final String? thumbnailPath;
+  final Uint8List? thumbnailBytes;
   final bool isDefault;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -239,6 +266,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     required this.type,
     required this.muscleGroup,
     this.thumbnailPath,
+    this.thumbnailBytes,
     required this.isDefault,
     required this.createdAt,
     required this.updatedAt,
@@ -261,6 +289,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     if (!nullToAbsent || thumbnailPath != null) {
       map['thumbnail_path'] = Variable<String>(thumbnailPath);
     }
+    if (!nullToAbsent || thumbnailBytes != null) {
+      map['thumbnail_bytes'] = Variable<Uint8List>(thumbnailBytes);
+    }
     map['is_default'] = Variable<bool>(isDefault);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -276,6 +307,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       thumbnailPath: thumbnailPath == null && nullToAbsent
           ? const Value.absent()
           : Value(thumbnailPath),
+      thumbnailBytes: thumbnailBytes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thumbnailBytes),
       isDefault: Value(isDefault),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -295,6 +329,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
         json['muscleGroup'],
       ),
       thumbnailPath: serializer.fromJson<String?>(json['thumbnailPath']),
+      thumbnailBytes: serializer.fromJson<Uint8List?>(json['thumbnailBytes']),
       isDefault: serializer.fromJson<bool>(json['isDefault']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -309,6 +344,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       'type': serializer.toJson<ExerciseType>(type),
       'muscleGroup': serializer.toJson<ExerciseMuscleGroup>(muscleGroup),
       'thumbnailPath': serializer.toJson<String?>(thumbnailPath),
+      'thumbnailBytes': serializer.toJson<Uint8List?>(thumbnailBytes),
       'isDefault': serializer.toJson<bool>(isDefault),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -321,6 +357,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     ExerciseType? type,
     ExerciseMuscleGroup? muscleGroup,
     Value<String?> thumbnailPath = const Value.absent(),
+    Value<Uint8List?> thumbnailBytes = const Value.absent(),
     bool? isDefault,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -332,6 +369,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     thumbnailPath: thumbnailPath.present
         ? thumbnailPath.value
         : this.thumbnailPath,
+    thumbnailBytes: thumbnailBytes.present
+        ? thumbnailBytes.value
+        : this.thumbnailBytes,
     isDefault: isDefault ?? this.isDefault,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -347,6 +387,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       thumbnailPath: data.thumbnailPath.present
           ? data.thumbnailPath.value
           : this.thumbnailPath,
+      thumbnailBytes: data.thumbnailBytes.present
+          ? data.thumbnailBytes.value
+          : this.thumbnailBytes,
       isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -361,6 +404,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
           ..write('type: $type, ')
           ..write('muscleGroup: $muscleGroup, ')
           ..write('thumbnailPath: $thumbnailPath, ')
+          ..write('thumbnailBytes: $thumbnailBytes, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -375,6 +419,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     type,
     muscleGroup,
     thumbnailPath,
+    $driftBlobEquality.hash(thumbnailBytes),
     isDefault,
     createdAt,
     updatedAt,
@@ -388,6 +433,10 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
           other.type == this.type &&
           other.muscleGroup == this.muscleGroup &&
           other.thumbnailPath == this.thumbnailPath &&
+          $driftBlobEquality.equals(
+            other.thumbnailBytes,
+            this.thumbnailBytes,
+          ) &&
           other.isDefault == this.isDefault &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -399,6 +448,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
   final Value<ExerciseType> type;
   final Value<ExerciseMuscleGroup> muscleGroup;
   final Value<String?> thumbnailPath;
+  final Value<Uint8List?> thumbnailBytes;
   final Value<bool> isDefault;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -409,6 +459,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     this.type = const Value.absent(),
     this.muscleGroup = const Value.absent(),
     this.thumbnailPath = const Value.absent(),
+    this.thumbnailBytes = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -420,6 +471,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     required ExerciseType type,
     this.muscleGroup = const Value.absent(),
     this.thumbnailPath = const Value.absent(),
+    this.thumbnailBytes = const Value.absent(),
     this.isDefault = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -435,6 +487,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     Expression<String>? type,
     Expression<String>? muscleGroup,
     Expression<String>? thumbnailPath,
+    Expression<Uint8List>? thumbnailBytes,
     Expression<bool>? isDefault,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -446,6 +499,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
       if (type != null) 'type': type,
       if (muscleGroup != null) 'muscle_group': muscleGroup,
       if (thumbnailPath != null) 'thumbnail_path': thumbnailPath,
+      if (thumbnailBytes != null) 'thumbnail_bytes': thumbnailBytes,
       if (isDefault != null) 'is_default': isDefault,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -459,6 +513,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     Value<ExerciseType>? type,
     Value<ExerciseMuscleGroup>? muscleGroup,
     Value<String?>? thumbnailPath,
+    Value<Uint8List?>? thumbnailBytes,
     Value<bool>? isDefault,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -470,6 +525,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
       type: type ?? this.type,
       muscleGroup: muscleGroup ?? this.muscleGroup,
       thumbnailPath: thumbnailPath ?? this.thumbnailPath,
+      thumbnailBytes: thumbnailBytes ?? this.thumbnailBytes,
       isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -499,6 +555,9 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     if (thumbnailPath.present) {
       map['thumbnail_path'] = Variable<String>(thumbnailPath.value);
     }
+    if (thumbnailBytes.present) {
+      map['thumbnail_bytes'] = Variable<Uint8List>(thumbnailBytes.value);
+    }
     if (isDefault.present) {
       map['is_default'] = Variable<bool>(isDefault.value);
     }
@@ -522,6 +581,7 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
           ..write('type: $type, ')
           ..write('muscleGroup: $muscleGroup, ')
           ..write('thumbnailPath: $thumbnailPath, ')
+          ..write('thumbnailBytes: $thumbnailBytes, ')
           ..write('isDefault: $isDefault, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2777,6 +2837,7 @@ typedef $$ExercisesTableCreateCompanionBuilder =
       required ExerciseType type,
       Value<ExerciseMuscleGroup> muscleGroup,
       Value<String?> thumbnailPath,
+      Value<Uint8List?> thumbnailBytes,
       Value<bool> isDefault,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -2789,6 +2850,7 @@ typedef $$ExercisesTableUpdateCompanionBuilder =
       Value<ExerciseType> type,
       Value<ExerciseMuscleGroup> muscleGroup,
       Value<String?> thumbnailPath,
+      Value<Uint8List?> thumbnailBytes,
       Value<bool> isDefault,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -2884,6 +2946,11 @@ class $$ExercisesTableFilterComposer
 
   ColumnFilters<String> get thumbnailPath => $composableBuilder(
     column: $table.thumbnailPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get thumbnailBytes => $composableBuilder(
+    column: $table.thumbnailBytes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2987,6 +3054,11 @@ class $$ExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<Uint8List> get thumbnailBytes => $composableBuilder(
+    column: $table.thumbnailBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isDefault => $composableBuilder(
     column: $table.isDefault,
     builder: (column) => ColumnOrderings(column),
@@ -3029,6 +3101,11 @@ class $$ExercisesTableAnnotationComposer
 
   GeneratedColumn<String> get thumbnailPath => $composableBuilder(
     column: $table.thumbnailPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<Uint8List> get thumbnailBytes => $composableBuilder(
+    column: $table.thumbnailBytes,
     builder: (column) => column,
   );
 
@@ -3129,6 +3206,7 @@ class $$ExercisesTableTableManager
                 Value<ExerciseType> type = const Value.absent(),
                 Value<ExerciseMuscleGroup> muscleGroup = const Value.absent(),
                 Value<String?> thumbnailPath = const Value.absent(),
+                Value<Uint8List?> thumbnailBytes = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -3139,6 +3217,7 @@ class $$ExercisesTableTableManager
                 type: type,
                 muscleGroup: muscleGroup,
                 thumbnailPath: thumbnailPath,
+                thumbnailBytes: thumbnailBytes,
                 isDefault: isDefault,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -3151,6 +3230,7 @@ class $$ExercisesTableTableManager
                 required ExerciseType type,
                 Value<ExerciseMuscleGroup> muscleGroup = const Value.absent(),
                 Value<String?> thumbnailPath = const Value.absent(),
+                Value<Uint8List?> thumbnailBytes = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -3161,6 +3241,7 @@ class $$ExercisesTableTableManager
                 type: type,
                 muscleGroup: muscleGroup,
                 thumbnailPath: thumbnailPath,
+                thumbnailBytes: thumbnailBytes,
                 isDefault: isDefault,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

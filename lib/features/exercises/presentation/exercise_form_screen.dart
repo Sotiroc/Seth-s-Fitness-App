@@ -1,7 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../../core/images/exercise_thumbnail_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../data/models/exercise.dart';
@@ -32,8 +36,11 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
   ExerciseMuscleGroup _muscleGroup = ExerciseMuscleGroup.chest;
   bool _loading = false;
   bool _loadingInitial = false;
+  bool _processingImage = false;
   bool _isDefault = false;
   Exercise? _original;
+  Uint8List? _thumbnailBytes;
+  bool _thumbnailCleared = false;
 
   @override
   void initState() {
@@ -62,6 +69,7 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
         _type = exercise.type;
         _muscleGroup = exercise.muscleGroup;
         _isDefault = exercise.isDefault;
+        _thumbnailBytes = exercise.thumbnailBytes;
         _loadingInitial = false;
       });
     } catch (e) {
@@ -90,12 +98,15 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
           name: _nameController.text.trim(),
           type: _type,
           muscleGroup: _muscleGroup,
+          thumbnailBytes: _thumbnailCleared ? null : _thumbnailBytes,
+          clearThumbnail: _thumbnailCleared,
         );
       } else {
         result = await controller.createExercise(
           name: _nameController.text.trim(),
           type: _type,
           muscleGroup: _muscleGroup,
+          thumbnailBytes: _thumbnailBytes,
         );
       }
 
@@ -120,10 +131,113 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
     }
   }
 
+  Future<void> _openThumbnailSheet() async {
+    if (_processingImage) return;
+    final JellyBeanPalette palette = context.jellyBeanPalette;
+    final bool hasImage = _thumbnailBytes != null;
+    final _ThumbnailAction? action = await showModalBottomSheet<_ThumbnailAction>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                _SheetTile(
+                  icon: Icons.photo_library_rounded,
+                  label: 'Choose from library',
+                  palette: palette,
+                  onTap: () => Navigator.of(sheetContext).pop(
+                    _ThumbnailAction.gallery,
+                  ),
+                ),
+                _SheetTile(
+                  icon: Icons.photo_camera_rounded,
+                  label: 'Take photo',
+                  palette: palette,
+                  onTap: () => Navigator.of(sheetContext).pop(
+                    _ThumbnailAction.camera,
+                  ),
+                ),
+                if (hasImage)
+                  _SheetTile(
+                    icon: Icons.delete_outline_rounded,
+                    label: 'Remove photo',
+                    palette: palette,
+                    destructive: true,
+                    onTap: () => Navigator.of(sheetContext).pop(
+                      _ThumbnailAction.remove,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (action == null || !mounted) return;
+
+    if (action == _ThumbnailAction.remove) {
+      setState(() {
+        _thumbnailBytes = null;
+        _thumbnailCleared = true;
+      });
+      return;
+    }
+
+    await _pickAndProcess(
+      action == _ThumbnailAction.camera
+          ? ImageSource.camera
+          : ImageSource.gallery,
+    );
+  }
+
+  Future<void> _pickAndProcess(ImageSource source) async {
+    setState(() => _processingImage = true);
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? file = await picker.pickImage(
+        source: source,
+        maxWidth: 2048,
+        maxHeight: 2048,
+      );
+      if (file == null) return;
+
+      final Uint8List? processed = await ref
+          .read(exerciseThumbnailServiceProvider)
+          .processPickedImage(file);
+
+      if (!mounted) return;
+      if (processed == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't read that image.")),
+        );
+        return;
+      }
+
+      setState(() {
+        _thumbnailBytes = processed;
+        _thumbnailCleared = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Image error: $e')));
+    } finally {
+      if (mounted) setState(() => _processingImage = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final JellyBeanPalette palette = context.jellyBeanPalette;
-    final ThemeData theme = Theme.of(context);
 
     return Scaffold(
       backgroundColor: palette.shade50,
@@ -143,13 +257,16 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
                   120,
                 ),
                 children: <Widget>[
-                  _WebAvatarNotice(
+                  _ThumbnailPicker(
                     palette: palette,
                     previewName: _nameController.text.isEmpty
                         ? 'New'
                         : _nameController.text,
                     previewType: _type,
                     previewMuscleGroup: _muscleGroup,
+                    thumbnailBytes: _thumbnailBytes,
+                    processing: _processingImage,
+                    onTap: _openThumbnailSheet,
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   _FieldLabel(text: 'Name', palette: palette),
@@ -224,10 +341,11 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
                           Expanded(
                             child: Text(
                               'Default exercise. Your edits apply locally.',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: palette.shade800,
-                                fontWeight: FontWeight.w500,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: palette.shade800,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                             ),
                           ),
                         ],
@@ -275,6 +393,8 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
   }
 }
 
+enum _ThumbnailAction { gallery, camera, remove }
+
 class _FieldLabel extends StatelessWidget {
   const _FieldLabel({required this.text, required this.palette});
 
@@ -295,28 +415,35 @@ class _FieldLabel extends StatelessWidget {
   }
 }
 
-class _WebAvatarNotice extends StatelessWidget {
-  const _WebAvatarNotice({
+class _ThumbnailPicker extends StatelessWidget {
+  const _ThumbnailPicker({
     required this.palette,
     required this.previewName,
     required this.previewType,
     required this.previewMuscleGroup,
+    required this.thumbnailBytes,
+    required this.processing,
+    required this.onTap,
   });
 
   final JellyBeanPalette palette;
   final String previewName;
   final ExerciseType previewType;
   final ExerciseMuscleGroup previewMuscleGroup;
+  final Uint8List? thumbnailBytes;
+  final bool processing;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    final bool hasImage = thumbnailBytes != null;
     final Exercise previewExercise = Exercise(
       id: 'preview',
       name: previewName,
       type: previewType,
       muscleGroup: previewMuscleGroup,
       thumbnailPath: null,
+      thumbnailBytes: thumbnailBytes,
       isDefault: false,
       createdAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
@@ -331,14 +458,59 @@ class _WebAvatarNotice extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          ExerciseAvatar(exercise: previewExercise, size: 92),
+          GestureDetector(
+            onTap: processing ? null : onTap,
+            child: Stack(
+              alignment: Alignment.center,
+              children: <Widget>[
+                ExerciseAvatar(exercise: previewExercise, size: 92),
+                if (processing)
+                  Container(
+                    width: 92,
+                    height: 92,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(92 / 4),
+                    ),
+                    alignment: Alignment.center,
+                    child: const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    ),
+                  )
+                else
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: palette.shade900,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  'Avatar',
+                  'Thumbnail',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: palette.shade950,
@@ -346,7 +518,9 @@ class _WebAvatarNotice extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Web-first build uses generated letter avatars for now.',
+                  hasImage
+                      ? 'Tap the avatar to change or remove.'
+                      : 'Tap the avatar to add a photo.',
                   style: TextStyle(
                     color: palette.shade800.withValues(alpha: 0.75),
                     fontSize: 12,
@@ -361,19 +535,42 @@ class _WebAvatarNotice extends StatelessWidget {
                     ExerciseMuscleGroupBadge(muscleGroup: previewMuscleGroup),
                   ],
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Image uploads are deferred so the app works cleanly in the browser and as an iPhone PWA.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: palette.shade800,
-                    height: 1.35,
-                  ),
-                ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SheetTile extends StatelessWidget {
+  const _SheetTile({
+    required this.icon,
+    required this.label,
+    required this.palette,
+    required this.onTap,
+    this.destructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final JellyBeanPalette palette;
+  final VoidCallback onTap;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color foreground = destructive
+        ? const Color(0xFFB00020)
+        : palette.shade950;
+    return ListTile(
+      leading: Icon(icon, color: foreground),
+      title: Text(
+        label,
+        style: TextStyle(color: foreground, fontWeight: FontWeight.w600),
+      ),
+      onTap: onTap,
     );
   }
 }
@@ -423,60 +620,43 @@ class _MuscleGroupPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AppSpacing.xs,
-      runSpacing: AppSpacing.xs,
-      children: ExerciseMuscleGroup.values
-          .map(
-            (group) => _MuscleGroupOption(
-              palette: palette,
-              muscleGroup: group,
-              selected: selected == group,
-              onTap: () => onChanged(group),
-            ),
-          )
-          .toList(growable: false),
-    );
-  }
-}
-
-class _MuscleGroupOption extends StatelessWidget {
-  const _MuscleGroupOption({
-    required this.palette,
-    required this.muscleGroup,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final JellyBeanPalette palette;
-  final ExerciseMuscleGroup muscleGroup;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: selected ? palette.shade900 : Colors.white,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? palette.shade900 : palette.shade100,
-            width: 1.2,
-          ),
+    return DropdownButtonFormField<ExerciseMuscleGroup>(
+      initialValue: selected,
+      isExpanded: true,
+      icon: Icon(Icons.expand_more_rounded, color: palette.shade700),
+      dropdownColor: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      style: TextStyle(
+        color: palette.shade950,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      ),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: palette.shade100),
         ),
-        child: Text(
-          muscleGroup.label,
-          style: TextStyle(
-            color: selected ? Colors.white : palette.shade900,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-          ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: palette.shade100),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: palette.shade500, width: 1.5),
         ),
       ),
+      items: <DropdownMenuItem<ExerciseMuscleGroup>>[
+        for (final ExerciseMuscleGroup group in ExerciseMuscleGroup.values)
+          DropdownMenuItem<ExerciseMuscleGroup>(
+            value: group,
+            child: Text(group.label),
+          ),
+      ],
+      onChanged: (ExerciseMuscleGroup? value) {
+        if (value != null) onChanged(value);
+      },
     );
   }
 }
@@ -499,7 +679,7 @@ class _TypeOption extends StatelessWidget {
       case ExerciseType.weighted:
         return Icons.fitness_center_rounded;
       case ExerciseType.bodyweight:
-        return Icons.self_improvement_rounded;
+        return Icons.sports_gymnastics_rounded;
       case ExerciseType.cardio:
         return Icons.directions_run_rounded;
     }

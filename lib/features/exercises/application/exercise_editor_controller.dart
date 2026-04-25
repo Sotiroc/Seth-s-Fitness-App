@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -18,6 +19,7 @@ class ExerciseEditorController extends _$ExerciseEditorController {
     required String name,
     required ExerciseType type,
     required ExerciseMuscleGroup muscleGroup,
+    Uint8List? thumbnailBytes,
   }) {
     return _runMutation(() async {
       final ExerciseRepository repository = ref.read(
@@ -27,6 +29,7 @@ class ExerciseEditorController extends _$ExerciseEditorController {
         name: name,
         type: type,
         muscleGroup: muscleGroup,
+        thumbnailBytes: thumbnailBytes,
       );
     });
   }
@@ -36,13 +39,21 @@ class ExerciseEditorController extends _$ExerciseEditorController {
     required String name,
     required ExerciseType type,
     required ExerciseMuscleGroup muscleGroup,
+    Uint8List? thumbnailBytes,
+    bool clearThumbnail = false,
   }) {
     return _runMutation(() async {
       final ExerciseRepository repository = ref.read(
         exerciseRepositoryProvider,
       );
       return repository.updateExercise(
-        exercise.copyWith(name: name, type: type, muscleGroup: muscleGroup),
+        exercise.copyWith(
+          name: name,
+          type: type,
+          muscleGroup: muscleGroup,
+          thumbnailBytes: thumbnailBytes,
+          clearThumbnailBytes: clearThumbnail,
+        ),
       );
     });
   }

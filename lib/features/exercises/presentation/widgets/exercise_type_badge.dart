@@ -46,7 +46,7 @@ class ExerciseTypeBadge extends StatelessWidget {
       case ExerciseType.weighted:
         return (p.shade100, p.shade800, Icons.fitness_center_rounded);
       case ExerciseType.bodyweight:
-        return (p.shade50, p.shade700, Icons.self_improvement_rounded);
+        return (p.shade50, p.shade700, Icons.sports_gymnastics_rounded);
       case ExerciseType.cardio:
         return (p.shade200, p.shade900, Icons.directions_run_rounded);
     }

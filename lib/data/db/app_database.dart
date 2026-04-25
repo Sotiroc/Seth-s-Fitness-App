@@ -48,6 +48,8 @@ class Exercises extends Table {
 
   TextColumn get thumbnailPath => text().nullable()();
 
+  BlobColumn get thumbnailBytes => blob().nullable()();
+
   BoolColumn get isDefault => boolean().withDefault(const Constant(false))();
 
   DateTimeColumn get createdAt => dateTime()();
@@ -178,7 +180,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -205,6 +207,9 @@ class AppDatabase extends _$AppDatabase {
             ),
           );
         }
+      }
+      if (from < 4) {
+        await m.addColumn(exercises, exercises.thumbnailBytes);
       }
     },
   );

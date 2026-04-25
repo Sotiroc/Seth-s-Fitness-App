@@ -14,6 +14,7 @@ extension ExerciseRowMapper on ExerciseRow {
       type: type,
       muscleGroup: muscleGroup,
       thumbnailPath: thumbnailPath,
+      thumbnailBytes: thumbnailBytes,
       isDefault: isDefault,
       createdAt: createdAt,
       updatedAt: updatedAt,

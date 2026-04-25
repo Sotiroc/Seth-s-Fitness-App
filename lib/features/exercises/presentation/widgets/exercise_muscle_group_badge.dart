@@ -11,7 +11,7 @@ class ExerciseMuscleGroupBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final JellyBeanPalette palette = context.jellyBeanPalette;
-    final (Color background, Color foreground, IconData icon) style = _styleFor(
+    final (Color background, Color foreground) style = _styleFor(
       muscleGroup,
       palette,
     );
@@ -22,46 +22,36 @@ class ExerciseMuscleGroupBadge extends StatelessWidget {
         color: style.$1,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(style.$3, size: 12, color: style.$2),
-          const SizedBox(width: 4),
-          Text(
-            muscleGroup.label.toUpperCase(),
-            style: TextStyle(
-              color: style.$2,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-            ),
-          ),
-        ],
+      child: Text(
+        muscleGroup.label.toUpperCase(),
+        style: TextStyle(
+          color: style.$2,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+        ),
       ),
     );
   }
 
-  (Color, Color, IconData) _styleFor(
-    ExerciseMuscleGroup value,
-    JellyBeanPalette p,
-  ) {
+  (Color, Color) _styleFor(ExerciseMuscleGroup value, JellyBeanPalette p) {
     switch (value) {
       case ExerciseMuscleGroup.legs:
-        return (p.shade100, p.shade800, Icons.directions_walk_rounded);
+        return (p.shade100, p.shade800);
       case ExerciseMuscleGroup.biceps:
-        return (p.shade50, p.shade700, Icons.sports_gymnastics_rounded);
+        return (p.shade50, p.shade700);
       case ExerciseMuscleGroup.triceps:
-        return (p.shade200, p.shade900, Icons.straighten_rounded);
+        return (p.shade200, p.shade900);
       case ExerciseMuscleGroup.chest:
-        return (p.shade100, p.shade900, Icons.favorite_outline_rounded);
+        return (p.shade100, p.shade900);
       case ExerciseMuscleGroup.back:
-        return (p.shade50, p.shade800, Icons.accessibility_new_rounded);
+        return (p.shade50, p.shade800);
       case ExerciseMuscleGroup.shoulders:
-        return (p.shade200, p.shade800, Icons.pan_tool_outlined);
+        return (p.shade200, p.shade800);
       case ExerciseMuscleGroup.abs:
-        return (p.shade100, p.shade700, Icons.crop_7_5_rounded);
+        return (p.shade100, p.shade700);
       case ExerciseMuscleGroup.cardio:
-        return (p.shade200, p.shade900, Icons.monitor_heart_outlined);
+        return (p.shade200, p.shade900);
     }
   }
 }
