@@ -12,7 +12,11 @@
       "Bash(mkdir -p /tmp/design)",
       "Bash(tar -xzvf /tmp/design.tgz -C /tmp/design)",
       "Bash(flutter pub *)",
-      "Bash(xargs wc *)"
+      "Bash(xargs wc *)",
+      "Bash(claude mcp *)",
+      "Bash(where npx *)",
+      "Bash(where node *)",
+      "PowerShell(claude mcp add playwright --scope user -- cmd /c \"npx -y @playwright/mcp@latest\")"
     ]
   }
 }

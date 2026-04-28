@@ -12,6 +12,10 @@
 .swiftpm/
 migrate_working_dir/
 
+# Local screenshot tooling (Playwright runner + captured PNGs)
+screenshot_runner/
+screenshots/
+
 # IntelliJ related
 *.iml
 *.ipr

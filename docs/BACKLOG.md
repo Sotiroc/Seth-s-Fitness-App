@@ -30,21 +30,6 @@ During a workout, you should be able to delete a exercise you accidentally added
 - also want to fix the slide to delete for each rep. I want it from the right to left side instead of left to right, also want it to be more smoother and better colors. 
 
 
-=============
-Muscle Groups
-============= 
-Each exercise should have a muscle group type.
-For example:
-    - Legs
-    - Biceps 
-    - Triceps 
-    - Chest
-    - Back
-    - Shoulders
-    - Abs
-
-The reason for this, at some point I want to implement a weekly summary for the user to see how many sets per a muscle group the user did for that week.
-
 ==================
 Goals Allignemnt
 ==================
