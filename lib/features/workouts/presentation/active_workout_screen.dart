@@ -1921,19 +1921,6 @@ class _ExerciseCard extends ConsumerWidget {
   /// extend or start a chain in one tap.
   List<Widget> _buildSetRows(BuildContext context, WidgetRef ref) {
     final List<WorkoutSet> ordered = orderedSetsForDisplay(detail.sets);
-
-    // Pre-compute, for each working set, whether the user has already
-    // attached at least one drop child below it (live in this exercise).
-    // We use this to gate the "Add drop" affordance — we only offer it
-    // immediately under a working set that's been completed and not yet
-    // had a drop chain extended below it (the user can tap the last drop
-    // in an existing chain to add another).
-    final Set<String> workingSetsWithDrops = <String>{
-      for (final WorkoutSet s in detail.sets)
-        if (s.kind == WorkoutSetKind.drop && s.parentSetId != null)
-          s.parentSetId!,
-    };
-
     final List<Widget> widgets = <Widget>[];
     for (int i = 0; i < ordered.length; i++) {
       final WorkoutSet set = ordered[i];
@@ -2021,38 +2008,26 @@ class _ExerciseCard extends ConsumerWidget {
         ),
       );
 
-      // "Add drop" affordance: only after a completed working set, and
-      // only when the very next row in the display order isn't already
-      // its drop child (otherwise the user would see two pills next to
-      // each other before the chain). Once a chain exists, the affordance
-      // appears under the last drop in the chain — same logic, applied
-      // to whichever working set this drop ultimately belongs to.
-      final bool isWorkingSet = set.kind == WorkoutSetKind.normal ||
-          set.kind == WorkoutSetKind.failure;
-      final bool isDropSet = set.kind == WorkoutSetKind.drop;
-      String? dropParentForAffordance;
-      if (isWorkingSet && set.completed) {
-        // Only offer when no drop is currently chained to this working
-        // set. If one exists, we'll offer it under the last drop instead.
-        if (!workingSetsWithDrops.contains(set.id)) {
-          dropParentForAffordance = set.id;
-        }
-      } else if (isDropSet) {
-        // Last drop in a chain → offer to add another to the same parent.
+      // "Add drop" affordance: only shown under the *last* drop in an
+      // existing chain, so the user can keep extending it. We don't
+      // surface it under every completed working set — most sets won't
+      // ever become a chain, and rendering a pill under each one bloats
+      // the list. To start a chain in the first place, the user adds a
+      // regular set and changes its type to "Drop" via the badge tap
+      // menu. Once at least one drop exists, this affordance appears.
+      if (set.kind == WorkoutSetKind.drop) {
         final bool nextIsSiblingDrop = next != null &&
             next.kind == WorkoutSetKind.drop &&
             next.parentSetId == set.parentSetId;
-        if (!nextIsSiblingDrop && set.parentSetId != null) {
-          dropParentForAffordance = set.parentSetId;
+        final String? parentId = set.parentSetId;
+        if (!nextIsSiblingDrop && parentId != null) {
+          widgets.add(
+            _AddDropSetAffordance(
+              palette: palette,
+              onTap: () => onAddDropSet(parentId),
+            ),
+          );
         }
-      }
-      if (dropParentForAffordance != null) {
-        widgets.add(
-          _AddDropSetAffordance(
-            palette: palette,
-            onTap: () => onAddDropSet(dropParentForAffordance!),
-          ),
-        );
       }
     }
     return widgets;
@@ -2286,7 +2261,7 @@ class _SwipeDeleteBackground extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: <Color>[Color(0xFFFB7185), Color(0xFFE11D48)],
+          colors: <Color>[Color(0xFFFDA4AF), Color(0xFFFB7185)],
         ),
         borderRadius: BorderRadius.circular(12),
       ),

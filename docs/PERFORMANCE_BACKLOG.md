@@ -8,7 +8,7 @@ Each entry is **self-contained** — a fresh agent can pick one up cold without 
 - **Where it lives** — files involved (so the agent knows where to look)
 - **What's happening today** — the current behavior causing the slowdown
 - **Fix direction** — the shape of the change (not a step-by-step)
-- **Done when** — acceptance signal
+- **Done when** — acceptance signal..
 
 When a task is complete, mark its title with a trailing ✅ and leave the entry in place for reference.
 
