@@ -164,7 +164,7 @@ session" block — that's the celebration moment.
 
 ---
 
-### A real exercise library
+### A real exercise library ✅
 
 18 default exercises is thin. Expect ~150–300, organized by muscle group and
 equipment, each with a one-line form cue. No video needed — text cues are

@@ -18,11 +18,51 @@ import 'widgets/exercise_history_sheet.dart';
 import 'widgets/exercise_muscle_group_badge.dart';
 import 'widgets/exercise_type_badge.dart';
 
-class ExerciseListScreen extends ConsumerWidget {
+class ExerciseListScreen extends ConsumerStatefulWidget {
   const ExerciseListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ExerciseListScreen> createState() =>
+      _ExerciseListScreenState();
+}
+
+class _ExerciseListScreenState extends ConsumerState<ExerciseListScreen> {
+  // Threshold past which the jump-to-top button fades in. Roughly the
+  // height of the gradient header — the button shouldn't show on a
+  // glanceable amount of scroll.
+  static const double _showJumpThreshold = 400;
+
+  final ScrollController _scrollController = ScrollController();
+  bool _showJumpToTop = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final bool next = _scrollController.hasClients &&
+        _scrollController.offset > _showJumpThreshold;
+    if (next != _showJumpToTop) {
+      setState(() => _showJumpToTop = next);
+    }
+  }
+
+  void _jumpToTop() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.jumpTo(0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final JellyBeanPalette palette = context.jellyBeanPalette;
     final AsyncValue<List<Exercise>> all = ref.watch(exerciseListProvider);
     final AsyncValue<List<Exercise>> filtered = ref.watch(
@@ -39,12 +79,15 @@ class ExerciseListScreen extends ConsumerWidget {
         icon: const Icon(Icons.add_rounded),
         label: const Text('New Exercise'),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(exerciseListProvider);
-        },
-        child: CustomScrollView(
-          slivers: <Widget>[
+      body: Stack(
+        children: <Widget>[
+          RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(exerciseListProvider);
+            },
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: <Widget>[
             SliverToBoxAdapter(
               child: _Header(palette: palette, totalCount: totalCount),
             ),
@@ -124,8 +167,35 @@ class ExerciseListScreen extends ConsumerWidget {
                 ),
               ),
             ),
-          ],
-        ),
+              ],
+            ),
+          ),
+          // Jump-to-top sits in the bottom-left so it doesn't crowd the
+          // existing "New Exercise" FAB on the right. Fades in once the
+          // user has scrolled past the gradient header.
+          Positioned(
+            left: AppSpacing.lg,
+            bottom: AppSpacing.lg,
+            child: SafeArea(
+              child: IgnorePointer(
+                ignoring: !_showJumpToTop,
+                child: AnimatedSlide(
+                  offset: _showJumpToTop ? Offset.zero : const Offset(0, 0.4),
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: AnimatedOpacity(
+                    opacity: _showJumpToTop ? 1 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: _JumpToTopButton(
+                      palette: palette,
+                      onPressed: _jumpToTop,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -745,6 +815,42 @@ class _EmptyState extends StatelessWidget {
           : 'Add your first exercise to start building workouts.',
       actionLabel: hasFilter ? 'Clear filters' : null,
       onAction: hasFilter ? onClear : null,
+    );
+  }
+}
+
+/// Compact circular button that scrolls the library list back to the
+/// top. Uses a tonal palette tint so it reads as secondary next to the
+/// primary "New Exercise" FAB on the opposite side.
+class _JumpToTopButton extends StatelessWidget {
+  const _JumpToTopButton({required this.palette, required this.onPressed});
+
+  final JellyBeanPalette palette;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: palette.shade900,
+      shape: const CircleBorder(),
+      elevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.2),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: Tooltip(
+          message: 'Jump to top',
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(
+              Icons.keyboard_arrow_up_rounded,
+              color: palette.shade50,
+              size: 24,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

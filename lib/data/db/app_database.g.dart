@@ -98,6 +98,125 @@ class $ExercisesTable extends Exercises
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _equipmentMeta = const VerificationMeta(
+    'equipment',
+  );
+  @override
+  late final GeneratedColumn<String> equipment = GeneratedColumn<String>(
+    'equipment',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _forceMeta = const VerificationMeta('force');
+  @override
+  late final GeneratedColumn<String> force = GeneratedColumn<String>(
+    'force',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _levelMeta = const VerificationMeta('level');
+  @override
+  late final GeneratedColumn<String> level = GeneratedColumn<String>(
+    'level',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _mechanicMeta = const VerificationMeta(
+    'mechanic',
+  );
+  @override
+  late final GeneratedColumn<String> mechanic = GeneratedColumn<String>(
+    'mechanic',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _primaryMusclesJsonMeta =
+      const VerificationMeta('primaryMusclesJson');
+  @override
+  late final GeneratedColumn<String> primaryMusclesJson =
+      GeneratedColumn<String>(
+        'primary_muscles_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _secondaryMusclesJsonMeta =
+      const VerificationMeta('secondaryMusclesJson');
+  @override
+  late final GeneratedColumn<String> secondaryMusclesJson =
+      GeneratedColumn<String>(
+        'secondary_muscles_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _instructionsJsonMeta = const VerificationMeta(
+    'instructionsJson',
+  );
+  @override
+  late final GeneratedColumn<String> instructionsJson = GeneratedColumn<String>(
+    'instructions_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourcePackIdMeta = const VerificationMeta(
+    'sourcePackId',
+  );
+  @override
+  late final GeneratedColumn<String> sourcePackId = GeneratedColumn<String>(
+    'source_pack_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceExerciseIdMeta = const VerificationMeta(
+    'sourceExerciseId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceExerciseId = GeneratedColumn<String>(
+    'source_exercise_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _hiddenMeta = const VerificationMeta('hidden');
+  @override
+  late final GeneratedColumn<bool> hidden = GeneratedColumn<bool>(
+    'hidden',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("hidden" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -130,6 +249,17 @@ class $ExercisesTable extends Exercises
     thumbnailBytes,
     isDefault,
     defaultRestSeconds,
+    equipment,
+    force,
+    level,
+    mechanic,
+    category,
+    primaryMusclesJson,
+    secondaryMusclesJson,
+    instructionsJson,
+    sourcePackId,
+    sourceExerciseId,
+    hidden,
     createdAt,
     updatedAt,
   ];
@@ -189,6 +319,87 @@ class $ExercisesTable extends Exercises
           data['default_rest_seconds']!,
           _defaultRestSecondsMeta,
         ),
+      );
+    }
+    if (data.containsKey('equipment')) {
+      context.handle(
+        _equipmentMeta,
+        equipment.isAcceptableOrUnknown(data['equipment']!, _equipmentMeta),
+      );
+    }
+    if (data.containsKey('force')) {
+      context.handle(
+        _forceMeta,
+        force.isAcceptableOrUnknown(data['force']!, _forceMeta),
+      );
+    }
+    if (data.containsKey('level')) {
+      context.handle(
+        _levelMeta,
+        level.isAcceptableOrUnknown(data['level']!, _levelMeta),
+      );
+    }
+    if (data.containsKey('mechanic')) {
+      context.handle(
+        _mechanicMeta,
+        mechanic.isAcceptableOrUnknown(data['mechanic']!, _mechanicMeta),
+      );
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('primary_muscles_json')) {
+      context.handle(
+        _primaryMusclesJsonMeta,
+        primaryMusclesJson.isAcceptableOrUnknown(
+          data['primary_muscles_json']!,
+          _primaryMusclesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('secondary_muscles_json')) {
+      context.handle(
+        _secondaryMusclesJsonMeta,
+        secondaryMusclesJson.isAcceptableOrUnknown(
+          data['secondary_muscles_json']!,
+          _secondaryMusclesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('instructions_json')) {
+      context.handle(
+        _instructionsJsonMeta,
+        instructionsJson.isAcceptableOrUnknown(
+          data['instructions_json']!,
+          _instructionsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_pack_id')) {
+      context.handle(
+        _sourcePackIdMeta,
+        sourcePackId.isAcceptableOrUnknown(
+          data['source_pack_id']!,
+          _sourcePackIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_exercise_id')) {
+      context.handle(
+        _sourceExerciseIdMeta,
+        sourceExerciseId.isAcceptableOrUnknown(
+          data['source_exercise_id']!,
+          _sourceExerciseIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hidden')) {
+      context.handle(
+        _hiddenMeta,
+        hidden.isAcceptableOrUnknown(data['hidden']!, _hiddenMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -252,6 +463,50 @@ class $ExercisesTable extends Exercises
         DriftSqlType.int,
         data['${effectivePrefix}default_rest_seconds'],
       ),
+      equipment: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}equipment'],
+      ),
+      force: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}force'],
+      ),
+      level: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}level'],
+      ),
+      mechanic: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mechanic'],
+      ),
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      ),
+      primaryMusclesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}primary_muscles_json'],
+      ),
+      secondaryMusclesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}secondary_muscles_json'],
+      ),
+      instructionsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}instructions_json'],
+      ),
+      sourcePackId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_pack_id'],
+      ),
+      sourceExerciseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_exercise_id'],
+      ),
+      hidden: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}hidden'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -287,6 +542,48 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
   /// back to type-based defaults (weighted=120, bodyweight=60, cardio=0/
   /// disabled). 0 explicitly disables the rest timer for this exercise.
   final int? defaultRestSeconds;
+
+  /// Equipment label as supplied by the source pack
+  /// (e.g. 'barbell', 'body only'). Null for user-created exercises and
+  /// rows imported before this column existed.
+  final String? equipment;
+
+  /// Movement force from the source pack: 'push' | 'pull' | 'static'.
+  final String? force;
+
+  /// Difficulty from the source pack: 'beginner' | 'intermediate' | 'expert'.
+  final String? level;
+
+  /// Mechanic from the source pack: 'compound' | 'isolation'.
+  final String? mechanic;
+
+  /// Source category (matches the pack id for library entries:
+  /// 'strength', 'cardio', 'stretching', 'plyometrics', 'powerlifting',
+  /// 'strongman', 'olympic weightlifting').
+  final String? category;
+
+  /// JSON-encoded `List<String>` of source primary muscle labels.
+  final String? primaryMusclesJson;
+
+  /// JSON-encoded `List<String>` of source secondary muscle labels.
+  final String? secondaryMusclesJson;
+
+  /// JSON-encoded `List<String>` of multi-step form instructions.
+  final String? instructionsJson;
+
+  /// Pack id this exercise was imported from (e.g. 'strength'). Null for
+  /// user-created exercises and the legacy starter set.
+  final String? sourcePackId;
+
+  /// Stable id within the source pack (e.g. 'Barbell_Bench_Press_-_Medium_Grip').
+  /// Null for user-created exercises and the legacy starter set.
+  final String? sourceExerciseId;
+
+  /// True when the exercise should be hidden from pickers and the library
+  /// list. Used to retire the legacy 18 starters once their references
+  /// have been remapped to library entries — the rows stay so any
+  /// remaining history references continue to resolve.
+  final bool hidden;
   final DateTime createdAt;
   final DateTime updatedAt;
   const ExerciseRow({
@@ -298,6 +595,17 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     this.thumbnailBytes,
     required this.isDefault,
     this.defaultRestSeconds,
+    this.equipment,
+    this.force,
+    this.level,
+    this.mechanic,
+    this.category,
+    this.primaryMusclesJson,
+    this.secondaryMusclesJson,
+    this.instructionsJson,
+    this.sourcePackId,
+    this.sourceExerciseId,
+    required this.hidden,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -326,6 +634,37 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     if (!nullToAbsent || defaultRestSeconds != null) {
       map['default_rest_seconds'] = Variable<int>(defaultRestSeconds);
     }
+    if (!nullToAbsent || equipment != null) {
+      map['equipment'] = Variable<String>(equipment);
+    }
+    if (!nullToAbsent || force != null) {
+      map['force'] = Variable<String>(force);
+    }
+    if (!nullToAbsent || level != null) {
+      map['level'] = Variable<String>(level);
+    }
+    if (!nullToAbsent || mechanic != null) {
+      map['mechanic'] = Variable<String>(mechanic);
+    }
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
+    if (!nullToAbsent || primaryMusclesJson != null) {
+      map['primary_muscles_json'] = Variable<String>(primaryMusclesJson);
+    }
+    if (!nullToAbsent || secondaryMusclesJson != null) {
+      map['secondary_muscles_json'] = Variable<String>(secondaryMusclesJson);
+    }
+    if (!nullToAbsent || instructionsJson != null) {
+      map['instructions_json'] = Variable<String>(instructionsJson);
+    }
+    if (!nullToAbsent || sourcePackId != null) {
+      map['source_pack_id'] = Variable<String>(sourcePackId);
+    }
+    if (!nullToAbsent || sourceExerciseId != null) {
+      map['source_exercise_id'] = Variable<String>(sourceExerciseId);
+    }
+    map['hidden'] = Variable<bool>(hidden);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -347,6 +686,37 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       defaultRestSeconds: defaultRestSeconds == null && nullToAbsent
           ? const Value.absent()
           : Value(defaultRestSeconds),
+      equipment: equipment == null && nullToAbsent
+          ? const Value.absent()
+          : Value(equipment),
+      force: force == null && nullToAbsent
+          ? const Value.absent()
+          : Value(force),
+      level: level == null && nullToAbsent
+          ? const Value.absent()
+          : Value(level),
+      mechanic: mechanic == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mechanic),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
+      primaryMusclesJson: primaryMusclesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(primaryMusclesJson),
+      secondaryMusclesJson: secondaryMusclesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(secondaryMusclesJson),
+      instructionsJson: instructionsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(instructionsJson),
+      sourcePackId: sourcePackId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourcePackId),
+      sourceExerciseId: sourceExerciseId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceExerciseId),
+      hidden: Value(hidden),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -368,6 +738,21 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       thumbnailBytes: serializer.fromJson<Uint8List?>(json['thumbnailBytes']),
       isDefault: serializer.fromJson<bool>(json['isDefault']),
       defaultRestSeconds: serializer.fromJson<int?>(json['defaultRestSeconds']),
+      equipment: serializer.fromJson<String?>(json['equipment']),
+      force: serializer.fromJson<String?>(json['force']),
+      level: serializer.fromJson<String?>(json['level']),
+      mechanic: serializer.fromJson<String?>(json['mechanic']),
+      category: serializer.fromJson<String?>(json['category']),
+      primaryMusclesJson: serializer.fromJson<String?>(
+        json['primaryMusclesJson'],
+      ),
+      secondaryMusclesJson: serializer.fromJson<String?>(
+        json['secondaryMusclesJson'],
+      ),
+      instructionsJson: serializer.fromJson<String?>(json['instructionsJson']),
+      sourcePackId: serializer.fromJson<String?>(json['sourcePackId']),
+      sourceExerciseId: serializer.fromJson<String?>(json['sourceExerciseId']),
+      hidden: serializer.fromJson<bool>(json['hidden']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -384,6 +769,17 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       'thumbnailBytes': serializer.toJson<Uint8List?>(thumbnailBytes),
       'isDefault': serializer.toJson<bool>(isDefault),
       'defaultRestSeconds': serializer.toJson<int?>(defaultRestSeconds),
+      'equipment': serializer.toJson<String?>(equipment),
+      'force': serializer.toJson<String?>(force),
+      'level': serializer.toJson<String?>(level),
+      'mechanic': serializer.toJson<String?>(mechanic),
+      'category': serializer.toJson<String?>(category),
+      'primaryMusclesJson': serializer.toJson<String?>(primaryMusclesJson),
+      'secondaryMusclesJson': serializer.toJson<String?>(secondaryMusclesJson),
+      'instructionsJson': serializer.toJson<String?>(instructionsJson),
+      'sourcePackId': serializer.toJson<String?>(sourcePackId),
+      'sourceExerciseId': serializer.toJson<String?>(sourceExerciseId),
+      'hidden': serializer.toJson<bool>(hidden),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -398,6 +794,17 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     Value<Uint8List?> thumbnailBytes = const Value.absent(),
     bool? isDefault,
     Value<int?> defaultRestSeconds = const Value.absent(),
+    Value<String?> equipment = const Value.absent(),
+    Value<String?> force = const Value.absent(),
+    Value<String?> level = const Value.absent(),
+    Value<String?> mechanic = const Value.absent(),
+    Value<String?> category = const Value.absent(),
+    Value<String?> primaryMusclesJson = const Value.absent(),
+    Value<String?> secondaryMusclesJson = const Value.absent(),
+    Value<String?> instructionsJson = const Value.absent(),
+    Value<String?> sourcePackId = const Value.absent(),
+    Value<String?> sourceExerciseId = const Value.absent(),
+    bool? hidden,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => ExerciseRow(
@@ -415,6 +822,25 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     defaultRestSeconds: defaultRestSeconds.present
         ? defaultRestSeconds.value
         : this.defaultRestSeconds,
+    equipment: equipment.present ? equipment.value : this.equipment,
+    force: force.present ? force.value : this.force,
+    level: level.present ? level.value : this.level,
+    mechanic: mechanic.present ? mechanic.value : this.mechanic,
+    category: category.present ? category.value : this.category,
+    primaryMusclesJson: primaryMusclesJson.present
+        ? primaryMusclesJson.value
+        : this.primaryMusclesJson,
+    secondaryMusclesJson: secondaryMusclesJson.present
+        ? secondaryMusclesJson.value
+        : this.secondaryMusclesJson,
+    instructionsJson: instructionsJson.present
+        ? instructionsJson.value
+        : this.instructionsJson,
+    sourcePackId: sourcePackId.present ? sourcePackId.value : this.sourcePackId,
+    sourceExerciseId: sourceExerciseId.present
+        ? sourceExerciseId.value
+        : this.sourceExerciseId,
+    hidden: hidden ?? this.hidden,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -436,6 +862,27 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       defaultRestSeconds: data.defaultRestSeconds.present
           ? data.defaultRestSeconds.value
           : this.defaultRestSeconds,
+      equipment: data.equipment.present ? data.equipment.value : this.equipment,
+      force: data.force.present ? data.force.value : this.force,
+      level: data.level.present ? data.level.value : this.level,
+      mechanic: data.mechanic.present ? data.mechanic.value : this.mechanic,
+      category: data.category.present ? data.category.value : this.category,
+      primaryMusclesJson: data.primaryMusclesJson.present
+          ? data.primaryMusclesJson.value
+          : this.primaryMusclesJson,
+      secondaryMusclesJson: data.secondaryMusclesJson.present
+          ? data.secondaryMusclesJson.value
+          : this.secondaryMusclesJson,
+      instructionsJson: data.instructionsJson.present
+          ? data.instructionsJson.value
+          : this.instructionsJson,
+      sourcePackId: data.sourcePackId.present
+          ? data.sourcePackId.value
+          : this.sourcePackId,
+      sourceExerciseId: data.sourceExerciseId.present
+          ? data.sourceExerciseId.value
+          : this.sourceExerciseId,
+      hidden: data.hidden.present ? data.hidden.value : this.hidden,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -452,6 +899,17 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
           ..write('thumbnailBytes: $thumbnailBytes, ')
           ..write('isDefault: $isDefault, ')
           ..write('defaultRestSeconds: $defaultRestSeconds, ')
+          ..write('equipment: $equipment, ')
+          ..write('force: $force, ')
+          ..write('level: $level, ')
+          ..write('mechanic: $mechanic, ')
+          ..write('category: $category, ')
+          ..write('primaryMusclesJson: $primaryMusclesJson, ')
+          ..write('secondaryMusclesJson: $secondaryMusclesJson, ')
+          ..write('instructionsJson: $instructionsJson, ')
+          ..write('sourcePackId: $sourcePackId, ')
+          ..write('sourceExerciseId: $sourceExerciseId, ')
+          ..write('hidden: $hidden, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -459,7 +917,7 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     name,
     type,
@@ -468,9 +926,20 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     $driftBlobEquality.hash(thumbnailBytes),
     isDefault,
     defaultRestSeconds,
+    equipment,
+    force,
+    level,
+    mechanic,
+    category,
+    primaryMusclesJson,
+    secondaryMusclesJson,
+    instructionsJson,
+    sourcePackId,
+    sourceExerciseId,
+    hidden,
     createdAt,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -486,6 +955,17 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
           ) &&
           other.isDefault == this.isDefault &&
           other.defaultRestSeconds == this.defaultRestSeconds &&
+          other.equipment == this.equipment &&
+          other.force == this.force &&
+          other.level == this.level &&
+          other.mechanic == this.mechanic &&
+          other.category == this.category &&
+          other.primaryMusclesJson == this.primaryMusclesJson &&
+          other.secondaryMusclesJson == this.secondaryMusclesJson &&
+          other.instructionsJson == this.instructionsJson &&
+          other.sourcePackId == this.sourcePackId &&
+          other.sourceExerciseId == this.sourceExerciseId &&
+          other.hidden == this.hidden &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -499,6 +979,17 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
   final Value<Uint8List?> thumbnailBytes;
   final Value<bool> isDefault;
   final Value<int?> defaultRestSeconds;
+  final Value<String?> equipment;
+  final Value<String?> force;
+  final Value<String?> level;
+  final Value<String?> mechanic;
+  final Value<String?> category;
+  final Value<String?> primaryMusclesJson;
+  final Value<String?> secondaryMusclesJson;
+  final Value<String?> instructionsJson;
+  final Value<String?> sourcePackId;
+  final Value<String?> sourceExerciseId;
+  final Value<bool> hidden;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -511,6 +1002,17 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     this.thumbnailBytes = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.defaultRestSeconds = const Value.absent(),
+    this.equipment = const Value.absent(),
+    this.force = const Value.absent(),
+    this.level = const Value.absent(),
+    this.mechanic = const Value.absent(),
+    this.category = const Value.absent(),
+    this.primaryMusclesJson = const Value.absent(),
+    this.secondaryMusclesJson = const Value.absent(),
+    this.instructionsJson = const Value.absent(),
+    this.sourcePackId = const Value.absent(),
+    this.sourceExerciseId = const Value.absent(),
+    this.hidden = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -524,6 +1026,17 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     this.thumbnailBytes = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.defaultRestSeconds = const Value.absent(),
+    this.equipment = const Value.absent(),
+    this.force = const Value.absent(),
+    this.level = const Value.absent(),
+    this.mechanic = const Value.absent(),
+    this.category = const Value.absent(),
+    this.primaryMusclesJson = const Value.absent(),
+    this.secondaryMusclesJson = const Value.absent(),
+    this.instructionsJson = const Value.absent(),
+    this.sourcePackId = const Value.absent(),
+    this.sourceExerciseId = const Value.absent(),
+    this.hidden = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -541,6 +1054,17 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     Expression<Uint8List>? thumbnailBytes,
     Expression<bool>? isDefault,
     Expression<int>? defaultRestSeconds,
+    Expression<String>? equipment,
+    Expression<String>? force,
+    Expression<String>? level,
+    Expression<String>? mechanic,
+    Expression<String>? category,
+    Expression<String>? primaryMusclesJson,
+    Expression<String>? secondaryMusclesJson,
+    Expression<String>? instructionsJson,
+    Expression<String>? sourcePackId,
+    Expression<String>? sourceExerciseId,
+    Expression<bool>? hidden,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -555,6 +1079,19 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
       if (isDefault != null) 'is_default': isDefault,
       if (defaultRestSeconds != null)
         'default_rest_seconds': defaultRestSeconds,
+      if (equipment != null) 'equipment': equipment,
+      if (force != null) 'force': force,
+      if (level != null) 'level': level,
+      if (mechanic != null) 'mechanic': mechanic,
+      if (category != null) 'category': category,
+      if (primaryMusclesJson != null)
+        'primary_muscles_json': primaryMusclesJson,
+      if (secondaryMusclesJson != null)
+        'secondary_muscles_json': secondaryMusclesJson,
+      if (instructionsJson != null) 'instructions_json': instructionsJson,
+      if (sourcePackId != null) 'source_pack_id': sourcePackId,
+      if (sourceExerciseId != null) 'source_exercise_id': sourceExerciseId,
+      if (hidden != null) 'hidden': hidden,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -570,6 +1107,17 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     Value<Uint8List?>? thumbnailBytes,
     Value<bool>? isDefault,
     Value<int?>? defaultRestSeconds,
+    Value<String?>? equipment,
+    Value<String?>? force,
+    Value<String?>? level,
+    Value<String?>? mechanic,
+    Value<String?>? category,
+    Value<String?>? primaryMusclesJson,
+    Value<String?>? secondaryMusclesJson,
+    Value<String?>? instructionsJson,
+    Value<String?>? sourcePackId,
+    Value<String?>? sourceExerciseId,
+    Value<bool>? hidden,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -583,6 +1131,17 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
       thumbnailBytes: thumbnailBytes ?? this.thumbnailBytes,
       isDefault: isDefault ?? this.isDefault,
       defaultRestSeconds: defaultRestSeconds ?? this.defaultRestSeconds,
+      equipment: equipment ?? this.equipment,
+      force: force ?? this.force,
+      level: level ?? this.level,
+      mechanic: mechanic ?? this.mechanic,
+      category: category ?? this.category,
+      primaryMusclesJson: primaryMusclesJson ?? this.primaryMusclesJson,
+      secondaryMusclesJson: secondaryMusclesJson ?? this.secondaryMusclesJson,
+      instructionsJson: instructionsJson ?? this.instructionsJson,
+      sourcePackId: sourcePackId ?? this.sourcePackId,
+      sourceExerciseId: sourceExerciseId ?? this.sourceExerciseId,
+      hidden: hidden ?? this.hidden,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -620,6 +1179,41 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     if (defaultRestSeconds.present) {
       map['default_rest_seconds'] = Variable<int>(defaultRestSeconds.value);
     }
+    if (equipment.present) {
+      map['equipment'] = Variable<String>(equipment.value);
+    }
+    if (force.present) {
+      map['force'] = Variable<String>(force.value);
+    }
+    if (level.present) {
+      map['level'] = Variable<String>(level.value);
+    }
+    if (mechanic.present) {
+      map['mechanic'] = Variable<String>(mechanic.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (primaryMusclesJson.present) {
+      map['primary_muscles_json'] = Variable<String>(primaryMusclesJson.value);
+    }
+    if (secondaryMusclesJson.present) {
+      map['secondary_muscles_json'] = Variable<String>(
+        secondaryMusclesJson.value,
+      );
+    }
+    if (instructionsJson.present) {
+      map['instructions_json'] = Variable<String>(instructionsJson.value);
+    }
+    if (sourcePackId.present) {
+      map['source_pack_id'] = Variable<String>(sourcePackId.value);
+    }
+    if (sourceExerciseId.present) {
+      map['source_exercise_id'] = Variable<String>(sourceExerciseId.value);
+    }
+    if (hidden.present) {
+      map['hidden'] = Variable<bool>(hidden.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -643,6 +1237,17 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
           ..write('thumbnailBytes: $thumbnailBytes, ')
           ..write('isDefault: $isDefault, ')
           ..write('defaultRestSeconds: $defaultRestSeconds, ')
+          ..write('equipment: $equipment, ')
+          ..write('force: $force, ')
+          ..write('level: $level, ')
+          ..write('mechanic: $mechanic, ')
+          ..write('category: $category, ')
+          ..write('primaryMusclesJson: $primaryMusclesJson, ')
+          ..write('secondaryMusclesJson: $secondaryMusclesJson, ')
+          ..write('instructionsJson: $instructionsJson, ')
+          ..write('sourcePackId: $sourcePackId, ')
+          ..write('sourceExerciseId: $sourceExerciseId, ')
+          ..write('hidden: $hidden, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -4553,6 +5158,683 @@ class WeightEntriesCompanion extends UpdateCompanion<WeightEntryRow> {
   }
 }
 
+class $ExercisePacksTable extends ExercisePacks
+    with TableInfo<$ExercisePacksTable, ExercisePackRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ExercisePacksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _creditMeta = const VerificationMeta('credit');
+  @override
+  late final GeneratedColumn<String> credit = GeneratedColumn<String>(
+    'credit',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _licenseMeta = const VerificationMeta(
+    'license',
+  );
+  @override
+  late final GeneratedColumn<String> license = GeneratedColumn<String>(
+    'license',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _assetPathMeta = const VerificationMeta(
+    'assetPath',
+  );
+  @override
+  late final GeneratedColumn<String> assetPath = GeneratedColumn<String>(
+    'asset_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _schemaVersionMeta = const VerificationMeta(
+    'schemaVersion',
+  );
+  @override
+  late final GeneratedColumn<int> schemaVersion = GeneratedColumn<int>(
+    'schema_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _exerciseCountMeta = const VerificationMeta(
+    'exerciseCount',
+  );
+  @override
+  late final GeneratedColumn<int> exerciseCount = GeneratedColumn<int>(
+    'exercise_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _installedAtMeta = const VerificationMeta(
+    'installedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> installedAt = GeneratedColumn<DateTime>(
+    'installed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    description,
+    credit,
+    license,
+    assetPath,
+    isActive,
+    schemaVersion,
+    exerciseCount,
+    installedAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'exercise_packs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ExercisePackRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('credit')) {
+      context.handle(
+        _creditMeta,
+        credit.isAcceptableOrUnknown(data['credit']!, _creditMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_creditMeta);
+    }
+    if (data.containsKey('license')) {
+      context.handle(
+        _licenseMeta,
+        license.isAcceptableOrUnknown(data['license']!, _licenseMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_licenseMeta);
+    }
+    if (data.containsKey('asset_path')) {
+      context.handle(
+        _assetPathMeta,
+        assetPath.isAcceptableOrUnknown(data['asset_path']!, _assetPathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_assetPathMeta);
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('schema_version')) {
+      context.handle(
+        _schemaVersionMeta,
+        schemaVersion.isAcceptableOrUnknown(
+          data['schema_version']!,
+          _schemaVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_schemaVersionMeta);
+    }
+    if (data.containsKey('exercise_count')) {
+      context.handle(
+        _exerciseCountMeta,
+        exerciseCount.isAcceptableOrUnknown(
+          data['exercise_count']!,
+          _exerciseCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('installed_at')) {
+      context.handle(
+        _installedAtMeta,
+        installedAt.isAcceptableOrUnknown(
+          data['installed_at']!,
+          _installedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_installedAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ExercisePackRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ExercisePackRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      credit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}credit'],
+      )!,
+      license: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}license'],
+      )!,
+      assetPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asset_path'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      schemaVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}schema_version'],
+      )!,
+      exerciseCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}exercise_count'],
+      )!,
+      installedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}installed_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ExercisePacksTable createAlias(String alias) {
+    return $ExercisePacksTable(attachedDatabase, alias);
+  }
+}
+
+class ExercisePackRow extends DataClass implements Insertable<ExercisePackRow> {
+  final String id;
+  final String name;
+  final String description;
+  final String credit;
+  final String license;
+  final String assetPath;
+
+  /// On/off toggle. Inactive packs hide their exercises from the library
+  /// list and the add-exercise picker. Past workout history is unaffected.
+  final bool isActive;
+
+  /// Pack file's `schemaVersion` at import time. Lets future versions
+  /// detect upgrade scenarios without scanning every row.
+  final int schemaVersion;
+  final int exerciseCount;
+  final DateTime installedAt;
+  final DateTime updatedAt;
+  const ExercisePackRow({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.credit,
+    required this.license,
+    required this.assetPath,
+    required this.isActive,
+    required this.schemaVersion,
+    required this.exerciseCount,
+    required this.installedAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['description'] = Variable<String>(description);
+    map['credit'] = Variable<String>(credit);
+    map['license'] = Variable<String>(license);
+    map['asset_path'] = Variable<String>(assetPath);
+    map['is_active'] = Variable<bool>(isActive);
+    map['schema_version'] = Variable<int>(schemaVersion);
+    map['exercise_count'] = Variable<int>(exerciseCount);
+    map['installed_at'] = Variable<DateTime>(installedAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ExercisePacksCompanion toCompanion(bool nullToAbsent) {
+    return ExercisePacksCompanion(
+      id: Value(id),
+      name: Value(name),
+      description: Value(description),
+      credit: Value(credit),
+      license: Value(license),
+      assetPath: Value(assetPath),
+      isActive: Value(isActive),
+      schemaVersion: Value(schemaVersion),
+      exerciseCount: Value(exerciseCount),
+      installedAt: Value(installedAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ExercisePackRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ExercisePackRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String>(json['description']),
+      credit: serializer.fromJson<String>(json['credit']),
+      license: serializer.fromJson<String>(json['license']),
+      assetPath: serializer.fromJson<String>(json['assetPath']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      schemaVersion: serializer.fromJson<int>(json['schemaVersion']),
+      exerciseCount: serializer.fromJson<int>(json['exerciseCount']),
+      installedAt: serializer.fromJson<DateTime>(json['installedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String>(description),
+      'credit': serializer.toJson<String>(credit),
+      'license': serializer.toJson<String>(license),
+      'assetPath': serializer.toJson<String>(assetPath),
+      'isActive': serializer.toJson<bool>(isActive),
+      'schemaVersion': serializer.toJson<int>(schemaVersion),
+      'exerciseCount': serializer.toJson<int>(exerciseCount),
+      'installedAt': serializer.toJson<DateTime>(installedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ExercisePackRow copyWith({
+    String? id,
+    String? name,
+    String? description,
+    String? credit,
+    String? license,
+    String? assetPath,
+    bool? isActive,
+    int? schemaVersion,
+    int? exerciseCount,
+    DateTime? installedAt,
+    DateTime? updatedAt,
+  }) => ExercisePackRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    credit: credit ?? this.credit,
+    license: license ?? this.license,
+    assetPath: assetPath ?? this.assetPath,
+    isActive: isActive ?? this.isActive,
+    schemaVersion: schemaVersion ?? this.schemaVersion,
+    exerciseCount: exerciseCount ?? this.exerciseCount,
+    installedAt: installedAt ?? this.installedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ExercisePackRow copyWithCompanion(ExercisePacksCompanion data) {
+    return ExercisePackRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      credit: data.credit.present ? data.credit.value : this.credit,
+      license: data.license.present ? data.license.value : this.license,
+      assetPath: data.assetPath.present ? data.assetPath.value : this.assetPath,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      schemaVersion: data.schemaVersion.present
+          ? data.schemaVersion.value
+          : this.schemaVersion,
+      exerciseCount: data.exerciseCount.present
+          ? data.exerciseCount.value
+          : this.exerciseCount,
+      installedAt: data.installedAt.present
+          ? data.installedAt.value
+          : this.installedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExercisePackRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('credit: $credit, ')
+          ..write('license: $license, ')
+          ..write('assetPath: $assetPath, ')
+          ..write('isActive: $isActive, ')
+          ..write('schemaVersion: $schemaVersion, ')
+          ..write('exerciseCount: $exerciseCount, ')
+          ..write('installedAt: $installedAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    description,
+    credit,
+    license,
+    assetPath,
+    isActive,
+    schemaVersion,
+    exerciseCount,
+    installedAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ExercisePackRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.credit == this.credit &&
+          other.license == this.license &&
+          other.assetPath == this.assetPath &&
+          other.isActive == this.isActive &&
+          other.schemaVersion == this.schemaVersion &&
+          other.exerciseCount == this.exerciseCount &&
+          other.installedAt == this.installedAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ExercisePacksCompanion extends UpdateCompanion<ExercisePackRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> description;
+  final Value<String> credit;
+  final Value<String> license;
+  final Value<String> assetPath;
+  final Value<bool> isActive;
+  final Value<int> schemaVersion;
+  final Value<int> exerciseCount;
+  final Value<DateTime> installedAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const ExercisePacksCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.credit = const Value.absent(),
+    this.license = const Value.absent(),
+    this.assetPath = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.schemaVersion = const Value.absent(),
+    this.exerciseCount = const Value.absent(),
+    this.installedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ExercisePacksCompanion.insert({
+    required String id,
+    required String name,
+    required String description,
+    required String credit,
+    required String license,
+    required String assetPath,
+    this.isActive = const Value.absent(),
+    required int schemaVersion,
+    this.exerciseCount = const Value.absent(),
+    required DateTime installedAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       description = Value(description),
+       credit = Value(credit),
+       license = Value(license),
+       assetPath = Value(assetPath),
+       schemaVersion = Value(schemaVersion),
+       installedAt = Value(installedAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<ExercisePackRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<String>? credit,
+    Expression<String>? license,
+    Expression<String>? assetPath,
+    Expression<bool>? isActive,
+    Expression<int>? schemaVersion,
+    Expression<int>? exerciseCount,
+    Expression<DateTime>? installedAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (credit != null) 'credit': credit,
+      if (license != null) 'license': license,
+      if (assetPath != null) 'asset_path': assetPath,
+      if (isActive != null) 'is_active': isActive,
+      if (schemaVersion != null) 'schema_version': schemaVersion,
+      if (exerciseCount != null) 'exercise_count': exerciseCount,
+      if (installedAt != null) 'installed_at': installedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ExercisePacksCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? description,
+    Value<String>? credit,
+    Value<String>? license,
+    Value<String>? assetPath,
+    Value<bool>? isActive,
+    Value<int>? schemaVersion,
+    Value<int>? exerciseCount,
+    Value<DateTime>? installedAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ExercisePacksCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      credit: credit ?? this.credit,
+      license: license ?? this.license,
+      assetPath: assetPath ?? this.assetPath,
+      isActive: isActive ?? this.isActive,
+      schemaVersion: schemaVersion ?? this.schemaVersion,
+      exerciseCount: exerciseCount ?? this.exerciseCount,
+      installedAt: installedAt ?? this.installedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (credit.present) {
+      map['credit'] = Variable<String>(credit.value);
+    }
+    if (license.present) {
+      map['license'] = Variable<String>(license.value);
+    }
+    if (assetPath.present) {
+      map['asset_path'] = Variable<String>(assetPath.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (schemaVersion.present) {
+      map['schema_version'] = Variable<int>(schemaVersion.value);
+    }
+    if (exerciseCount.present) {
+      map['exercise_count'] = Variable<int>(exerciseCount.value);
+    }
+    if (installedAt.present) {
+      map['installed_at'] = Variable<DateTime>(installedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExercisePacksCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('credit: $credit, ')
+          ..write('license: $license, ')
+          ..write('assetPath: $assetPath, ')
+          ..write('isActive: $isActive, ')
+          ..write('schemaVersion: $schemaVersion, ')
+          ..write('exerciseCount: $exerciseCount, ')
+          ..write('installedAt: $installedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4570,6 +5852,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $UserProfilesTable userProfiles = $UserProfilesTable(this);
   late final $WeightEntriesTable weightEntries = $WeightEntriesTable(this);
+  late final $ExercisePacksTable exercisePacks = $ExercisePacksTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4584,6 +5867,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     appSettings,
     userProfiles,
     weightEntries,
+    exercisePacks,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4628,6 +5912,17 @@ typedef $$ExercisesTableCreateCompanionBuilder =
       Value<Uint8List?> thumbnailBytes,
       Value<bool> isDefault,
       Value<int?> defaultRestSeconds,
+      Value<String?> equipment,
+      Value<String?> force,
+      Value<String?> level,
+      Value<String?> mechanic,
+      Value<String?> category,
+      Value<String?> primaryMusclesJson,
+      Value<String?> secondaryMusclesJson,
+      Value<String?> instructionsJson,
+      Value<String?> sourcePackId,
+      Value<String?> sourceExerciseId,
+      Value<bool> hidden,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -4642,6 +5937,17 @@ typedef $$ExercisesTableUpdateCompanionBuilder =
       Value<Uint8List?> thumbnailBytes,
       Value<bool> isDefault,
       Value<int?> defaultRestSeconds,
+      Value<String?> equipment,
+      Value<String?> force,
+      Value<String?> level,
+      Value<String?> mechanic,
+      Value<String?> category,
+      Value<String?> primaryMusclesJson,
+      Value<String?> secondaryMusclesJson,
+      Value<String?> instructionsJson,
+      Value<String?> sourcePackId,
+      Value<String?> sourceExerciseId,
+      Value<bool> hidden,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -4751,6 +6057,61 @@ class $$ExercisesTableFilterComposer
 
   ColumnFilters<int> get defaultRestSeconds => $composableBuilder(
     column: $table.defaultRestSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get equipment => $composableBuilder(
+    column: $table.equipment,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get force => $composableBuilder(
+    column: $table.force,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mechanic => $composableBuilder(
+    column: $table.mechanic,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get primaryMusclesJson => $composableBuilder(
+    column: $table.primaryMusclesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get secondaryMusclesJson => $composableBuilder(
+    column: $table.secondaryMusclesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get instructionsJson => $composableBuilder(
+    column: $table.instructionsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourcePackId => $composableBuilder(
+    column: $table.sourcePackId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceExerciseId => $composableBuilder(
+    column: $table.sourceExerciseId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hidden => $composableBuilder(
+    column: $table.hidden,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4864,6 +6225,61 @@ class $$ExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get equipment => $composableBuilder(
+    column: $table.equipment,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get force => $composableBuilder(
+    column: $table.force,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mechanic => $composableBuilder(
+    column: $table.mechanic,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get primaryMusclesJson => $composableBuilder(
+    column: $table.primaryMusclesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get secondaryMusclesJson => $composableBuilder(
+    column: $table.secondaryMusclesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get instructionsJson => $composableBuilder(
+    column: $table.instructionsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourcePackId => $composableBuilder(
+    column: $table.sourcePackId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceExerciseId => $composableBuilder(
+    column: $table.sourceExerciseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get hidden => $composableBuilder(
+    column: $table.hidden,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4916,6 +6332,49 @@ class $$ExercisesTableAnnotationComposer
     column: $table.defaultRestSeconds,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get equipment =>
+      $composableBuilder(column: $table.equipment, builder: (column) => column);
+
+  GeneratedColumn<String> get force =>
+      $composableBuilder(column: $table.force, builder: (column) => column);
+
+  GeneratedColumn<String> get level =>
+      $composableBuilder(column: $table.level, builder: (column) => column);
+
+  GeneratedColumn<String> get mechanic =>
+      $composableBuilder(column: $table.mechanic, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<String> get primaryMusclesJson => $composableBuilder(
+    column: $table.primaryMusclesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get secondaryMusclesJson => $composableBuilder(
+    column: $table.secondaryMusclesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get instructionsJson => $composableBuilder(
+    column: $table.instructionsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourcePackId => $composableBuilder(
+    column: $table.sourcePackId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceExerciseId => $composableBuilder(
+    column: $table.sourceExerciseId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get hidden =>
+      $composableBuilder(column: $table.hidden, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -5014,6 +6473,17 @@ class $$ExercisesTableTableManager
                 Value<Uint8List?> thumbnailBytes = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 Value<int?> defaultRestSeconds = const Value.absent(),
+                Value<String?> equipment = const Value.absent(),
+                Value<String?> force = const Value.absent(),
+                Value<String?> level = const Value.absent(),
+                Value<String?> mechanic = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<String?> primaryMusclesJson = const Value.absent(),
+                Value<String?> secondaryMusclesJson = const Value.absent(),
+                Value<String?> instructionsJson = const Value.absent(),
+                Value<String?> sourcePackId = const Value.absent(),
+                Value<String?> sourceExerciseId = const Value.absent(),
+                Value<bool> hidden = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -5026,6 +6496,17 @@ class $$ExercisesTableTableManager
                 thumbnailBytes: thumbnailBytes,
                 isDefault: isDefault,
                 defaultRestSeconds: defaultRestSeconds,
+                equipment: equipment,
+                force: force,
+                level: level,
+                mechanic: mechanic,
+                category: category,
+                primaryMusclesJson: primaryMusclesJson,
+                secondaryMusclesJson: secondaryMusclesJson,
+                instructionsJson: instructionsJson,
+                sourcePackId: sourcePackId,
+                sourceExerciseId: sourceExerciseId,
+                hidden: hidden,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -5040,6 +6521,17 @@ class $$ExercisesTableTableManager
                 Value<Uint8List?> thumbnailBytes = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 Value<int?> defaultRestSeconds = const Value.absent(),
+                Value<String?> equipment = const Value.absent(),
+                Value<String?> force = const Value.absent(),
+                Value<String?> level = const Value.absent(),
+                Value<String?> mechanic = const Value.absent(),
+                Value<String?> category = const Value.absent(),
+                Value<String?> primaryMusclesJson = const Value.absent(),
+                Value<String?> secondaryMusclesJson = const Value.absent(),
+                Value<String?> instructionsJson = const Value.absent(),
+                Value<String?> sourcePackId = const Value.absent(),
+                Value<String?> sourceExerciseId = const Value.absent(),
+                Value<bool> hidden = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -5052,6 +6544,17 @@ class $$ExercisesTableTableManager
                 thumbnailBytes: thumbnailBytes,
                 isDefault: isDefault,
                 defaultRestSeconds: defaultRestSeconds,
+                equipment: equipment,
+                force: force,
+                level: level,
+                mechanic: mechanic,
+                category: category,
+                primaryMusclesJson: primaryMusclesJson,
+                secondaryMusclesJson: secondaryMusclesJson,
+                instructionsJson: instructionsJson,
+                sourcePackId: sourcePackId,
+                sourceExerciseId: sourceExerciseId,
+                hidden: hidden,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -8200,6 +9703,328 @@ typedef $$WeightEntriesTableProcessedTableManager =
       WeightEntryRow,
       PrefetchHooks Function()
     >;
+typedef $$ExercisePacksTableCreateCompanionBuilder =
+    ExercisePacksCompanion Function({
+      required String id,
+      required String name,
+      required String description,
+      required String credit,
+      required String license,
+      required String assetPath,
+      Value<bool> isActive,
+      required int schemaVersion,
+      Value<int> exerciseCount,
+      required DateTime installedAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ExercisePacksTableUpdateCompanionBuilder =
+    ExercisePacksCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> description,
+      Value<String> credit,
+      Value<String> license,
+      Value<String> assetPath,
+      Value<bool> isActive,
+      Value<int> schemaVersion,
+      Value<int> exerciseCount,
+      Value<DateTime> installedAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ExercisePacksTableFilterComposer
+    extends Composer<_$AppDatabase, $ExercisePacksTable> {
+  $$ExercisePacksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get credit => $composableBuilder(
+    column: $table.credit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get license => $composableBuilder(
+    column: $table.license,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get assetPath => $composableBuilder(
+    column: $table.assetPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get schemaVersion => $composableBuilder(
+    column: $table.schemaVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get exerciseCount => $composableBuilder(
+    column: $table.exerciseCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get installedAt => $composableBuilder(
+    column: $table.installedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ExercisePacksTableOrderingComposer
+    extends Composer<_$AppDatabase, $ExercisePacksTable> {
+  $$ExercisePacksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get credit => $composableBuilder(
+    column: $table.credit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get license => $composableBuilder(
+    column: $table.license,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get assetPath => $composableBuilder(
+    column: $table.assetPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get schemaVersion => $composableBuilder(
+    column: $table.schemaVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get exerciseCount => $composableBuilder(
+    column: $table.exerciseCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get installedAt => $composableBuilder(
+    column: $table.installedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ExercisePacksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ExercisePacksTable> {
+  $$ExercisePacksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get credit =>
+      $composableBuilder(column: $table.credit, builder: (column) => column);
+
+  GeneratedColumn<String> get license =>
+      $composableBuilder(column: $table.license, builder: (column) => column);
+
+  GeneratedColumn<String> get assetPath =>
+      $composableBuilder(column: $table.assetPath, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<int> get schemaVersion => $composableBuilder(
+    column: $table.schemaVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get exerciseCount => $composableBuilder(
+    column: $table.exerciseCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get installedAt => $composableBuilder(
+    column: $table.installedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ExercisePacksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ExercisePacksTable,
+          ExercisePackRow,
+          $$ExercisePacksTableFilterComposer,
+          $$ExercisePacksTableOrderingComposer,
+          $$ExercisePacksTableAnnotationComposer,
+          $$ExercisePacksTableCreateCompanionBuilder,
+          $$ExercisePacksTableUpdateCompanionBuilder,
+          (
+            ExercisePackRow,
+            BaseReferences<_$AppDatabase, $ExercisePacksTable, ExercisePackRow>,
+          ),
+          ExercisePackRow,
+          PrefetchHooks Function()
+        > {
+  $$ExercisePacksTableTableManager(_$AppDatabase db, $ExercisePacksTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ExercisePacksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ExercisePacksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ExercisePacksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<String> credit = const Value.absent(),
+                Value<String> license = const Value.absent(),
+                Value<String> assetPath = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> schemaVersion = const Value.absent(),
+                Value<int> exerciseCount = const Value.absent(),
+                Value<DateTime> installedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ExercisePacksCompanion(
+                id: id,
+                name: name,
+                description: description,
+                credit: credit,
+                license: license,
+                assetPath: assetPath,
+                isActive: isActive,
+                schemaVersion: schemaVersion,
+                exerciseCount: exerciseCount,
+                installedAt: installedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String description,
+                required String credit,
+                required String license,
+                required String assetPath,
+                Value<bool> isActive = const Value.absent(),
+                required int schemaVersion,
+                Value<int> exerciseCount = const Value.absent(),
+                required DateTime installedAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ExercisePacksCompanion.insert(
+                id: id,
+                name: name,
+                description: description,
+                credit: credit,
+                license: license,
+                assetPath: assetPath,
+                isActive: isActive,
+                schemaVersion: schemaVersion,
+                exerciseCount: exerciseCount,
+                installedAt: installedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ExercisePacksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ExercisePacksTable,
+      ExercisePackRow,
+      $$ExercisePacksTableFilterComposer,
+      $$ExercisePacksTableOrderingComposer,
+      $$ExercisePacksTableAnnotationComposer,
+      $$ExercisePacksTableCreateCompanionBuilder,
+      $$ExercisePacksTableUpdateCompanionBuilder,
+      (
+        ExercisePackRow,
+        BaseReferences<_$AppDatabase, $ExercisePacksTable, ExercisePackRow>,
+      ),
+      ExercisePackRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8221,4 +10046,6 @@ class $AppDatabaseManager {
       $$UserProfilesTableTableManager(_db, _db.userProfiles);
   $$WeightEntriesTableTableManager get weightEntries =>
       $$WeightEntriesTableTableManager(_db, _db.weightEntries);
+  $$ExercisePacksTableTableManager get exercisePacks =>
+      $$ExercisePacksTableTableManager(_db, _db.exercisePacks);
 }

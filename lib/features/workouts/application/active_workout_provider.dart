@@ -4,7 +4,6 @@ import '../../../data/database_bootstrap.dart';
 import '../../../data/models/exercise.dart';
 import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_set.dart';
-import '../../../data/repositories/exercise_repository.dart';
 import '../../../data/repositories/workout_repository.dart';
 import '../../exercises/application/exercise_list_provider.dart';
 

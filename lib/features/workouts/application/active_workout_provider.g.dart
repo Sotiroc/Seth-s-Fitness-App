@@ -49,17 +49,31 @@ final class ActiveWorkoutDetailProvider
 String _$activeWorkoutDetailHash() =>
     r'2502f42472530d72375ed784aac1830655ee76cc';
 
+/// Exercises offered in the add-exercise picker. Tracks the same active-
+/// pack filter used by the library list so toggling a pack off in
+/// settings instantly removes those exercises from the picker too.
+/// User-created exercises always appear regardless of pack toggles.
+
 @ProviderFor(workoutExerciseOptions)
 const workoutExerciseOptionsProvider = WorkoutExerciseOptionsProvider._();
+
+/// Exercises offered in the add-exercise picker. Tracks the same active-
+/// pack filter used by the library list so toggling a pack off in
+/// settings instantly removes those exercises from the picker too.
+/// User-created exercises always appear regardless of pack toggles.
 
 final class WorkoutExerciseOptionsProvider
     extends
         $FunctionalProvider<
           AsyncValue<List<Exercise>>,
-          List<Exercise>,
-          FutureOr<List<Exercise>>
+          AsyncValue<List<Exercise>>,
+          AsyncValue<List<Exercise>>
         >
-    with $FutureModifier<List<Exercise>>, $FutureProvider<List<Exercise>> {
+    with $Provider<AsyncValue<List<Exercise>>> {
+  /// Exercises offered in the add-exercise picker. Tracks the same active-
+  /// pack filter used by the library list so toggling a pack off in
+  /// settings instantly removes those exercises from the picker too.
+  /// User-created exercises always appear regardless of pack toggles.
   const WorkoutExerciseOptionsProvider._()
     : super(
         from: null,
@@ -76,18 +90,26 @@ final class WorkoutExerciseOptionsProvider
 
   @$internal
   @override
-  $FutureProviderElement<List<Exercise>> $createElement(
+  $ProviderElement<AsyncValue<List<Exercise>>> $createElement(
     $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
+  ) => $ProviderElement(pointer);
 
   @override
-  FutureOr<List<Exercise>> create(Ref ref) {
+  AsyncValue<List<Exercise>> create(Ref ref) {
     return workoutExerciseOptions(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<List<Exercise>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<List<Exercise>>>(value),
+    );
   }
 }
 
 String _$workoutExerciseOptionsHash() =>
-    r'62671c3ca16e554a2e2f949117bca93c85c4aaf2';
+    r'd7d4a8660ab1619eebb5e7150f72e7e31eee8810';
 
 /// Stable identity of the active workout: workout id plus an ordered list of
 /// exercise ids. Recomputes whenever [activeWorkoutDetailProvider] emits, but

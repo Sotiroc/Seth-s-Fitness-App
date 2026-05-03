@@ -27,6 +27,11 @@ void main() {
       overrides: [
         appDatabaseProvider.overrideWith((ref) => database),
         uuidProvider.overrideWith((ref) => uuid),
+        // The real bootstrap loads bundled pack assets via rootBundle,
+        // which isn't available in unit tests. Stub it out and seed the
+        // legacy starter set directly — this test is about the filter
+        // logic over a known catalogue, not pack import.
+        databaseBootstrapProvider.overrideWith((ref) => Future<void>.value()),
       ],
     );
     addTearDown(container.dispose);
@@ -37,6 +42,8 @@ void main() {
   });
 
   test('filtered exercises react to query and type filters', () async {
+    await container.read(exerciseRepositoryProvider).seedDefaultsIfNeeded();
+
     final Completer<void> seededListReady = Completer<void>();
     final ProviderSubscription<AsyncValue<List<Exercise>>> subscription =
         container.listen(exerciseListProvider, (previous, next) {
@@ -46,7 +53,6 @@ void main() {
         }, fireImmediately: true);
     addTearDown(subscription.close);
 
-    await container.read(databaseBootstrapProvider.future);
     await seededListReady.future.timeout(const Duration(seconds: 5));
 
     final AsyncValue<List<Exercise>> initial = container.read(
