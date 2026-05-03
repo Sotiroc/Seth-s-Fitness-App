@@ -15,6 +15,17 @@ class Exercise {
     this.thumbnailPath,
     this.thumbnailBytes,
     this.defaultRestSeconds,
+    this.equipment,
+    this.force,
+    this.level,
+    this.mechanic,
+    this.category,
+    this.primaryMuscles = const <String>[],
+    this.secondaryMuscles = const <String>[],
+    this.instructions = const <String>[],
+    this.sourcePackId,
+    this.sourceExerciseId,
+    this.hidden = false,
   });
 
   final String id;
@@ -31,6 +42,48 @@ class Exercise {
   /// the type-based default" (see [effectiveRestSeconds]). 0 explicitly
   /// disables the rest timer for this exercise.
   final int? defaultRestSeconds;
+
+  /// Equipment label as supplied by the source library (e.g. 'barbell',
+  /// 'body only'). Null for user-created exercises.
+  final String? equipment;
+
+  /// 'push' | 'pull' | 'static'.
+  final String? force;
+
+  /// 'beginner' | 'intermediate' | 'expert'.
+  final String? level;
+
+  /// 'compound' | 'isolation'.
+  final String? mechanic;
+
+  /// Source category — matches the pack id for library entries.
+  final String? category;
+
+  /// Source library's full primary muscle list. Always non-null; may be
+  /// empty for user-created exercises.
+  final List<String> primaryMuscles;
+
+  /// Source library's secondary muscle list. Always non-null.
+  final List<String> secondaryMuscles;
+
+  /// Multi-step form instructions from the source library. Empty for
+  /// user-created exercises.
+  final List<String> instructions;
+
+  /// Pack id this exercise was imported from. Null means user-created or
+  /// legacy starter.
+  final String? sourcePackId;
+
+  /// Stable id within the source pack (e.g. 'Barbell_Bench_Press_-_Medium_Grip').
+  final String? sourceExerciseId;
+
+  /// Hidden from pickers and the main library list. Hidden exercises
+  /// still resolve in workout history and individual lookups so past
+  /// references keep working.
+  final bool hidden;
+
+  /// True when this exercise originated from a bundled library pack.
+  bool get isLibraryExercise => sourcePackId != null;
 
   /// Effective rest-timer length using only the per-exercise override
   /// and per-type fallbacks. Provided for places that don't have a user
@@ -68,6 +121,17 @@ class Exercise {
     DateTime? createdAt,
     DateTime? updatedAt,
     int? defaultRestSeconds,
+    String? equipment,
+    String? force,
+    String? level,
+    String? mechanic,
+    String? category,
+    List<String>? primaryMuscles,
+    List<String>? secondaryMuscles,
+    List<String>? instructions,
+    String? sourcePackId,
+    String? sourceExerciseId,
+    bool? hidden,
     bool clearThumbnailPath = false,
     bool clearThumbnailBytes = false,
     bool clearDefaultRestSeconds = false,
@@ -89,6 +153,17 @@ class Exercise {
       defaultRestSeconds: clearDefaultRestSeconds
           ? null
           : defaultRestSeconds ?? this.defaultRestSeconds,
+      equipment: equipment ?? this.equipment,
+      force: force ?? this.force,
+      level: level ?? this.level,
+      mechanic: mechanic ?? this.mechanic,
+      category: category ?? this.category,
+      primaryMuscles: primaryMuscles ?? this.primaryMuscles,
+      secondaryMuscles: secondaryMuscles ?? this.secondaryMuscles,
+      instructions: instructions ?? this.instructions,
+      sourcePackId: sourcePackId ?? this.sourcePackId,
+      sourceExerciseId: sourceExerciseId ?? this.sourceExerciseId,
+      hidden: hidden ?? this.hidden,
     );
   }
 }

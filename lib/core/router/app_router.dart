@@ -12,6 +12,7 @@ import '../../features/profile/presentation/profile_form_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/progression/presentation/pr_list_screen.dart';
 import '../../features/progression/presentation/progression_screen.dart';
+import '../../features/settings/presentation/exercise_library_settings_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/settings/presentation/timer_settings_screen.dart';
 import '../../features/templates/presentation/template_form_screen.dart';
@@ -84,6 +85,10 @@ GoRouter appRouter(Ref ref) {
           GoRoute(
             path: 'timer',
             builder: (context, state) => const TimerSettingsScreen(),
+          ),
+          GoRoute(
+            path: 'library',
+            builder: (context, state) => const ExerciseLibrarySettingsScreen(),
           ),
         ],
       ),

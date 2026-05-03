@@ -1,0 +1,913 @@
+{
+  "schemaVersion": 1,
+  "packId": "powerlifting",
+  "name": "Powerlifting",
+  "description": "Squat, bench, and deadlift variations with accessory lifts.",
+  "credit": "Free Exercise DB by yuhonas - https://github.com/yuhonas/free-exercise-db",
+  "license": "Unlicense (public domain)",
+  "exerciseCount": 38,
+  "exercises": [
+    {
+      "sourceId": "Band_Good_Morning",
+      "name": "Band Good Morning",
+      "force": "pull",
+      "level": "beginner",
+      "mechanic": "compound",
+      "equipment": "bands",
+      "primaryMuscles": [
+        "hamstrings"
+      ],
+      "secondaryMuscles": [
+        "glutes",
+        "lower back"
+      ],
+      "instructions": [
+        "Using a 41 inch band, stand on one end, spreading your feet a small amount. Bend at the hips to loop the end of the band behind your neck. This will be your starting position.",
+        "Keeping your legs straight, extend through the hips to come to a near vertical position.",
+        "Ensure that you do not round your back as you go down back to the starting position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Band_Good_Morning_Pull_Through",
+      "name": "Band Good Morning (Pull Through)",
+      "force": "pull",
+      "level": "beginner",
+      "mechanic": "compound",
+      "equipment": "bands",
+      "primaryMuscles": [
+        "hamstrings"
+      ],
+      "secondaryMuscles": [
+        "glutes",
+        "lower back"
+      ],
+      "instructions": [
+        "Loop the band around a post. Standing a little ways away, loop the opposite end around the neck. Your hands can help hold the band in position.",
+        "Begin by bending at the hips, getting your butt back as far as possible. Keep your back flat and bend forward to about 90 degrees. Your knees should be only slightly bent.",
+        "Return to the starting position be driving through with the hips to come back to a standing position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Barbell_Glute_Bridge",
+      "name": "Barbell Glute Bridge",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "glutes"
+      ],
+      "secondaryMuscles": [
+        "calves",
+        "hamstrings"
+      ],
+      "instructions": [
+        "Begin seated on the ground with a loaded barbell over your legs. Using a fat bar or having a pad on the bar can greatly reduce the discomfort caused by this exercise. Roll the bar so that it is directly above your hips, and lay down flat on the floor.",
+        "Begin the movement by driving through with your heels, extending your hips vertically through the bar. Your weight should be supported by your upper back and the heels of your feet.",
+        "Extend as far as possible, then reverse the motion to return to the starting position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Barbell_Hip_Thrust",
+      "name": "Barbell Hip Thrust",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "glutes"
+      ],
+      "secondaryMuscles": [
+        "calves",
+        "hamstrings"
+      ],
+      "instructions": [
+        "Begin seated on the ground with a bench directly behind you. Have a loaded barbell over your legs. Using a fat bar or having a pad on the bar can greatly reduce the discomfort caused by this exercise.",
+        "Roll the bar so that it is directly above your hips, and lean back against the bench so that your shoulder blades are near the top of it.",
+        "Begin the movement by driving through your feet, extending your hips vertically through the bar. Your weight should be supported by your shoulder blades and your feet. Extend as far as possible, then reverse the motion to return to the starting position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Bench_Press_-_Powerlifting",
+      "name": "Bench Press - Powerlifting",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "triceps"
+      ],
+      "secondaryMuscles": [
+        "chest",
+        "forearms",
+        "lats",
+        "shoulders"
+      ],
+      "instructions": [
+        "Begin by lying on the bench, getting your head beyond the bar if possible. Tuck your feet underneath you and arch your back. Using the bar to help support your weight, lift your shoulder off the bench and retract them, squeezing the shoulder blades together. Use your feet to drive your traps into the bench. Maintain this tight body position throughout the movement.",
+        "However wide your grip, it should cover the ring on the bar. Pull the bar out of the rack without protracting your shoulders. Focus on squeezing the bar and trying to pull it apart.",
+        "Lower the bar to your lower chest or upper stomach. The bar, wrist, and elbow should stay in line at all times.",
+        "Pause when the barbell touches your torso, and then drive the bar up with as much force as possible. The elbows should be tucked in until lockout."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Bench_Press_with_Chains",
+      "name": "Bench Press with Chains",
+      "force": "push",
+      "level": "expert",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "triceps"
+      ],
+      "secondaryMuscles": [
+        "chest",
+        "lats",
+        "shoulders"
+      ],
+      "instructions": [
+        "Adjust the leader chain, shortening it to the desired length.Place the chains on the sleeves of the bar.",
+        "Lying on the bench, get your head beyond the bar if possible. Tuck your feet underneath you and arch your back. Using the bar to help support your weight, lift your shoulder off the bench and retract them, squeezing the shoulder blades together. Use your feet to drive your traps into the bench. Maintain this tight body position throughout the movement. However wide your grip, it should cover the ring on the bar.",
+        "Pull the bar out of the rack without protracting your shoulders. Focus on squeezing the bar and trying to pull it apart. Lower the bar to your lower chest or upper stomach. The bar, wrist, and elbow should stay in line at all times.",
+        "Pause when the barbell touches your torso, and then drive the bar up with as much force as possible. The elbows should be tucked in until lockout."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Board_Press",
+      "name": "Board Press",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "triceps"
+      ],
+      "secondaryMuscles": [
+        "chest",
+        "forearms",
+        "lats",
+        "shoulders"
+      ],
+      "instructions": [
+        "Begin by lying on the bench, getting your head beyond the bar if possible. One to five boards, made out of 2x6's, can be screwed together and held in place by a training partner, bands, or just tucked under your shirt.",
+        "Tuck your feet underneath you and arch your back. Using the bar to help support your weight, lift your shoulder off the bench and retract them, squeezing the shoulder blades together. Use your feet to drive your traps into the bench. Maintain this tight body position throughout the movement.",
+        "You can take a standard bench grip, or shoulder width to focus on the triceps. Pull the bar out of the rack without protracting your shoulders. The bar, wrist, and elbow should stay in line at all times. Focus on squeezing the bar and trying to pull it apart.",
+        "Lower the bar to the boards, and then drive the bar up with as much force as possible. The elbows should be tucked in until lockout."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Box_Squat",
+      "name": "Box Squat",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "adductors",
+        "calves",
+        "glutes",
+        "hamstrings",
+        "lower back"
+      ],
+      "instructions": [
+        "The box squat allows you to squat to desired depth and develop explosive strength in the squat movement. Begin in a power rack with a box at the appropriate height behind you. Typically, you would aim for a box height that brings you to a parallel squat, but you can train higher or lower if desired.",
+        "Begin by stepping under the bar and placing it across the back of the shoulders. Squeeze your shoulder blades together and rotate your elbows forward, attempting to bend the bar across your shoulders. Remove the bar from the rack, creating a tight arch in your lower back, and step back into position. Place your feet wider for more emphasis on the back, glutes, adductors, and hamstrings, or closer together for more quad development. Keep your head facing forward.",
+        "With your back, shoulders, and core tight, push your knees and butt out and you begin your descent. Sit back with your hips until you are seated on the box. Ideally, your shins should be perpendicular to the ground. Pause when you reach the box, and relax the hip flexors. Never bounce off of a box.",
+        "Keeping the weight on your heels and pushing your feet and knees out, drive upward off of the box as you lead the movement with your head. Continue upward, maintaining tightness head to toe."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Box_Squat_with_Bands",
+      "name": "Box Squat with Bands",
+      "force": "push",
+      "level": "expert",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "abductors",
+        "adductors",
+        "calves",
+        "glutes",
+        "hamstrings",
+        "lower back"
+      ],
+      "instructions": [
+        "Begin in a power rack with a box at the appropriate height behind you. Set up the bands on the sleeves, secured to either band pegs, the rack, or dumbbells so that there is appropriate tension. If dumbbells are used, secure them so that they don't move. Also, ensure that the dumbbells you are using are heavy enough for the bands that you are using. Additional plates can be used to hold the dumbbells down. If more tension is needed, you can either widen the base on the floor or choke the bands. Typically, you would aim for a box height that brings you to a parallel squat, but you can train higher or lower if desired.",
+        "Begin by stepping under the bar and placing it across the back of the shoulders. Squeeze your shoulder blades together and rotate your elbows forward, attempting to bend the bar across your shoulders. Remove the bar from the rack, creating a tight arch in your lower back, and step back into position. Place your feet wider for more emphasis on the back, glutes, adductors, and hamstrings, or closer together for more quad development. Keep your head facing forward.",
+        "With your back, shoulders, and core tight, push your knees and butt out and you begin your descent. Sit back with your hips until you are seated on the box. Ideally, your shins should be perpendicular to the ground. Pause when you reach the box, and relax the hip flexors. Never bounce off of a box.",
+        "Keeping the weight on your heels and pushing your feet and knees out, drive upward off of the box as you lead the movement with your head. Continue upward, maintaining tightness head to toe. Use care to return the barbell to the rack."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Chain_Handle_Extension",
+      "name": "Chain Handle Extension",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "isolation",
+      "equipment": "other",
+      "primaryMuscles": [
+        "triceps"
+      ],
+      "secondaryMuscles": [],
+      "instructions": [
+        "You will need two cable handle attachments and a flat bench, as well as chains, for this exercise. Clip the middle of the chains to the handles, and position yourself on the flat bench. Your elbows should be pointing straight up.",
+        "Begin by extending through the elbow, keeping your upper arm still, with your wrists pronated.",
+        "Pause at the lockout, and reverse the motion to return to the starting position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Chain_Press",
+      "name": "Chain Press",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "chest"
+      ],
+      "secondaryMuscles": [
+        "shoulders",
+        "triceps"
+      ],
+      "instructions": [
+        "Begin by connecting the chains to the cable handle attachments. Position yourself on the flat bench in the same position as for a dumbbell press. Your wrists should be pronated and arms perpendicular to the floor. This will be your starting position.",
+        "Lower the chains by flexing the elbows, unloading some of the chain onto the floor.",
+        "Continue until your elbow forms a 90 degree angle, and then reverse the motion by extending through the elbow to lockout."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Deadlift_with_Bands",
+      "name": "Deadlift with Bands",
+      "force": "pull",
+      "level": "expert",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "lower back"
+      ],
+      "secondaryMuscles": [
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "middle back",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "To deadlift with short bands, simply loop them over the bar before you start, and step into them to set up. For long bands, they will need to be anchored to a secure base, such as heavy dumbbells or a rack.",
+        "With your feet, and your grip set, take a big breath and then lower your hips and bend the knees until your shins contact the bar. Look forward with your head, keep your chest up and your back arched, and begin driving through the heels to move the weight upward. After the bar passes the knees, aggressively pull the bar back, pulling your shoulder blades together as you drive your hips forward into the bar.",
+        "Lower the bar by bending at the hips and guiding it to the floor."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Deadlift_with_Chains",
+      "name": "Deadlift with Chains",
+      "force": "pull",
+      "level": "expert",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "lower back"
+      ],
+      "secondaryMuscles": [
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "middle back",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "You can attach the chains to the sleeves of the bar, or just drape the middle over the bar so there is a greater weight increase as you lift.",
+        "Approach the bar so that it is centered over your feet. You feet should be about hip width apart. Bend at the hip to grip the bar at shoulder width, allowing your shoulder blades to protract. Typically, you would use an overhand grip or an over/under grip on heavier sets. With your feet, and your grip set, take a big breath and then lower your hips and bend the knees until your shins contact the bar.",
+        "Look forward with your head, keep your chest up and your back arched, and begin driving through the heels to move the weight upward. After the bar passes the knees, aggressively pull the bar back, pulling your shoulder blades together as you drive your hips forward into the bar.",
+        "Lower the bar by bending at the hips and guiding it to the floor."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Deficit_Deadlift",
+      "name": "Deficit Deadlift",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "lower back"
+      ],
+      "secondaryMuscles": [
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "middle back",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "Begin by having a platform or weight plates that you can stand on, usually 1-3 inches in height. Approach the bar so that it is centered over your feet. You feet should be about hip width apart. Bend at the hip to grip the bar at shoulder width, allowing your shoulder blades to protract. Typically, you would use an overhand grip or an over/under grip on heavier sets.",
+        "With your feet, and your grip set, take a big breath and then lower your hips and bend the knees until your shins contact the bar. Look forward with your head, keep your chest up and your back arched, and begin driving through the heels to move the weight upward. After the bar passes the knees, aggressively pull the bar back, pulling your shoulder blades together as you drive your hips forward into the bar.",
+        "Lower the bar by bending at the hips and guiding it to the floor."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Dumbbell_Floor_Press",
+      "name": "Dumbbell Floor Press",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "dumbbell",
+      "primaryMuscles": [
+        "triceps"
+      ],
+      "secondaryMuscles": [
+        "chest",
+        "shoulders"
+      ],
+      "instructions": [
+        "Lay on the floor holding dumbbells in your hands. Your knees can be bent. Begin with the weights fully extended above you.",
+        "Lower the weights until your upper arm comes in contact with the floor. You can tuck your elbows to emphasize triceps size and strength, or to focus on your chest angle your arms to the side.",
+        "Pause at the bottom, and then bring the weight together at the top by extending through the elbows."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Floor_Press",
+      "name": "Floor Press",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "triceps"
+      ],
+      "secondaryMuscles": [
+        "chest",
+        "shoulders"
+      ],
+      "instructions": [
+        "Adjust the j-hooks so they are at the appropriate height to rack the bar. Begin lying on the floor with your head near the end of a power rack. Keeping your shoulder blades pulled together; pull the bar off of the hooks.",
+        "Lower the bar towards the bottom of your chest or upper stomach, squeezing the bar and attempting to pull it apart as you do so. Ensure that you tuck your elbows throughout the movement. Lower the bar until your upper arm contacts the ground and pause, preventing any slamming or bouncing of the weight.",
+        "Press the bar back up as fast as you can, keeping the bar, your wrists, and elbows in line as you do so."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Floor_Press_with_Chains",
+      "name": "Floor Press with Chains",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "triceps"
+      ],
+      "secondaryMuscles": [
+        "chest",
+        "shoulders"
+      ],
+      "instructions": [
+        "Adjust the j-hooks so they are at the appropriate height to rack the bar. For this exercise, drape the chains directly over the end of the bar, trying to keep the ends away from the plates.",
+        "Begin lying on the floor with your head near the end of a power rack. Keeping your shoulder blades pulled together, pull the bar off of the hooks.",
+        "Lower the bar towards the bottom of your chest or upper stomach, squeezing the bar and attempting to pull it apart as you do so. Ensure that you tuck your elbows throughout the movement. Lower the bar until your upper arm contacts the ground and pause, preventing any slamming or bouncing of the weight.",
+        "Press the bar back up as fast as you can, keeping the bar, your wrists, and elbows in line as you do so."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Glute_Ham_Raise",
+      "name": "Glute Ham Raise",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "machine",
+      "primaryMuscles": [
+        "hamstrings"
+      ],
+      "secondaryMuscles": [
+        "calves",
+        "glutes"
+      ],
+      "instructions": [
+        "Begin by adjusting the equipment to fit your body. Place your feet against the footplate in between the rollers as you lie facedown. Your knees should be just behind the pad.",
+        "Start from the bottom of the movement. Keep your back arched as you begin the movement by flexing the knees. Drive your toes into the foot plate as you do so. Keep your upper body straight, and continue until your body is upright.",
+        "Return to the starting position, keeping your descent under control."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Good_Morning",
+      "name": "Good Morning",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "hamstrings"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "glutes",
+        "lower back"
+      ],
+      "instructions": [
+        "Begin with a bar on a rack at shoulder height. Rack the bar across the rear of your shoulders as you would a power squat, not on top of your shoulders. Keep your back tight, shoulder blades pinched together, and your knees slightly bent. Step back from the rack.",
+        "Begin by bending at the hips, moving them back as you bend over to near parallel. Keep your back arched and your cervical spine in proper alignment.",
+        "Reverse the motion by extending through the hips with your glutes and hamstrings. Continue until you have returned to the starting position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Good_Morning_off_Pins",
+      "name": "Good Morning off Pins",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "hamstrings"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "glutes",
+        "lower back"
+      ],
+      "instructions": [
+        "Begin with a bar on a rack at about the same height as your stomach. Bend over underneath the bar and rack the bar across the rear of your shoulders as you would a power squat, not on top of your shoulders. At the proper height, you should be near parallel to the floor when bent over. Keep your back tight, shoulder blades pinched together, and your knees slightly bent. Keep your back arched and your cervical spine in proper alignment.",
+        "Begin the motion by extending through the hips with your glutes and hamstrings, and you are standing with the weight. Slowly lower the weight back to the pins returning to the starting position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Hanging_Bar_Good_Morning",
+      "name": "Hanging Bar Good Morning",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "hamstrings"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "glutes",
+        "lower back"
+      ],
+      "instructions": [
+        "Begin with a bar on a rack at about the same height as your stomach. Suspend the bar using chains or suspension straps.",
+        "Bend over underneath the bar and rack the bar across the rear of your shoulders as you would a power squat, not on top of your traps. At the proper height, you should be near parallel to the floor when bent over. Keep your back tight, shoulder blades pinched together, and your knees slightly bent. Keep your back arched and your cervical spine in proper alignment.",
+        "Begin the motion by extending through the hips with your glutes and hamstrings, and you are standing with the weight.",
+        "Slowly lower the weight back to the starting position, where it is supported by the chains."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Hip_Lift_with_Band",
+      "name": "Hip Lift with Band",
+      "force": "push",
+      "level": "beginner",
+      "mechanic": "compound",
+      "equipment": "bands",
+      "primaryMuscles": [
+        "glutes"
+      ],
+      "secondaryMuscles": [
+        "calves",
+        "hamstrings"
+      ],
+      "instructions": [
+        "After choosing a suitable band, lay down in the middle of the rack, after securing the band on either side of you. If your rack doesn't have pegs, the band can be secured using heavy dumbbells or similar objects, just ensure they won't move.",
+        "Adjust your position so that the band is directly over your hips. Bend your knees and place your feet flat on the floor. Your hands can be on the floor or holding the band in position.",
+        "Keeping your shoulders on the ground, drive through your heels to raise your hips, pushing into the band as high as you can.",
+        "Pause at the top of the motion, and return to the starting position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Kneeling_Squat",
+      "name": "Kneeling Squat",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "glutes"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "hamstrings",
+        "lower back"
+      ],
+      "instructions": [
+        "Set the bar to the proper height in a power rack. Kneel behind the bar; it may be beneficial to put a mat down to pad your knees. Slide under the bar, racking it across the back of your shoulders. Your shoulder blades should be retracted and the bar tight across your back. Unrack the weight.",
+        "With your head looking forward, sit back with your butt until you touch your calves.",
+        "Reverse the motion, returning the torso to an upright position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Pin_Presses",
+      "name": "Pin Presses",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "triceps"
+      ],
+      "secondaryMuscles": [
+        "chest",
+        "forearms",
+        "lats",
+        "middle back",
+        "shoulders"
+      ],
+      "instructions": [
+        "Pin presses remove the eccentric phase of the bench press, developing starting strength. They also allow you to train a desired range of motion.",
+        "The bench should be set up in a power rack. Set the pins to the desired point in your range of motion, whether it just be lockout or an inch off of your chest. The bar should be moved to the pins and prepared for lifting.",
+        "Begin by lying on the bench, with the bar directly above the contact point during your regular bench. Tuck your feet underneath you and arch your back. Using the bar to help support your weight, lift your shoulder off the bench and retract them, squeezing the shoulder blades together. Use your feet to drive your traps into the bench. Maintain this tight body position throughout the movement.",
+        "You can take a standard bench grip, or shoulder width to focus on the triceps. The bar, wrist, and elbow should stay in line at all times. Focus on squeezing the bar and trying to pull it apart.",
+        "Drive the bar up with as much force as possible. The elbows should be tucked in until lockout.",
+        "Return the bar to the pins, pausing before beginning the next repetition."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Rack_Pull_with_Bands",
+      "name": "Rack Pull with Bands",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "lower back"
+      ],
+      "secondaryMuscles": [
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "Set up in a power rack with the bar on the pins. The pins should be set to the desired point; just below the knees, just above, or in the mid thigh position. Attach bands to the base of the rack, or secure them with dumbbells. Attach the other end to the bar. You may need to choke the bands to provide tension.",
+        "Position yourself against the bar in proper deadlifting position. Your feet should be under your hips, your grip shoulder width, back arched, and hips back to engage the hamstrings. Since the weight is typically heavy, you may use a mixed grip, a hook grip, or use straps to aid in holding the weight.",
+        "With your head looking forward, extend through the hips and knees, pulling the weight up and back until lockout. Be sure to pull your shoulders back as you complete the movement. Return the weight to the pins and repeat."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Rack_Pulls",
+      "name": "Rack Pulls",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "lower back"
+      ],
+      "secondaryMuscles": [
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "traps"
+      ],
+      "instructions": [
+        "Set up in a power rack with the bar on the pins. The pins should be set to the desired point; just below the knees, just above, or in the mid thigh position. Position yourself against the bar in proper deadlifting position. Your feet should be under your hips, your grip shoulder width, back arched, and hips back to engage the hamstrings. Since the weight is typically heavy, you may use a mixed grip, a hook grip, or use straps to aid in holding the weight.",
+        "With your head looking forward, extend through the hips and knees, pulling the weight up and back until lockout. Be sure to pull your shoulders back as you complete the movement.",
+        "Return the weight to the pins and repeat."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Reverse_Band_Bench_Press",
+      "name": "Reverse Band Bench Press",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "triceps"
+      ],
+      "secondaryMuscles": [
+        "chest",
+        "forearms",
+        "lats",
+        "middle back",
+        "shoulders"
+      ],
+      "instructions": [
+        "Position a bench inside a power rack, with the bar set to the correct height. Begin by anchoring bands either to band pegs or to the top of the rack. Ensure that you will be position properly under the bands. Attach the other end to the barbell.",
+        "Lie on the bench, tuck your feet underneath you and arch your back. Using the bar to help support your weight, lift your shoulder off the bench and retract them, squeezing the shoulder blades together. Use your feet to drive your traps into the bench. Maintain this tight body position throughout the movement. However wide your grip, it should cover the ring on the bar.",
+        "Pull the bar out of the rack without protracting your shoulders. Focus on squeezing the bar and trying to pull it apart. Lower the bar to your lower chest or upper stomach. The bar, wrist, and elbow should stay in line at all times.",
+        "Pause when the barbell touches your torso, and then drive the bar up with as much force as possible. The elbows should be tucked in until lockout."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Reverse_Band_Box_Squat",
+      "name": "Reverse Band Box Squat",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "abductors",
+        "adductors",
+        "calves",
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "lower back"
+      ],
+      "instructions": [
+        "Begin in a power rack with a box at the appropriate height behind you. Set up the bands either on band pegs or attached to the top of the rack, ensuring they will be directly above the bar during the squat. Attach the other end to the bar.",
+        "Begin by stepping under the bar and placing it across the back of the shoulders. Squeeze your shoulder blades together and rotate your elbows forward, attempting to bend the bar across your shoulders. Remove the bar from the rack, creating a tight arch in your lower back, and step back into position. Place your feet wider for more emphasis on the back, glutes, adductors, and hamstrings, or closer together for more quad development. Keep your head facing forward.",
+        "With your back, shoulders, and core tight, push your knees and butt out and you begin your descent. Sit back with your hips until you are seated on the box. Ideally, your shins should be perpendicular to the ground. Pause when you reach the box, and relax the hip flexors. Never bounce off of a box.",
+        "Keeping the weight on your heels and pushing your feet and knees out, drive upward off of the box as you lead the movement with your head. Continue upward, maintaining tightness head to toe. Use care to return the barbell to the rack."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Reverse_Band_Deadlift",
+      "name": "Reverse Band Deadlift",
+      "force": "pull",
+      "level": "expert",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "lower back"
+      ],
+      "secondaryMuscles": [
+        "abductors",
+        "adductors",
+        "calves",
+        "glutes",
+        "hamstrings",
+        "quadriceps"
+      ],
+      "instructions": [
+        "Set the bar up in a power rack. Attach bands to the top of the rack, using either bands pegs or the frame itself. Attach the other end of the bands to the bar.",
+        "Approach the bar so that it is centered over your feet. You feet should be about hip width apart. Bend at the hip to grip the bar at shoulder width, allowing your shoulder blades to protract. Typically, you would use an overhand grip or an over/under grip on heavier sets.",
+        "With your feet, and your grip set, take a big breath and then lower your hips and bend the knees until your shins contact the bar. Look forward with your head, keep your chest up and your back arched, and begin driving through the heels to move the weight upward.",
+        "After the bar passes the knees, aggressively pull the bar back, pulling your shoulder blades together as you drive your hips forward into the bar.",
+        "Lower the bar by bending at the hips and guiding it to the floor."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Reverse_Band_Power_Squat",
+      "name": "Reverse Band Power Squat",
+      "force": "push",
+      "level": "expert",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "adductors",
+        "calves",
+        "glutes",
+        "hamstrings",
+        "lower back"
+      ],
+      "instructions": [
+        "Begin in a power rack with the pins and bar set at the appropriate height. After loading the bar, attach bands to the top of the rack, using either pegs or the frame itself. Attach the other end of the bands to the bar.",
+        "Begin by stepping under the bar and placing it across the back of the shoulders. Squeeze your shoulder blades together and rotate your elbows forward, attempting to bend the bar across your shoulders. Remove the bar from the rack, creating a tight arch in your lower back, and step back into position. Place your feet wide for more emphasis on the back, glutes, adductors, and hamstrings.",
+        "Keep your head facing forward. With your back, shoulders, and core tight, push your knees and butt out and you begin your descent. Sit back with your hips as much as possible. Ideally, your shins should be perpendicular to the ground. Lower bar position necessitates a greater torso lean to keep the bar over the heels. Continue until you break parallel, which is defined as the crease of the hip being in line with the top of the knee.",
+        "Keeping the weight on your heels and pushing your feet and knees out, drive upward as you lead the movement with your head. Continue upward, maintaining tightness head to toe, until you have returned to the starting position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Reverse_Band_Sumo_Deadlift",
+      "name": "Reverse Band Sumo Deadlift",
+      "force": "pull",
+      "level": "expert",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "hamstrings"
+      ],
+      "secondaryMuscles": [
+        "abductors",
+        "adductors",
+        "calves",
+        "forearms",
+        "glutes",
+        "lower back",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "Begin with a bar loaded on the floor inside of a power rack. Attach bands to the top of the rack, using either pegs or the frame itself. Attach the other end to the barbell.",
+        "Approach the bar so that the bar intersects the middle of the feet. The feet should be set very wide, near the collars. Bend at the hips to grip the bar. The arms should be directly below the shoulders, inside the legs, and you can use a pronated grip, a mixed grip, or hook grip. Relax the shoulders, which in effect lengthens your arms.",
+        "Take a breath, and then lower your hips, looking forward with your head with your chest up. Drive through the floor, spreading your feet apart, with your weight on the back half of your feet. Extend through the hips and knees.",
+        "As the bar passes through the knees, lean back and drive the hips into the bar, pulling your shoulder blades together.",
+        "Return the weight to the ground by bending at the hips and controlling the weight on the way down."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Seated_Good_Mornings",
+      "name": "Seated Good Mornings",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "lower back"
+      ],
+      "secondaryMuscles": [
+        "glutes"
+      ],
+      "instructions": [
+        "Set up a box in a power rack. The pins should be set at an appropriate height. Begin by stepping under the bar and placing it across the back of the shoulders, not on top of your traps. Squeeze your shoulder blades together and rotate your elbows forward, attempting to bend the bar across your shoulders.",
+        "Remove the bar from the rack, creating a tight arch in your lower back. Keep your head facing forward. With your back, shoulders, and core tight, push your knees and butt out and you begin your descent. Sit back with your hips until you are seated on the box. This will be your starting position.",
+        "Keeping the bar tight, bend forward at the hips as much as possible. If you set the pins to what would be parallel, you not only have a safety if you fail, but know when to stop.",
+        "Pause just above the pins and reverse the motion until your torso it upright."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Speed_Box_Squat",
+      "name": "Speed Box Squat",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "calves",
+        "glutes",
+        "hamstrings"
+      ],
+      "instructions": [
+        "Attach bands to the bar that are securely anchored near the ground. You may need to choke the bands to get adequate tension.",
+        "Use a box of an appropriate height for this exercise. Load the bar to a weight that still requires effort, but isn't so heavy that speed is compromised. Typically, that will be between 50-70% of your one rep max.",
+        "Position the bar on your upper back, shoulder blades retracted, back arched and everything tight head to toe. This will be the starting position.",
+        "Unrack the bar and position yourself in front of the box. Sit back with your hips until you are seated on the box, ensuring that you descend under control and don't crash onto the surface.",
+        "Pause briefly, and explode off of the box, extending through the hips and knees."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Squat_with_Bands",
+      "name": "Squat with Bands",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "adductors",
+        "calves",
+        "glutes",
+        "hamstrings",
+        "lower back"
+      ],
+      "instructions": [
+        "Set up the bands on the sleeves, secured to either band pegs, the rack, or dumbbells so that there is appropriate tension.",
+        "Begin by stepping under the bar and placing it across the back of the shoulders. Squeeze your shoulder blades together and rotate your elbows forward, attempting to bend the bar across your shoulders. Remove the bar from the rack, creating a tight arch in your lower back, and step back into position. Place your feet wide for more emphasis on the back, glutes, adductors, and hamstrings. Keep your head facing forward.",
+        "With your back, shoulders, and core tight, push your knees and butt out and you begin your descent. Sit back with your hips as much as possible. Ideally, your shins should be perpendicular to the ground. Lower bar position necessitates a greater torso lean to keep the bar over the heels. Continue until you break parallel, which is defined as the crease of the hip being in line with the top of the knee.",
+        "Keeping the weight on your heels and pushing your feet and knees out, drive upward as you lead the movement with your head. Continue upward, maintaining tightness head to toe, until you have returned to the starting position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Squat_with_Chains",
+      "name": "Squat with Chains",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "adductors",
+        "calves",
+        "glutes",
+        "hamstrings",
+        "lower back"
+      ],
+      "instructions": [
+        "To set up the chains, begin by looping the leader chain over the sleeves of the bar. The heavy chain should be attached using a snap hook. Adjust the length of the lead chain so that a few links are still on the floor at the top of the movement.",
+        "Begin by stepping under the bar and placing it across the back of the shoulders. Squeeze your shoulder blades together and rotate your elbows forward, attempting to bend the bar across your shoulders. Remove the bar from the rack, creating a tight arch in your lower back, and step back into position. Place your feet wide for more emphasis on the back, glutes, adductors, and hamstrings. Keep your head facing forward.",
+        "With your back, shoulders, and core tight, push your knees and butt out and you begin your descent. Sit back with your hips as much as possible. Ideally, your shins should be perpendicular to the ground. Lower bar position necessitates a greater torso lean to keep the bar over the heels. Continue until you break parallel, which is defined as the crease of the hip being in line with the top of the knee.",
+        "Keeping the weight on your heels and pushing your feet and knees out, drive upward as you lead the movement with your head. Continue upward, maintaining tightness head to toe, until you have returned to the starting position."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Sumo_Deadlift",
+      "name": "Sumo Deadlift",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "hamstrings"
+      ],
+      "secondaryMuscles": [
+        "adductors",
+        "forearms",
+        "glutes",
+        "lower back",
+        "middle back",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "Begin with a bar loaded on the ground. Approach the bar so that the bar intersects the middle of the feet. The feet should be set very wide, near the collars. Bend at the hips to grip the bar. The arms should be directly below the shoulders, inside the legs, and you can use a pronated grip, a mixed grip, or hook grip. Relax the shoulders, which in effect lengthens your arms.",
+        "Take a breath, and then lower your hips, looking forward with your head with your chest up. Drive through the floor, spreading your feet apart, with your weight on the back half of your feet. Extend through the hips and knees.",
+        "As the bar passes through the knees, lean back and drive the hips into the bar, pulling your shoulder blades together.",
+        "Return the weight to the ground by bending at the hips and controlling the weight on the way down."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Sumo_Deadlift_with_Bands",
+      "name": "Sumo Deadlift with Bands",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "hamstrings"
+      ],
+      "secondaryMuscles": [
+        "adductors",
+        "forearms",
+        "glutes",
+        "lower back",
+        "middle back",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "To deadlift with short bands, simply loop them over the bar before you start, and step into them to set up. Ensure that they under the back half of your foot, directly where you are driving into the floor.",
+        "Begin with a bar loaded on the ground. Approach the bar so that the bar intersects the middle of the feet. The feet should be set very wide, near the collars. Bend at the hips to grip the bar. The arms should be directly below the shoulders, inside the legs, and you can use a pronated grip, a mixed grip, or hook grip.",
+        "Take a breath, and then lower your hips, looking forward with your head with your chest up. Drive through the floor, spreading your feet apart, with your weight on the back half of your feet. Extend through the hips and knees.",
+        "As the bar passes through the knees, lean back and drive the hips into the bar, pulling your shoulder blades together.",
+        "Return the weight to the ground by bending at the hips and controlling the weight on the way down."
+      ],
+      "category": "powerlifting"
+    },
+    {
+      "sourceId": "Sumo_Deadlift_with_Chains",
+      "name": "Sumo Deadlift with Chains",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "barbell",
+      "primaryMuscles": [
+        "hamstrings"
+      ],
+      "secondaryMuscles": [
+        "abductors",
+        "adductors",
+        "forearms",
+        "glutes",
+        "lower back",
+        "middle back",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "You can attach the chains to the sleeves of the bar, or just drape the middle over the bar so there is a greater weight increase as you lift. Attempt to keep the ends of the chains away from the plates so you don't hit them when you lower the weight.",
+        "Begin with a bar loaded on the ground. Approach the bar so that the bar intersects the middle of the feet. The feet should be set very wide, near the collars. Bend at the hips to grip the bar. The arms should be directly below the shoulders, inside the legs, and you can use a pronated grip, a mixed grip, or hook grip. Relax the shoulders, which in effect lengthens your arms.",
+        "Take a breath, and then lower your hips, looking forward with your head with your chest up. Drive through the floor, spreading your feet apart, with your weight on the back half of your feet. Extend through the hips and knees.",
+        "As the bar passes through the knees, lean back and drive the hips into the bar, pulling your shoulder blades together.",
+        "Return the weight to the ground by bending at the hips and controlling the weight on the way down."
+      ],
+      "category": "powerlifting"
+    }
+  ]
+}

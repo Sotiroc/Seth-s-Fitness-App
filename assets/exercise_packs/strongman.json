@@ -1,0 +1,538 @@
+{
+  "schemaVersion": 1,
+  "packId": "strongman",
+  "name": "Strongman",
+  "description": "Loaded carries, pulls, and event-style strength work.",
+  "credit": "Free Exercise DB by yuhonas - https://github.com/yuhonas/free-exercise-db",
+  "license": "Unlicense (public domain)",
+  "exerciseCount": 21,
+  "exercises": [
+    {
+      "sourceId": "Atlas_Stone_Trainer",
+      "name": "Atlas Stone Trainer",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "lower back"
+      ],
+      "secondaryMuscles": [
+        "biceps",
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "quadriceps"
+      ],
+      "instructions": [
+        "This trainer is effective for developing Atlas Stone strength for those who don't have access to stones, and are typically made from bar ends or heavy pipe.",
+        "Begin by loading the desired weight onto the bar. Straddle the weight, wrapping your arms around the implement, bending at the hips.",
+        "Begin by pulling the weight up past the knees, extending through the hips. As the weight clears the knees, it can be lapped by resting it on your thighs and sitting back, hugging it tightly to your chest.",
+        "Finish the movement by extending through your hips and knees to raise the weight as high as possible. The weight can be returned to the lap or to the ground for successive repetitions."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Atlas_Stones",
+      "name": "Atlas Stones",
+      "force": "pull",
+      "level": "expert",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "lower back"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "adductors",
+        "biceps",
+        "calves",
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "middle back",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "Begin with the atlas stone between your feet. Bend at the hips to wrap your arms vertically around the Atlas Stone, attempting to get your fingers underneath the stone. Many stones will have a small flat portion on the bottom, which will make the stone easier to hold.",
+        "Pulling the stone into your torso, drive through the back half of your feet to pull the stone from the ground.",
+        "As the stone passes the knees, lap it by sitting backward, pulling the stone on top of your thighs.",
+        "Sit low, getting the stone high onto your chest as you change your grip to reach over the stone. Stand, driving through with your hips. Close distance to the loading platform, and lean back, extending the hips to get the stone as high as possible."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Axle_Deadlift",
+      "name": "Axle Deadlift",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "lower back"
+      ],
+      "secondaryMuscles": [
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "middle back",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "Approach the bar so that it is centered over your feet. You feet should be about hip width apart. Bend at the hip to grip the bar at shoulder width, allowing your shoulder blades to protract. Typically, you would use an over/under grip.",
+        "With your feet and your grip set, take a big breath and then lower your hips and flex the knees until your shins contact the bar. Look forward with your head, keep your chest up and your back arched, and begin driving through the heels to move the weight upward.",
+        "After the bar passes the knees, aggressively pull the bar back, pulling your shoulder blades together as you drive your hips forward into the bar.",
+        "Lower the bar by bending at the hips and guiding it to the floor."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Backward_Drag",
+      "name": "Backward Drag",
+      "force": "pull",
+      "level": "beginner",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "calves",
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "lower back"
+      ],
+      "instructions": [
+        "Load a sled with the desired weight, attaching a rope or straps to the sled that you can hold onto.",
+        "Begin the exercise by moving backwards for a given distance. Leaning back, extend through the legs for short steps to move as quickly as possible."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Bear_Crawl_Sled_Drags",
+      "name": "Bear Crawl Sled Drags",
+      "force": "push",
+      "level": "beginner",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "calves",
+        "glutes",
+        "hamstrings"
+      ],
+      "instructions": [
+        "Wearing either a harness or a loose weight belt, attach the chain to the back so that you will be facing away from the sled. Bend down so that your hands are on the ground. Your back should be flat and knees bent. This is your starting position.",
+        "Begin by driving with legs, alternating left and right. Use your hands to maintain balance and to help pull. Try to keep your back flat as you move over a given distance."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Car_Deadlift",
+      "name": "Car Deadlift",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "lower back",
+        "traps"
+      ],
+      "instructions": [
+        "This event apparatus typically has neutral grip handles, however some have a straight bar that you can approach like a normal deadlift. The apparatus can be loaded with a vehicle or other heavy objects such as tractor tires or kegs.",
+        "Center yourself between the handles if you are a strong squatter, or back a couple inches if you are a strong deadlifter. You feet should be about hip width apart. Bend at the hip to grip the handles. With your feet and your grip set, take a big breath and then lower your hips and flex the knees.",
+        "Look forward with your head, keep your chest up and your back arched, and begin driving through the heels to move the weight upward. As the weight comes up, pull your shoulder blades together as you drive your hips forward.",
+        "Lower the weight by bending at the hips and guiding it to the floor."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Circus_Bell",
+      "name": "Circus Bell",
+      "force": "push",
+      "level": "expert",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "shoulders"
+      ],
+      "secondaryMuscles": [
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "lower back",
+        "traps",
+        "triceps"
+      ],
+      "instructions": [
+        "The circus bell is an oversized dumbbell with a thick handle. Begin with the dumbbell between your feet, and grip the handle with both hands.",
+        "Clean the dumbbell by extending through your hips and knees to deliver the implement to the desired shoulder, letting go with the extra hand.",
+        "Ensure that you get one of the dumbbell heads behind the shoulder to keep from being thrown off balance. To raise it overhead, dip by flexing the knees, and the drive upwards as you extend the dumbbell overhead, leaning slightly away from it as you do so.",
+        "Carefully guide the bell back to the floor, keeping it under control as much as possible. It is best to perform this event on a thick rubber mat to prevent damage to the floor."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Conans_Wheel",
+      "name": "Conan's Wheel",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "biceps",
+        "calves",
+        "forearms",
+        "lower back",
+        "shoulders",
+        "traps"
+      ],
+      "instructions": [
+        "With the weight loaded, take a zurcher hold on the end of the implement. Place the bar in the crook of the elbow and hold onto your wrist. Try to keep the weight off of the forearms.",
+        "Begin by lifting the weight from the ground. Keep a tight, upright posture as you being to walk, taking short, fast steps. Look up and away as you turn in a circle. Do not hold your breath during the event. Continue walking until you complete one or more complete turns."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Crucifix",
+      "name": "Crucifix",
+      "force": "static",
+      "level": "beginner",
+      "mechanic": "isolation",
+      "equipment": "other",
+      "primaryMuscles": [
+        "shoulders"
+      ],
+      "secondaryMuscles": [
+        "forearms"
+      ],
+      "instructions": [
+        "In the crucifix, you statically hold weights out to the side for time. While the event can be practiced using dumbbells, it is best to practice with one of the various implements used, such as axes and hammers, as it feels different.",
+        "Begin standing, and raise your arms out to the side holding the implements. Your arms should be parallel to the ground. In competition, judges or sensors are used to let you know when you break parallel. Hold for as long as you can. Typically, the weights should be heavy enough that you fail in 30-60 seconds."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Farmers_Walk",
+      "name": "Farmer's Walk",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "forearms"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "glutes",
+        "hamstrings",
+        "lower back",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "There are various implements that can be used for the farmers walk. These can also be performed with heavy dumbbells or short bars if these implements aren't available. Begin by standing between the implements.",
+        "After gripping the handles, lift them up by driving through your heels, keeping your back straight and your head up.",
+        "Walk taking short, quick steps, and don't forget to breathe. Move for a given distance, typically 50-100 feet, as fast as possible."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Forward_Drag_with_Press",
+      "name": "Forward Drag with Press",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "chest"
+      ],
+      "secondaryMuscles": [
+        "calves",
+        "glutes",
+        "hamstrings",
+        "quadriceps",
+        "shoulders",
+        "triceps"
+      ],
+      "instructions": [
+        "Attach a dual handled chain or rope attachment to the sled. You should be facing away from the sled, holding a handle in each hand.",
+        "Begin the movement by moving forward for one step. Leaning forward, extend through the legs and hips to move, pausing with each step to extend through the elbows, pressing your hands forward. Step forward until you return to the start position prepared to press."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Keg_Load",
+      "name": "Keg Load",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "lower back"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "biceps",
+        "calves",
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "middle back",
+        "quadriceps",
+        "shoulders",
+        "traps"
+      ],
+      "instructions": [
+        "To load kegs, place the desired number a distance from the loading platform, typically 30-50 feet.",
+        "Begin by grabbing the close handle of the first keg, tilting it onto its side to grab the opposite edge of the bottom of the keg. Lift the keg up to your chest.",
+        "The higher you can place the keg, the faster you should be able to move to the platform. Shouldering is usually not allowed. Be sure to keep a firm hold on the keg. Move as quickly as possible to the platform, and load it, extending through your hips, knees, and ankles to get it as high as possible.",
+        "Return to the starting position to retrieve the next keg, and repeat until the event is completed."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Log_Lift",
+      "name": "Log Lift",
+      "force": "push",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "shoulders"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "chest",
+        "glutes",
+        "hamstrings",
+        "lower back",
+        "middle back",
+        "quadriceps",
+        "traps",
+        "triceps"
+      ],
+      "instructions": [
+        "Begin standing with the log in front of you. Grasp the handles, and begin to clean the log. As you are bent over to start the clean, attempt to get the log as high as possible, pulling it into your chest. Extend through the hips and knees to bring it up to complete the clean.",
+        "Push your head back and look up, creating a shelf on your chest to rest the log. Begin the press by dipping, flexing slightly through the knees and reversing the motion. This push press will generate momentum to start the log moving vertically. Continue by extending through the elbows to press the log above your head. There are no strict rules on form, so use whatever techniques you are most efficient with. As the log is pressed, ensure that you push your head through on each repetition, looking forward.",
+        "Repeat as many times as possible. Attempt to control the descent of the log as it is returned to the ground."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Power_Stairs",
+      "name": "Power Stairs",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "hamstrings"
+      ],
+      "secondaryMuscles": [
+        "adductors",
+        "calves",
+        "glutes",
+        "lower back",
+        "quadriceps",
+        "shoulders",
+        "traps"
+      ],
+      "instructions": [
+        "In the power stairs, implements are moved up a staircase. For training purposes, these can be performed with a tire or box.",
+        "Begin by taking the implement with both hands. Set your feet wide, with your head and chest up. Drive through the ground with your heels, extending your knees and hips to raise the weight from the ground.",
+        "As you lean back, attempt to swing the weight onto the stairs, which are usually around 16-18\" high. You can use your legs to help push the weight onto the stair.",
+        "Repeat for 3-5 repetitions, and continue with a heavier weight, moving as fast as possible."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Rickshaw_Carry",
+      "name": "Rickshaw Carry",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "forearms"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "calves",
+        "glutes",
+        "hamstrings",
+        "lower back",
+        "quadriceps",
+        "traps"
+      ],
+      "instructions": [
+        "Position the frame at the starting point, and load with the appropriate weight. Standing in the center of the frame, begin by gripping the handles and driving through your heels to lift the frame. Ensure your chest and head are up and your back is straight.",
+        "Immediately begin walking briskly with quick, controlled steps. Keep your chest up and head forward, and make sure you continue breathing. Bring the frame to the ground after you have reached the end point."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Rickshaw_Deadlift",
+      "name": "Rickshaw Deadlift",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "lower back",
+        "traps"
+      ],
+      "instructions": [
+        "Load the frame with the desired weight. Center yourself between the handles. You feet should be about hip width apart. Bend at the hips to grip the handles, allowing your shoulder blades to protract.",
+        "With your feet and your grip set, take a big breath and then lower your hips and flex the knees. Look forward with your head, keep your chest up and your back arched, and begin driving through the heels to move the weight upward. As the weight comes up, pull your shoulder blades together as you drive your hips forward.",
+        "Lower the weight by bending at the hips and guiding it to the ground."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Sandbag_Load",
+      "name": "Sandbag Load",
+      "force": "pull",
+      "level": "beginner",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "biceps",
+        "calves",
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "lower back",
+        "middle back",
+        "shoulders",
+        "traps"
+      ],
+      "instructions": [
+        "To load sandbags or other objects, begin with the implements placed a distance from the loading platform, typically 50 feet.",
+        "Begin by lifting the sandbag. Sandbags are extremely awkward, and the manner of lifting them can vary depending on the particular sandbag used. Reach as far around it as possible, extending through the hips and knees to pull it up high. Shouldering is usually not allowed.",
+        "Move as quickly as possible to the platform, and load it, extending through your hips, knees, and ankles to get it as high as possible. Place it onto the platform, ensuring it doesn't fall off.",
+        "Return to the starting position to retrieve the next sandbag, and repeat until the event is completed."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Sled_Drag_-_Harness",
+      "name": "Sled Drag - Harness",
+      "force": "push",
+      "level": "beginner",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "calves",
+        "glutes",
+        "hamstrings"
+      ],
+      "instructions": [
+        "To begin, load the sled with the desired weight and attach the pulling strap. You can pull with handles, use a harness, or attach the pulling strap to a weight belt.",
+        "Whether pulling forwards or backwards, lean in the direction of travel and progress by extending through the hips and knees."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Sled_Push",
+      "name": "Sled Push",
+      "force": "push",
+      "level": "beginner",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "calves",
+        "chest",
+        "glutes",
+        "hamstrings",
+        "triceps"
+      ],
+      "instructions": [
+        "Load your pushing sled with the desired weight.",
+        "Take an athletic posture, leaning into the sled with your arms fully extended, grasping the handles. Push the sled as fast as possible, focusing on extending your hips and knees to strengthen your posterior chain."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Tire_Flip",
+      "name": "Tire Flip",
+      "force": "pull",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "calves",
+        "chest",
+        "forearms",
+        "glutes",
+        "hamstrings",
+        "lower back",
+        "shoulders",
+        "traps",
+        "triceps"
+      ],
+      "instructions": [
+        "Begin by gripping the bottom of the tire on the tread, and position your feet back a bit. Your chest should be driving into the tire.",
+        "To lift the tire, extend through the hips, knees, and ankles, driving into the tire and up.",
+        "As the tire reaches a 45 degree angle, step forward and drive a knee into the tire. As you do so adjust your grip to the upper portion of the tire and push it forward as hard as possible to complete the turn. Repeat as necessary."
+      ],
+      "category": "strongman"
+    },
+    {
+      "sourceId": "Yoke_Walk",
+      "name": "Yoke Walk",
+      "level": "intermediate",
+      "mechanic": "compound",
+      "equipment": "other",
+      "primaryMuscles": [
+        "quadriceps"
+      ],
+      "secondaryMuscles": [
+        "abdominals",
+        "abductors",
+        "adductors",
+        "calves",
+        "glutes",
+        "hamstrings",
+        "lower back"
+      ],
+      "instructions": [
+        "The yoke is usually done with a yoke apparatus, but is sometimes seen with refrigerators or other heavy objects.",
+        "Begin by racking the apparatus across the back of the shoulders. With your head looking forward and back arched, lift the yoke by driving through the heels.",
+        "Begin walking as quickly as possible using short, quick steps. You may hold the side posts of the yoke to help steady it and hold it in position. Continue for the given distance as fast as possible, usually 75-100 feet."
+      ],
+      "category": "strongman"
+    }
+  ]
+}

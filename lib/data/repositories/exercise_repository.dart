@@ -23,6 +23,41 @@ ExerciseRepository exerciseRepository(Ref ref) {
   );
 }
 
+/// Input shape for [ExerciseRepository.upsertLibraryExercises]. Mirrors a
+/// row from the bundled pack JSON — the importer translates the source
+/// JSON into a list of these and hands them off in bulk.
+class LibraryExerciseInput {
+  const LibraryExerciseInput({
+    required this.id,
+    required this.sourceExerciseId,
+    required this.name,
+    required this.type,
+    required this.muscleGroup,
+    required this.primaryMuscles,
+    required this.secondaryMuscles,
+    required this.instructions,
+    this.equipment,
+    this.force,
+    this.level,
+    this.mechanic,
+    this.category,
+  });
+
+  final String id;
+  final String sourceExerciseId;
+  final String name;
+  final ExerciseType type;
+  final ExerciseMuscleGroup muscleGroup;
+  final String? equipment;
+  final String? force;
+  final String? level;
+  final String? mechanic;
+  final String? category;
+  final List<String> primaryMuscles;
+  final List<String> secondaryMuscles;
+  final List<String> instructions;
+}
+
 class ExerciseRepository {
   ExerciseRepository({required AppDatabase database, required Uuid uuid})
     : _database = database,
@@ -31,6 +66,10 @@ class ExerciseRepository {
   final AppDatabase _database;
   final Uuid _uuid;
 
+  /// Legacy starter seed used by tests and pre-pack-importer installs.
+  /// The app no longer calls this on startup — [databaseBootstrap] runs
+  /// the pack importer instead, which installs the bundled library packs
+  /// and remaps any pre-existing starter references to library entries.
   Future<void> seedDefaultsIfNeeded() async {
     final AppSettingRow? seededSetting =
         await (_database.select(_database.appSettings)
@@ -73,9 +112,13 @@ class ExerciseRepository {
     });
   }
 
-  Future<List<Exercise>> getAllExercises() async {
+  /// Returns every exercise in the database. Hidden exercises are excluded
+  /// by default — pass [includeHidden] to get them too (the importer needs
+  /// this when reconciling references for retired starters).
+  Future<List<Exercise>> getAllExercises({bool includeHidden = false}) async {
     final List<ExerciseRow> rows =
         await (_database.select(_database.exercises)
+              ..where((tbl) => includeHidden ? const Constant(true) : tbl.hidden.equals(false))
               ..orderBy(<OrderingTerm Function(Exercises)>[
                 (tbl) => OrderingTerm(expression: tbl.name),
               ]))
@@ -83,9 +126,11 @@ class ExerciseRepository {
     return rows.map((row) => row.toModel()).toList(growable: false);
   }
 
-  Stream<List<Exercise>> watchAllExercises() {
+  /// Same filtering rules as [getAllExercises].
+  Stream<List<Exercise>> watchAllExercises({bool includeHidden = false}) {
     final Stream<List<ExerciseRow>> rows =
         (_database.select(_database.exercises)
+              ..where((tbl) => includeHidden ? const Constant(true) : tbl.hidden.equals(false))
               ..orderBy(<OrderingTerm Function(Exercises)>[
                 (tbl) => OrderingTerm(expression: tbl.name),
               ]))
@@ -99,7 +144,7 @@ class ExerciseRepository {
   Future<List<Exercise>> getExercisesByType(ExerciseType type) async {
     final List<ExerciseRow> rows =
         await (_database.select(_database.exercises)
-              ..where((tbl) => tbl.type.equals(type.name))
+              ..where((tbl) => tbl.type.equals(type.name) & tbl.hidden.equals(false))
               ..orderBy(<OrderingTerm Function(Exercises)>[
                 (tbl) => OrderingTerm(expression: tbl.name),
               ]))
@@ -107,6 +152,8 @@ class ExerciseRepository {
     return rows.map((row) => row.toModel()).toList(growable: false);
   }
 
+  /// Lookup by id always returns the row even when hidden — workout
+  /// history must continue to render retired exercises by name.
   Future<Exercise> getExerciseById(String exerciseId) async {
     final ExerciseRow? row = await (_database.select(
       _database.exercises,
@@ -255,6 +302,129 @@ class ExerciseRepository {
     await (_database.delete(
       _database.exercises,
     )..where((tbl) => tbl.id.equals(exerciseId))).go();
+  }
+
+  /// Bulk insert/update of library exercises imported from a pack file.
+  /// Existing rows for these ids are updated in place so re-imports keep
+  /// the catalogue in sync without losing per-exercise rest overrides
+  /// (those columns are only set, never cleared, by the importer).
+  Future<void> upsertLibraryExercises({
+    required String packId,
+    required List<LibraryExerciseInput> exercises,
+  }) async {
+    if (exercises.isEmpty) return;
+    final DateTime now = _utcNow();
+
+    await _database.transaction(() async {
+      for (final LibraryExerciseInput input in exercises) {
+        final ExerciseRow? existing = await (_database.select(
+          _database.exercises,
+        )..where((tbl) => tbl.id.equals(input.id))).getSingleOrNull();
+
+        if (existing == null) {
+          await _database.into(_database.exercises).insert(
+                ExercisesCompanion.insert(
+                  id: input.id,
+                  name: input.name,
+                  type: input.type,
+                  muscleGroup: Value<ExerciseMuscleGroup>(input.muscleGroup),
+                  isDefault: const Value<bool>(false),
+                  createdAt: now,
+                  updatedAt: now,
+                  equipment: Value<String?>(input.equipment),
+                  force: Value<String?>(input.force),
+                  level: Value<String?>(input.level),
+                  mechanic: Value<String?>(input.mechanic),
+                  category: Value<String?>(input.category),
+                  primaryMusclesJson: Value<String?>(
+                    encodeStringListJson(input.primaryMuscles),
+                  ),
+                  secondaryMusclesJson: Value<String?>(
+                    encodeStringListJson(input.secondaryMuscles),
+                  ),
+                  instructionsJson: Value<String?>(
+                    encodeStringListJson(input.instructions),
+                  ),
+                  sourcePackId: Value<String?>(packId),
+                  sourceExerciseId: Value<String?>(input.sourceExerciseId),
+                  hidden: const Value<bool>(false),
+                ),
+              );
+        } else {
+          // Refresh source-owned fields (instructions, muscle lists,
+          // equipment, etc.) so library content updates flow through on
+          // re-import. Deliberately do NOT touch name / type / muscle
+          // group / rest override — those are surfaces the user may have
+          // tweaked, and clobbering them on every boot would be hostile.
+          await (_database.update(_database.exercises)
+                ..where((tbl) => tbl.id.equals(input.id)))
+              .write(
+            ExercisesCompanion(
+              equipment: Value<String?>(input.equipment),
+              force: Value<String?>(input.force),
+              level: Value<String?>(input.level),
+              mechanic: Value<String?>(input.mechanic),
+              category: Value<String?>(input.category),
+              primaryMusclesJson: Value<String?>(
+                encodeStringListJson(input.primaryMuscles),
+              ),
+              secondaryMusclesJson: Value<String?>(
+                encodeStringListJson(input.secondaryMuscles),
+              ),
+              instructionsJson: Value<String?>(
+                encodeStringListJson(input.instructions),
+              ),
+              sourcePackId: Value<String?>(packId),
+              sourceExerciseId: Value<String?>(input.sourceExerciseId),
+              updatedAt: Value<DateTime>(now),
+            ),
+          );
+        }
+      }
+    });
+  }
+
+  /// Sets the [hidden] flag on an exercise. Used by the importer to
+  /// retire legacy starter exercises after their references are remapped
+  /// to library entries.
+  Future<void> setExerciseHidden({
+    required String exerciseId,
+    required bool hidden,
+  }) async {
+    await (_database.update(_database.exercises)
+          ..where((tbl) => tbl.id.equals(exerciseId)))
+        .write(
+      ExercisesCompanion(
+        hidden: Value<bool>(hidden),
+        updatedAt: Value<DateTime>(_utcNow()),
+      ),
+    );
+  }
+
+  /// Rewrites every reference to [fromExerciseId] in workout history and
+  /// templates to point at [toExerciseId]. Used by the importer to move
+  /// past data off retired starter exercises onto their library matches.
+  Future<int> rewriteExerciseReferences({
+    required String fromExerciseId,
+    required String toExerciseId,
+  }) async {
+    return _database.transaction(() async {
+      final int workoutsUpdated = await (_database.update(
+        _database.workoutExercises,
+      )..where((tbl) => tbl.exerciseId.equals(fromExerciseId))).write(
+        WorkoutExercisesCompanion(
+          exerciseId: Value<String>(toExerciseId),
+        ),
+      );
+      final int templatesUpdated = await (_database.update(
+        _database.templateExercises,
+      )..where((tbl) => tbl.exerciseId.equals(fromExerciseId))).write(
+        TemplateExercisesCompanion(
+          exerciseId: Value<String>(toExerciseId),
+        ),
+      );
+      return workoutsUpdated + templatesUpdated;
+    });
   }
 
   DateTime _utcNow() => DateTime.now().toUtc();

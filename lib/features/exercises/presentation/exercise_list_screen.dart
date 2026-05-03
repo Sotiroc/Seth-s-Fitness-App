@@ -6,12 +6,14 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/illustrated_empty_state.dart';
 import '../../../data/models/exercise.dart';
+import '../../../data/models/exercise_pack.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/repositories/repository_exceptions.dart';
 import '../../home/presentation/widgets/menu_icon_button.dart';
 import '../application/exercise_editor_controller.dart';
 import '../application/exercise_list_provider.dart';
 import 'widgets/exercise_avatar.dart';
+import 'widgets/exercise_equipment_badge.dart';
 import 'widgets/exercise_history_sheet.dart';
 import 'widgets/exercise_muscle_group_badge.dart';
 import 'widgets/exercise_type_badge.dart';
@@ -50,10 +52,18 @@ class ExerciseListScreen extends ConsumerWidget {
               child: _FilterBar(
                 palette: palette,
                 filter: filter,
+                packs: ref
+                    .watch(installedExercisePacksProvider)
+                    .asData
+                    ?.value
+                    .where((p) => p.isActive)
+                    .toList(growable: false),
                 onQueryChanged: (value) =>
                     ref.read(exerciseFilterProvider.notifier).setQuery(value),
                 onTypeChanged: (value) =>
                     ref.read(exerciseFilterProvider.notifier).setType(value),
+                onPackChanged: (value) =>
+                    ref.read(exerciseFilterProvider.notifier).setPackId(value),
               ),
             ),
             filtered.when(
@@ -276,14 +286,23 @@ class _FilterBar extends StatelessWidget {
   const _FilterBar({
     required this.palette,
     required this.filter,
+    required this.packs,
     required this.onQueryChanged,
     required this.onTypeChanged,
+    required this.onPackChanged,
   });
 
   final JellyBeanPalette palette;
   final ExerciseListFilter filter;
+
+  /// Currently active packs (the ones turned on in settings). Null while
+  /// the pack list is still loading. Empty list means no packs are
+  /// active — chips collapse, only user-created exercises remain.
+  final List<ExercisePack>? packs;
+
   final ValueChanged<String> onQueryChanged;
   final ValueChanged<ExerciseType?> onTypeChanged;
+  final ValueChanged<String?> onPackChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -308,6 +327,57 @@ class _FilterBar extends StatelessWidget {
             selected: filter.type,
             onChanged: onTypeChanged,
           ),
+          if (packs != null && packs!.length > 1) ...<Widget>[
+            const SizedBox(height: AppSpacing.sm),
+            _PackChips(
+              palette: palette,
+              packs: packs!,
+              selectedPackId: filter.packId,
+              onChanged: onPackChanged,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PackChips extends StatelessWidget {
+  const _PackChips({
+    required this.palette,
+    required this.packs,
+    required this.selectedPackId,
+    required this.onChanged,
+  });
+
+  final JellyBeanPalette palette;
+  final List<ExercisePack> packs;
+  final String? selectedPackId;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const ClampingScrollPhysics(),
+      child: Row(
+        children: <Widget>[
+          _Chip(
+            palette: palette,
+            label: 'All packs',
+            selected: selectedPackId == null,
+            onTap: () => onChanged(null),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          for (final ExercisePack pack in packs) ...<Widget>[
+            _Chip(
+              palette: palette,
+              label: pack.name,
+              selected: selectedPackId == pack.id,
+              onTap: () => onChanged(pack.id),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+          ],
         ],
       ),
     );
@@ -556,6 +626,10 @@ class _ExerciseTile extends StatelessWidget {
                         ExerciseMuscleGroupBadge(
                           muscleGroup: exercise.muscleGroup,
                         ),
+                        if (exercise.equipment != null)
+                          ExerciseEquipmentBadge(
+                            equipment: exercise.equipment!,
+                          ),
                       ],
                     ),
                   ],

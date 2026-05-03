@@ -6,6 +6,7 @@ import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_set.dart';
 import '../../../data/repositories/exercise_repository.dart';
 import '../../../data/repositories/workout_repository.dart';
+import '../../exercises/application/exercise_list_provider.dart';
 
 part 'active_workout_provider.g.dart';
 
@@ -15,10 +16,13 @@ Stream<WorkoutDetail?> activeWorkoutDetail(Ref ref) async* {
   yield* ref.watch(workoutRepositoryProvider).watchActiveWorkoutDetail();
 }
 
+/// Exercises offered in the add-exercise picker. Tracks the same active-
+/// pack filter used by the library list so toggling a pack off in
+/// settings instantly removes those exercises from the picker too.
+/// User-created exercises always appear regardless of pack toggles.
 @Riverpod(keepAlive: true)
-Future<List<Exercise>> workoutExerciseOptions(Ref ref) async {
-  await ref.watch(databaseBootstrapProvider.future);
-  return ref.watch(exerciseRepositoryProvider).getAllExercises();
+AsyncValue<List<Exercise>> workoutExerciseOptions(Ref ref) {
+  return ref.watch(packAwareExerciseListProvider);
 }
 
 /// Stable identity of the active workout: workout id plus an ordered list of

@@ -83,7 +83,83 @@ class Exercises extends Table {
   /// disabled). 0 explicitly disables the rest timer for this exercise.
   IntColumn get defaultRestSeconds => integer().nullable()();
 
+  /// Equipment label as supplied by the source pack
+  /// (e.g. 'barbell', 'body only'). Null for user-created exercises and
+  /// rows imported before this column existed.
+  TextColumn get equipment => text().nullable()();
+
+  /// Movement force from the source pack: 'push' | 'pull' | 'static'.
+  TextColumn get force => text().nullable()();
+
+  /// Difficulty from the source pack: 'beginner' | 'intermediate' | 'expert'.
+  TextColumn get level => text().nullable()();
+
+  /// Mechanic from the source pack: 'compound' | 'isolation'.
+  TextColumn get mechanic => text().nullable()();
+
+  /// Source category (matches the pack id for library entries:
+  /// 'strength', 'cardio', 'stretching', 'plyometrics', 'powerlifting',
+  /// 'strongman', 'olympic weightlifting').
+  TextColumn get category => text().nullable()();
+
+  /// JSON-encoded `List<String>` of source primary muscle labels.
+  TextColumn get primaryMusclesJson => text().nullable()();
+
+  /// JSON-encoded `List<String>` of source secondary muscle labels.
+  TextColumn get secondaryMusclesJson => text().nullable()();
+
+  /// JSON-encoded `List<String>` of multi-step form instructions.
+  TextColumn get instructionsJson => text().nullable()();
+
+  /// Pack id this exercise was imported from (e.g. 'strength'). Null for
+  /// user-created exercises and the legacy starter set.
+  TextColumn get sourcePackId => text().nullable()();
+
+  /// Stable id within the source pack (e.g. 'Barbell_Bench_Press_-_Medium_Grip').
+  /// Null for user-created exercises and the legacy starter set.
+  TextColumn get sourceExerciseId => text().nullable()();
+
+  /// True when the exercise should be hidden from pickers and the library
+  /// list. Used to retire the legacy 18 starters once their references
+  /// have been remapped to library entries — the rows stay so any
+  /// remaining history references continue to resolve.
+  BoolColumn get hidden => boolean().withDefault(const Constant(false))();
+
   DateTimeColumn get createdAt => dateTime()();
+
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
+/// Registry of installed exercise packs. One row per pack — populated by
+/// the pack importer on first launch and on every pack file update.
+@DataClassName('ExercisePackRow')
+class ExercisePacks extends Table {
+  TextColumn get id => text()();
+
+  TextColumn get name => text()();
+
+  TextColumn get description => text()();
+
+  TextColumn get credit => text()();
+
+  TextColumn get license => text()();
+
+  TextColumn get assetPath => text()();
+
+  /// On/off toggle. Inactive packs hide their exercises from the library
+  /// list and the add-exercise picker. Past workout history is unaffected.
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+
+  /// Pack file's `schemaVersion` at import time. Lets future versions
+  /// detect upgrade scenarios without scanning every row.
+  IntColumn get schemaVersion => integer()();
+
+  IntColumn get exerciseCount => integer().withDefault(const Constant(0))();
+
+  DateTimeColumn get installedAt => dateTime()();
 
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -324,6 +400,7 @@ class UserProfiles extends Table {
     AppSettings,
     UserProfiles,
     WeightEntries,
+    ExercisePacks,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -332,7 +409,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -463,6 +540,24 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(sets, sets.parentSetId);
         await m.addColumn(sets, sets.rpe);
         await m.addColumn(sets, sets.note);
+      }
+      if (from < 12) {
+        // Richer fields imported from public-domain library packs, plus
+        // the pack registry table. Existing 18 starter rows keep
+        // sourcePackId = null and hidden = false until the pack importer
+        // remaps their references and flips them hidden.
+        await m.addColumn(exercises, exercises.equipment);
+        await m.addColumn(exercises, exercises.force);
+        await m.addColumn(exercises, exercises.level);
+        await m.addColumn(exercises, exercises.mechanic);
+        await m.addColumn(exercises, exercises.category);
+        await m.addColumn(exercises, exercises.primaryMusclesJson);
+        await m.addColumn(exercises, exercises.secondaryMusclesJson);
+        await m.addColumn(exercises, exercises.instructionsJson);
+        await m.addColumn(exercises, exercises.sourcePackId);
+        await m.addColumn(exercises, exercises.sourceExerciseId);
+        await m.addColumn(exercises, exercises.hidden);
+        await m.createTable(exercisePacks);
       }
     },
   );

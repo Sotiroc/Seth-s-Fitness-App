@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -27,6 +28,14 @@ class SettingsScreen extends StatelessWidget {
             ),
             sliver: SliverList.list(
               children: <Widget>[
+                _SettingsTile(
+                  palette: palette,
+                  icon: Icons.library_books_outlined,
+                  title: 'Exercise library',
+                  subtitle: 'Choose which exercise packs are active.',
+                  onTap: () => context.push('/settings/library'),
+                ),
+                const SizedBox(height: AppSpacing.sm),
                 _SettingsTile(
                   palette: palette,
                   icon: Icons.download_rounded,

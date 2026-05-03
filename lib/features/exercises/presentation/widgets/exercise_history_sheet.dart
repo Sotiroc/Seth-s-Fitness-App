@@ -15,6 +15,7 @@ import 'exercise_avatar.dart';
 import 'exercise_history_day_card.dart';
 import 'exercise_history_pr_card.dart';
 import 'exercise_history_summary.dart';
+import 'exercise_instructions_card.dart';
 
 /// Bottom sheet that shows an exercise's all-time best PR plus every past
 /// session as date-ordered cards. Used both during an active workout (tap
@@ -106,6 +107,18 @@ class ExerciseHistorySheet extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
+              if ((exerciseAsync.asData?.value?.instructions ?? const <String>[]).isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    0,
+                    AppSpacing.lg,
+                    AppSpacing.md,
+                  ),
+                  child: ExerciseInstructionsCard(
+                    steps: exerciseAsync.asData!.value!.instructions,
+                  ),
+                ),
               Expanded(
                 child: historyAsync.when(
                   loading: () =>

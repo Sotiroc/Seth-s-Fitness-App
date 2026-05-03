@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../db/app_database.dart';
 import 'exercise.dart';
 import 'exercise_muscle_group.dart';
+import 'exercise_pack.dart';
 import 'template_exercise.dart';
 import 'user_profile.dart';
 import 'weight_entry.dart';
@@ -25,6 +26,35 @@ extension ExerciseRowMapper on ExerciseRow {
       createdAt: createdAt,
       updatedAt: updatedAt,
       defaultRestSeconds: defaultRestSeconds,
+      equipment: equipment,
+      force: force,
+      level: level,
+      mechanic: mechanic,
+      category: category,
+      primaryMuscles: decodeStringListJson(primaryMusclesJson),
+      secondaryMuscles: decodeStringListJson(secondaryMusclesJson),
+      instructions: decodeStringListJson(instructionsJson),
+      sourcePackId: sourcePackId,
+      sourceExerciseId: sourceExerciseId,
+      hidden: hidden,
+    );
+  }
+}
+
+extension ExercisePackRowMapper on ExercisePackRow {
+  ExercisePack toModel() {
+    return ExercisePack(
+      id: id,
+      name: name,
+      description: description,
+      credit: credit,
+      license: license,
+      assetPath: assetPath,
+      isActive: isActive,
+      schemaVersion: schemaVersion,
+      exerciseCount: exerciseCount,
+      installedAt: installedAt,
+      updatedAt: updatedAt,
     );
   }
 }
@@ -174,4 +204,29 @@ ExerciseMuscleGroup? _muscleGroupByName(String name) {
     if (mg.name == name) return mg;
   }
   return null;
+}
+
+/// Tolerant decoder for the JSON-encoded `List<String>` columns on
+/// exercises (primary muscles, secondary muscles, instructions). Returns
+/// an empty list for null/empty input or anything that fails to parse,
+/// so a corrupt row never crashes a list query.
+List<String> decodeStringListJson(String? raw) {
+  if (raw == null || raw.isEmpty) return const <String>[];
+  try {
+    final Object? parsed = jsonDecode(raw);
+    if (parsed is! List<dynamic>) return const <String>[];
+    return <String>[
+      for (final dynamic item in parsed)
+        if (item is String) item,
+    ];
+  } catch (_) {
+    return const <String>[];
+  }
+}
+
+/// Inverse of [decodeStringListJson]. Returns null for empty input so
+/// the column stays NULL rather than holding `"[]"`.
+String? encodeStringListJson(List<String>? values) {
+  if (values == null || values.isEmpty) return null;
+  return jsonEncode(values);
 }

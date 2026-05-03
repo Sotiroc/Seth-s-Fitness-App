@@ -7,6 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../data/models/exercise.dart';
 import '../../../../data/models/exercise_type.dart';
 import '../../../exercises/presentation/widgets/exercise_avatar.dart';
+import '../../../exercises/presentation/widgets/exercise_equipment_badge.dart';
 import '../../../exercises/presentation/widgets/exercise_muscle_group_badge.dart';
 import '../../../exercises/presentation/widgets/exercise_type_badge.dart';
 import '../../application/active_workout_provider.dart';
@@ -422,6 +423,10 @@ class _ExerciseOption extends StatelessWidget {
                         ExerciseMuscleGroupBadge(
                           muscleGroup: exercise.muscleGroup,
                         ),
+                        if (exercise.equipment != null)
+                          ExerciseEquipmentBadge(
+                            equipment: exercise.equipment!,
+                          ),
                       ],
                     ),
                   ],
