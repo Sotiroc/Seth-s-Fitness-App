@@ -46,6 +46,11 @@ class WorkoutNotActiveException extends RepositoryException {
     : super('Workout is not active: $workoutId');
 }
 
+class WorkoutNotEndedException extends RepositoryException {
+  WorkoutNotEndedException(String workoutId)
+    : super('Workout has not ended: $workoutId');
+}
+
 class WorkoutExerciseNotFoundException extends RepositoryException {
   WorkoutExerciseNotFoundException(String workoutExerciseId)
     : super('Workout exercise not found: $workoutExerciseId');
@@ -58,4 +63,9 @@ class WorkoutSetNotFoundException extends RepositoryException {
 
 class InvalidWorkoutSetException extends RepositoryException {
   InvalidWorkoutSetException(super.message);
+}
+
+class InvalidExerciseRestException extends RepositoryException {
+  InvalidExerciseRestException()
+    : super('Exercise rest must be null or between 0 and 3600 seconds.');
 }

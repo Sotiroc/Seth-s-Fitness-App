@@ -16,7 +16,17 @@
       "Bash(claude mcp *)",
       "Bash(where npx *)",
       "Bash(where node *)",
-      "PowerShell(claude mcp add playwright --scope user -- cmd /c \"npx -y @playwright/mcp@latest\")"
+      "PowerShell(claude mcp add playwright --scope user -- cmd /c \"npx -y @playwright/mcp@latest\")",
+      "Bash(grep -n \"getPreviousSets\\\\|getSetsByExercise\\\\|previousSets\" C:\\\\\\\\Dev\\\\\\\\FitnessApp\\\\\\\\lib\\\\\\\\data\\\\\\\\repositories\\\\\\\\workout_repository.dart)",
+      "Bash(flutter test *)",
+      "Bash(dart analyze *)",
+      "Bash(dart format *)",
+      "Read(//tmp/**)",
+      "mcp__playwright__browser_resize",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_close",
+      "Bash(flutter run *)",
+      "Bash(xargs grep *)"
     ]
   }
 }

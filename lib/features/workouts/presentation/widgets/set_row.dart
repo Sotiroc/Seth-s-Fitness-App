@@ -5,6 +5,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/duration_formatter.dart';
 import '../../../../data/models/exercise_type.dart';
 import '../../../../data/models/workout_set.dart';
+import '../../../../data/models/workout_set_kind.dart';
+import 'set_kind_visuals.dart';
 
 /// A single row in the set-logging table. Three visual variants depending on
 /// the exercise type; commits to the backend via [onChanged] callbacks.
@@ -18,8 +20,12 @@ class SetRow extends StatefulWidget {
     required this.exerciseType,
     required this.previousSummary,
     required this.onCommit,
+    this.previousSet,
     this.roundTop = true,
     this.roundBottom = true,
+    this.onSetCompleted,
+    this.onSetUncompleted,
+    this.onTapSetNumber,
   });
 
   final WorkoutSet set;
@@ -27,6 +33,12 @@ class SetRow extends StatefulWidget {
 
   /// Pre-formatted string for the "Previous" column, or `-` if unavailable.
   final String previousSummary;
+
+  /// The user's last completed set at this set number, if any. When non-null
+  /// and tapped, its values fill the row's input fields and commit. Kept
+  /// alongside [previousSummary] (which is the rendered string) so we don't
+  /// have to re-parse the formatted text.
+  final WorkoutSet? previousSet;
 
   /// Called to persist a change. Pass the next full value set; the caller
   /// forwards to the session controller.
@@ -45,6 +57,24 @@ class SetRow extends StatefulWidget {
   /// stack of individually-rounded pills.
   final bool roundTop;
   final bool roundBottom;
+
+  /// Fires after a successful false→true completion transition. Parent
+  /// uses this to start the rest timer. Not called on re-saves of an
+  /// already-completed set or when the commit fails.
+  final VoidCallback? onSetCompleted;
+
+  /// Fires after a successful true→false uncomplete transition. Parent
+  /// uses this to dismiss the running rest timer when the user changes
+  /// their mind.
+  final VoidCallback? onSetUncompleted;
+
+  /// Tapped when the user hits the set-number badge. The parent decides
+  /// what UI to show based on `set.completed` — a quick popup menu (type
+  /// picker) for incomplete sets, or the richer details sheet (RPE +
+  /// note) for completed ones. The [BuildContext] handed back is the
+  /// badge's own context, so the parent can anchor a popup menu directly
+  /// to the tapped widget.
+  final void Function(BuildContext anchorContext)? onTapSetNumber;
 
   @override
   State<SetRow> createState() => _SetRowState();
@@ -171,15 +201,18 @@ class _SetRowState extends State<SetRow> {
     return DurationFormatter.parseSeconds(text);
   }
 
-  Future<void> _commit({
+  /// Returns `true` when the commit reached the server successfully so
+  /// callers can distinguish a real completion from a swallowed error.
+  Future<bool> _commit({
     required bool completed,
     bool showCompletionBusy = false,
   }) async {
-    if (_saving) return;
+    if (_saving) return false;
     setState(() {
       _saving = true;
       _completing = showCompletionBusy;
     });
+    bool ok = false;
     try {
       switch (widget.exerciseType) {
         case ExerciseType.weighted:
@@ -207,6 +240,7 @@ class _SetRowState extends State<SetRow> {
             completed: completed,
           );
       }
+      ok = true;
     } catch (_) {
       // Error surfaced by the parent via snackbar; keep local state intact so
       // the user can correct without losing input.
@@ -218,13 +252,15 @@ class _SetRowState extends State<SetRow> {
         });
       }
     }
+    return ok;
   }
 
   Future<void> _toggleCompleted() async {
     if (_saving) return;
     _suppressNextBlurCommit = true;
 
-    final bool next = !widget.set.completed;
+    final bool wasCompleted = widget.set.completed;
+    final bool next = !wasCompleted;
     if (next) {
       // Validate client-side to give immediate feedback; backend validation
       // is authoritative.
@@ -236,7 +272,44 @@ class _SetRowState extends State<SetRow> {
         return;
       }
     }
-    await _commit(completed: next, showCompletionBusy: true);
+    final bool ok = await _commit(completed: next, showCompletionBusy: true);
+    if (!ok || !mounted) return;
+    if (next && !wasCompleted) {
+      widget.onSetCompleted?.call();
+    } else if (!next && wasCompleted) {
+      widget.onSetUncompleted?.call();
+    }
+  }
+
+  Future<void> _applyPrevious() async {
+    final WorkoutSet? prev = widget.previousSet;
+    if (prev == null) return;
+    if (widget.set.completed) return;
+    if (_saving) return;
+
+    // Updating controllers will fire focus-loss commits later if the user
+    // already had a field focused; suppress that one to keep this to a single
+    // explicit commit.
+    _suppressNextBlurCommit = true;
+
+    switch (widget.exerciseType) {
+      case ExerciseType.weighted:
+        _weightController.text = prev.weightKg == null
+            ? ''
+            : _formatNumber(prev.weightKg!);
+        _repsController.text = prev.reps?.toString() ?? '';
+      case ExerciseType.bodyweight:
+        _repsController.text = prev.reps?.toString() ?? '';
+      case ExerciseType.cardio:
+        _distanceController.text = prev.distanceKm == null
+            ? ''
+            : _formatNumber(prev.distanceKm!);
+        _durationController.text = prev.durationSeconds == null
+            ? ''
+            : DurationFormatter.formatSeconds(prev.durationSeconds!);
+    }
+
+    await _commit(completed: false);
   }
 
   String? _validateForCompletion() {
@@ -264,28 +337,92 @@ class _SetRowState extends State<SetRow> {
   Widget build(BuildContext context) {
     final JellyBeanPalette palette = context.jellyBeanPalette;
     final bool completed = widget.set.completed;
+    final WorkoutSetKind kind = widget.set.kind;
+    final SetKindVisuals visuals = SetKindVisuals.forKind(kind, palette);
+    final bool isDrop = kind == WorkoutSetKind.drop;
+    // Drops are visually nested under the parent working set with a small
+    // left indent + a connector strip on the leading edge so the chain is
+    // legible at a glance even before the user opens the sheet.
+    final double leftPad = isDrop ? 22.0 : 4.0;
 
     return TextFieldTapRegion(
       child: Stack(
         children: <Widget>[
+          // Per-kind tint stripe sits underneath the row content. Subtle by
+          // design — the brand teal still wins.
+          if (visuals.tint != null)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 2),
+                  decoration: BoxDecoration(
+                    color: visuals.tint!.withValues(
+                      alpha: completed ? 0.35 : 0.6,
+                    ),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(widget.roundTop ? 10 : 0),
+                      topRight: Radius.circular(widget.roundTop ? 10 : 0),
+                      bottomLeft: Radius.circular(widget.roundBottom ? 10 : 0),
+                      bottomRight: Radius.circular(widget.roundBottom ? 10 : 0),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          // Drop-set connector: a short vertical bar on the leading edge so
+          // the indented row reads as a child of the working set above it.
+          if (isDrop && visuals.accent != null)
+            Positioned(
+              left: 6,
+              top: 4,
+              bottom: 4,
+              child: Container(
+                width: 3,
+                decoration: BoxDecoration(
+                  color: visuals.accent!.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            padding: EdgeInsets.fromLTRB(leftPad, 6, 4, 6),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
-                _SetNumber(number: widget.set.setNumber, palette: palette),
+                _SetNumberButton(
+                  set: widget.set,
+                  palette: palette,
+                  visuals: visuals,
+                  onTap: widget.onTapSetNumber,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   flex: 3,
-                  child: Text(
-                    widget.previousSummary,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: palette.shade700.withValues(alpha: 0.75),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  child: Builder(
+                    builder: (BuildContext context) {
+                      final bool actionable =
+                          widget.previousSet != null && !completed;
+                      return Semantics(
+                        button: actionable,
+                        label: actionable ? 'Use previous set values' : null,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: actionable ? _applyPrevious : null,
+                          child: Text(
+                            widget.previousSummary,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: palette.shade700.withValues(
+                                alpha: actionable ? 0.85 : 0.5,
+                              ),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -404,31 +541,124 @@ class _SetRowState extends State<SetRow> {
   }
 }
 
-class _SetNumber extends StatelessWidget {
-  const _SetNumber({required this.number, required this.palette});
+/// The leading "set number" cell. Tappable on every set — opens the set
+/// details sheet so the user can attach kind / RPE / note. Renders the
+/// kind's short letter (W / D / F) when set, or the position number for
+/// normal sets. A small RPE/note dot row sits underneath the badge.
+class _SetNumberButton extends StatelessWidget {
+  const _SetNumberButton({
+    required this.set,
+    required this.palette,
+    required this.visuals,
+    required this.onTap,
+  });
 
-  final int number;
+  final WorkoutSet set;
   final JellyBeanPalette palette;
+  final SetKindVisuals visuals;
+  final void Function(BuildContext anchorContext)? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final bool isCustomKind = set.kind != WorkoutSetKind.normal;
+    final Color badgeColor = isCustomKind
+        ? (visuals.accent ?? palette.shade100)
+        : palette.shade100;
+    final Color textColor = isCustomKind ? Colors.white : palette.shade800;
+    final String label = isCustomKind ? visuals.shortLabel : '${set.setNumber}';
+
+    final Widget badge = Container(
       width: 30,
       height: 30,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: palette.shade100,
+        color: badgeColor,
         borderRadius: BorderRadius.circular(9),
       ),
       child: Text(
-        '$number',
+        label,
         style: TextStyle(
-          color: palette.shade800,
+          color: textColor,
           fontWeight: FontWeight.w800,
           fontSize: 13,
         ),
       ),
     );
+
+    // Builder gives us a BuildContext whose RenderObject is the badge
+    // itself, so the parent can anchor the popup menu directly under it.
+    return Builder(
+      builder: (BuildContext anchorContext) {
+        return Semantics(
+          button: onTap != null,
+          label: 'Set ${set.setNumber} details',
+          child: InkWell(
+            onTap: onTap == null
+                ? null
+                : () {
+                    HapticFeedback.selectionClick();
+                    onTap!(anchorContext);
+                  },
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  badge,
+                  if (set.rpe != null ||
+                      (set.note != null && set.note!.isNotEmpty))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: _ExtrasIndicators(set: set, palette: palette),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ExtrasIndicators extends StatelessWidget {
+  const _ExtrasIndicators({required this.set, required this.palette});
+
+  final WorkoutSet set;
+  final JellyBeanPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> children = <Widget>[];
+    if (set.rpe != null) {
+      children.add(
+        Text(
+          '${set.rpe}',
+          style: TextStyle(
+            color: palette.shade700,
+            fontSize: 9.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+            height: 1.0,
+          ),
+        ),
+      );
+    }
+    if (set.note != null && set.note!.isNotEmpty) {
+      if (children.isNotEmpty) children.add(const SizedBox(width: 3));
+      children.add(
+        Container(
+          width: 4,
+          height: 4,
+          decoration: BoxDecoration(
+            color: palette.shade700.withValues(alpha: 0.7),
+            shape: BoxShape.circle,
+          ),
+        ),
+      );
+    }
+    return Row(mainAxisSize: MainAxisSize.min, children: children);
   }
 }
 

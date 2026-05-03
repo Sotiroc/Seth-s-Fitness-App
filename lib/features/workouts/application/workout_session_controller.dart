@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../data/models/workout.dart';
 import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_set.dart';
+import '../../../data/models/workout_set_kind.dart';
 import '../../../data/repositories/workout_repository.dart';
 
 part 'workout_session_controller.g.dart';
@@ -47,23 +48,84 @@ class WorkoutSessionController extends _$WorkoutSessionController {
     });
   }
 
+  Future<Workout> updateWorkoutIntensityScore({
+    required String workoutId,
+    required int? score,
+  }) {
+    return _runMutation(() async {
+      final Workout workout = await ref
+          .read(workoutRepositoryProvider)
+          .updateWorkoutIntensityScore(workoutId: workoutId, score: score);
+      return workout;
+    });
+  }
+
   Future<WorkoutExerciseDetail> addExercise({
     required String workoutId,
     required String exerciseId,
   }) {
     return _runMutation(() async {
-      final WorkoutExerciseDetail detail = await ref
-          .read(workoutRepositoryProvider)
-          .addExerciseToWorkout(workoutId: workoutId, exerciseId: exerciseId);
-      return detail;
+      final WorkoutRepository repo = ref.read(workoutRepositoryProvider);
+      final WorkoutExerciseDetail detail = await repo.addExerciseToWorkout(
+        workoutId: workoutId,
+        exerciseId: exerciseId,
+      );
+      final WorkoutSet firstSet = await repo.addSetToWorkoutExercise(
+        detail.workoutExercise.id,
+      );
+      return WorkoutExerciseDetail(
+        workoutExercise: detail.workoutExercise,
+        exercise: detail.exercise,
+        sets: <WorkoutSet>[firstSet],
+      );
     });
   }
 
-  Future<WorkoutSet> addSet(String workoutExerciseId) {
+  Future<void> removeExercise(String workoutExerciseId) {
+    return _runMutation(() async {
+      await ref
+          .read(workoutRepositoryProvider)
+          .removeExerciseFromWorkout(workoutExerciseId);
+    });
+  }
+
+  Future<WorkoutSet> addSet(
+    String workoutExerciseId, {
+    WorkoutSetKind kind = WorkoutSetKind.normal,
+    String? parentSetId,
+  }) {
     return _runMutation(() async {
       final WorkoutSet workoutSet = await ref
           .read(workoutRepositoryProvider)
-          .addSetToWorkoutExercise(workoutExerciseId);
+          .addSetToWorkoutExercise(
+            workoutExerciseId,
+            kind: kind,
+            parentSetId: parentSetId,
+          );
+      return workoutSet;
+    });
+  }
+
+  /// Updates the "extras" attached to a set: kind (warm-up / normal / drop /
+  /// failure), per-set RPE, and free-text note. The weight/reps/completed
+  /// path stays on [updateSet].
+  Future<WorkoutSet> updateSetExtras({
+    required String workoutSetId,
+    required WorkoutSetKind kind,
+    int? rpe,
+    String? note,
+    String? parentSetId,
+  }) {
+    return _runMutation(() async {
+      final WorkoutSet workoutSet = await ref
+          .read(workoutRepositoryProvider)
+          .updateWorkoutSetExtras(
+            workoutSetId: workoutSetId,
+            kind: kind,
+            rpe: rpe,
+            note: note,
+            parentSetId: parentSetId,
+          );
       return workoutSet;
     });
   }

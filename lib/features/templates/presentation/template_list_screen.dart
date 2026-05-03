@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/illustrated_empty_state.dart';
 import '../../../data/models/template_detail.dart';
 import '../../../data/models/workout_template.dart';
 import '../../../data/repositories/repository_exceptions.dart';
+import '../../home/presentation/widgets/menu_icon_button.dart';
 import '../application/template_editor_controller.dart';
 import '../application/template_providers.dart';
 
@@ -25,6 +27,7 @@ class TemplateListScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: palette.shade50,
+      drawerEnableOpenDragGesture: false,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/templates/new'),
         backgroundColor: palette.shade900,
@@ -43,9 +46,9 @@ class TemplateListScreen extends ConsumerWidget {
           templates.when(
             data: (items) {
               if (items.isEmpty) {
-                return SliverFillRemaining(
+                return const SliverFillRemaining(
                   hasScrollBody: false,
-                  child: _EmptyState(palette: palette),
+                  child: _EmptyState(),
                 );
               }
               return SliverPadding(
@@ -118,6 +121,8 @@ class _Header extends StatelessWidget {
             children: <Widget>[
               Row(
                 children: <Widget>[
+                  const MenuIconButton(),
+                  const SizedBox(width: AppSpacing.sm),
                   Container(width: 2, height: 14, color: palette.shade300),
                   const SizedBox(width: 8),
                   Text(
@@ -475,36 +480,16 @@ class _TemplateSummary extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.palette});
-
-  final JellyBeanPalette palette;
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          const SizedBox(height: AppSpacing.xl),
-          Icon(Icons.auto_awesome_rounded, size: 48, color: palette.shade400),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'No templates yet',
-            style: TextStyle(
-              color: palette.shade950,
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Build a routine once, run it as often as you like.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: palette.shade800.withValues(alpha: 0.8)),
-          ),
-        ],
-      ),
+    return const IllustratedEmptyState(
+      illustrationAsset: AppIllustrations.emptyTemplates,
+      title: 'No templates yet',
+      message:
+          'Save a workout as a template to reuse it next session — '
+          'no rebuilding the same routine twice.',
     );
   }
 }

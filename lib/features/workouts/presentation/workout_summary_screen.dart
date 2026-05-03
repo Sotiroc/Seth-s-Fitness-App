@@ -10,6 +10,7 @@ import '../../../core/utils/duration_formatter.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_set.dart';
+import '../../../data/models/workout_set_kind.dart';
 import '../../exercises/presentation/widgets/exercise_avatar.dart';
 import '../../exercises/presentation/widgets/exercise_muscle_group_badge.dart';
 import '../../exercises/presentation/widgets/exercise_type_badge.dart';
@@ -34,6 +35,8 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
   final FocusNode _nameFocus = FocusNode();
   Timer? _saveDebounce;
   String? _lastSavedName;
+  int? _selectedIntensity;
+  int? _lastSavedIntensity;
   bool _seeded = false;
 
   @override
@@ -57,11 +60,24 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
     }
   }
 
-  void _seedIfNeeded(String? serverName) {
+  void _seedIfNeeded(
+    String? serverName,
+    int? serverIntensity, {
+    int? suggestedIntensity,
+  }) {
     if (_seeded) return;
     _seeded = true;
     _nameController.text = serverName ?? '';
     _lastSavedName = serverName;
+    // Prefer the value the user actually saved. When they haven't picked
+    // one yet, fall back to the max per-set RPE so the chip already
+    // reflects the heaviest set's effort. The fallback is "suggested"
+    // — we never persist it without an explicit tap, so the user keeps
+    // ownership of the number.
+    _selectedIntensity = serverIntensity ?? suggestedIntensity;
+    // Track only the actually-persisted value here so a later change
+    // attributed to the user (tapping the same chip) compares correctly.
+    _lastSavedIntensity = serverIntensity;
   }
 
   void _onNameChanged(String _) {
@@ -92,6 +108,38 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
     }
   }
 
+  Future<void> _setIntensity(int? value) async {
+    if (value == _selectedIntensity) return;
+    final int? previous = _selectedIntensity;
+    final int? previousSaved = _lastSavedIntensity;
+    setState(() {
+      _selectedIntensity = value;
+    });
+    _lastSavedIntensity = value;
+    try {
+      await ref
+          .read(workoutSessionControllerProvider.notifier)
+          .updateWorkoutIntensityScore(
+            workoutId: widget.workoutId,
+            score: value,
+          );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _selectedIntensity = previous;
+      });
+      _lastSavedIntensity = previousSaved;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not save intensity: ${error.toString().replaceFirst('Exception: ', '')}',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final JellyBeanPalette palette = context.jellyBeanPalette;
@@ -103,7 +151,11 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
       backgroundColor: palette.shade50,
       body: detailAsync.when(
         data: (detail) {
-          _seedIfNeeded(detail.workout.name);
+          _seedIfNeeded(
+            detail.workout.name,
+            detail.workout.intensityScore,
+            suggestedIntensity: _maxPerSetRpe(detail),
+          );
           return _SummaryBody(
             detail: detail,
             palette: palette,
@@ -111,6 +163,11 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
             nameFocus: _nameFocus,
             onNameChanged: _onNameChanged,
             onSubmitted: _flushSave,
+            selectedIntensity: _selectedIntensity,
+            onIntensityChanged: _setIntensity,
+            isIntensitySuggested:
+                detail.workout.intensityScore == null &&
+                _selectedIntensity != null,
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -125,6 +182,22 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
   }
 }
 
+/// Largest 1–10 per-set RPE recorded across the entire workout, or `null`
+/// if no set has an RPE attached. Used as the auto-suggested seed for the
+/// workout-level intensity chip on the summary screen — the user can
+/// always override.
+int? _maxPerSetRpe(WorkoutDetail detail) {
+  int? best;
+  for (final WorkoutExerciseDetail e in detail.exercises) {
+    for (final WorkoutSet s in e.sets) {
+      final int? rpe = s.rpe;
+      if (rpe == null) continue;
+      if (best == null || rpe > best) best = rpe;
+    }
+  }
+  return best;
+}
+
 class _SummaryBody extends StatelessWidget {
   const _SummaryBody({
     required this.detail,
@@ -133,6 +206,9 @@ class _SummaryBody extends StatelessWidget {
     required this.nameFocus,
     required this.onNameChanged,
     required this.onSubmitted,
+    required this.selectedIntensity,
+    required this.onIntensityChanged,
+    required this.isIntensitySuggested,
   });
 
   final WorkoutDetail detail;
@@ -141,6 +217,9 @@ class _SummaryBody extends StatelessWidget {
   final FocusNode nameFocus;
   final ValueChanged<String> onNameChanged;
   final VoidCallback onSubmitted;
+  final int? selectedIntensity;
+  final ValueChanged<int?> onIntensityChanged;
+  final bool isIntensitySuggested;
 
   Duration get _duration {
     final DateTime end = detail.workout.endedAt ?? DateTime.now();
@@ -150,12 +229,15 @@ class _SummaryBody extends StatelessWidget {
   int get _completedSets {
     return detail.exercises
         .expand<WorkoutSet>((e) => e.sets)
-        .where((s) => s.completed)
+        .where((s) => s.completed && s.kind.countsAsWorkingSet)
         .length;
   }
 
   int get _totalSets {
-    return detail.exercises.fold<int>(0, (sum, e) => sum + e.sets.length);
+    return detail.exercises.fold<int>(
+      0,
+      (sum, e) => sum + e.sets.where((s) => s.kind.countsAsWorkingSet).length,
+    );
   }
 
   double get _totalVolumeKg {
@@ -164,6 +246,7 @@ class _SummaryBody extends StatelessWidget {
       if (e.exercise.type != ExerciseType.weighted) continue;
       for (final WorkoutSet s in e.sets) {
         if (!s.completed) continue;
+        if (s.kind == WorkoutSetKind.warmUp) continue;
         final double w = s.weightKg ?? 0;
         final int r = s.reps ?? 0;
         total += w * r;
@@ -178,6 +261,7 @@ class _SummaryBody extends StatelessWidget {
       if (e.exercise.type != ExerciseType.cardio) continue;
       for (final WorkoutSet s in e.sets) {
         if (!s.completed) continue;
+        if (s.kind == WorkoutSetKind.warmUp) continue;
         total += s.distanceKm ?? 0;
       }
     }
@@ -212,6 +296,22 @@ class _SummaryBody extends StatelessWidget {
               focusNode: nameFocus,
               onChanged: onNameChanged,
               onSubmitted: onSubmitted,
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            0,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: _IntensityInputCard(
+              palette: palette,
+              selected: selectedIntensity,
+              onChanged: onIntensityChanged,
+              isSuggested: isIntensitySuggested,
             ),
           ),
         ),
@@ -769,6 +869,191 @@ class _NameInputCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _IntensityInputCard extends StatelessWidget {
+  const _IntensityInputCard({
+    required this.palette,
+    required this.selected,
+    required this.onChanged,
+    required this.isSuggested,
+  });
+
+  final JellyBeanPalette palette;
+  final int? selected;
+
+  /// Receives the new value, or `null` when the user taps the currently
+  /// selected chip to clear the score.
+  final ValueChanged<int?> onChanged;
+
+  /// True when [selected] reflects a value derived from per-set RPEs that
+  /// the user has not yet confirmed. The card prefixes the helper line
+  /// with "Suggested" so the user knows tapping a different chip is
+  /// expected, not a correction.
+  final bool isSuggested;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: palette.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: palette.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.local_fire_department_rounded,
+                  color: palette.shade800,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'INTENSITY',
+                      style: TextStyle(
+                        color: palette.shade700,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isSuggested
+                          ? 'Suggested from your set RPEs · tap to confirm or change'
+                          : 'How hard did this feel? (1–10)',
+                      style: TextStyle(
+                        color: palette.shade700.withValues(alpha: 0.7),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: <Widget>[
+              for (int i = 1; i <= 10; i++)
+                _IntensityChip(
+                  palette: palette,
+                  value: i,
+                  selected: selected == i,
+                  isSuggested: isSuggested && selected == i,
+                  tooltip: i == 1
+                      ? 'Very easy'
+                      : i == 10
+                      ? 'Max effort'
+                      : null,
+                  // Tapping the suggested chip confirms it (writes through);
+                  // tapping any other chip overrides; tapping the same chip
+                  // again clears (only after the user has confirmed).
+                  onTap: () {
+                    if (selected == i && !isSuggested) {
+                      onChanged(null);
+                    } else {
+                      onChanged(i);
+                    }
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IntensityChip extends StatelessWidget {
+  const _IntensityChip({
+    required this.palette,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+    this.tooltip,
+    this.isSuggested = false,
+  });
+
+  final JellyBeanPalette palette;
+  final int value;
+  final bool selected;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  /// True when this chip is selected via auto-suggest rather than an
+  /// explicit user tap. Renders with a softer fill so it doesn't read as
+  /// a confirmed answer until the user taps to lock it in.
+  final bool isSuggested;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color fillColor = selected
+        ? (isSuggested
+            ? palette.shade400.withValues(alpha: 0.55)
+            : palette.shade700)
+        : palette.shade50;
+    final Color borderColor = selected
+        ? (isSuggested ? palette.shade500 : palette.shade700)
+        : palette.shade100;
+    final Color textColor = selected
+        ? (isSuggested ? palette.shade950 : Colors.white)
+        : palette.shade800;
+    final Widget chip = Material(
+      color: fillColor,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor),
+          ),
+          child: Text(
+            '$value',
+            style: TextStyle(
+              color: textColor,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (tooltip == null) return chip;
+    return Tooltip(message: tooltip!, child: chip);
   }
 }
 

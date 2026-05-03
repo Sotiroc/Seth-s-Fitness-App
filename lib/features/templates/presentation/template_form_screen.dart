@@ -278,14 +278,14 @@ class _TemplateFormScreenState extends ConsumerState<TemplateFormScreen> {
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: SizedBox(
-            height: 52,
+            height: 50,
             child: FilledButton(
               onPressed: _saving ? null : _save,
               style: FilledButton.styleFrom(
                 backgroundColor: palette.shade900,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
               child: _saving

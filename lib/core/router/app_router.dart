@@ -8,6 +8,12 @@ import '../../features/history/presentation/history_list_screen.dart';
 import '../../features/history/presentation/workout_detail_screen.dart';
 import '../../features/home/presentation/home_shell.dart';
 import '../../features/home/presentation/phase2_debug_screen.dart';
+import '../../features/profile/presentation/profile_form_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/progression/presentation/pr_list_screen.dart';
+import '../../features/progression/presentation/progression_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/settings/presentation/timer_settings_screen.dart';
 import '../../features/templates/presentation/template_form_screen.dart';
 import '../../features/templates/presentation/template_list_screen.dart';
 import '../../features/workouts/presentation/active_workout_screen.dart';
@@ -22,11 +28,11 @@ enum AppTab {
     selectedIcon: Icons.fitness_center,
     path: '/workouts',
   ),
-  history(
-    label: 'History',
-    icon: Icons.insights_outlined,
-    selectedIcon: Icons.insights,
-    path: '/history',
+  progression(
+    label: 'Progression',
+    icon: Icons.trending_up_outlined,
+    selectedIcon: Icons.trending_up,
+    path: '/progression',
   ),
   templates(
     label: 'Templates',
@@ -59,6 +65,42 @@ GoRouter appRouter(Ref ref) {
   return GoRouter(
     initialLocation: AppTab.workouts.path,
     routes: <RouteBase>[
+      // Profile lives outside the shell so opening it from any tab keeps the
+      // bottom-nav selection unchanged when the user backs out.
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'edit',
+            builder: (context, state) => const ProfileFormScreen(),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
+        routes: <RouteBase>[
+          GoRoute(
+            path: 'timer',
+            builder: (context, state) => const TimerSettingsScreen(),
+          ),
+        ],
+      ),
+      // History lives outside the shell — it's reached from the drawer, not
+      // a bottom-nav tab, so opening it preserves the user's tab selection.
+      GoRoute(
+        path: '/history',
+        builder: (context, state) => const HistoryListScreen(),
+        routes: <RouteBase>[
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => WorkoutDetailScreen(
+              workoutId: state.pathParameters['id']!,
+            ),
+          ),
+        ],
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return HomeShell(navigationShell: navigationShell);
@@ -92,15 +134,13 @@ GoRouter appRouter(Ref ref) {
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: AppTab.history.path,
+                path: AppTab.progression.path,
                 pageBuilder: (context, state) =>
-                    const NoTransitionPage<void>(child: HistoryListScreen()),
+                    const NoTransitionPage<void>(child: ProgressionScreen()),
                 routes: <RouteBase>[
                   GoRoute(
-                    path: ':id',
-                    builder: (context, state) => WorkoutDetailScreen(
-                      workoutId: state.pathParameters['id']!,
-                    ),
+                    path: 'prs',
+                    builder: (context, state) => const PrListScreen(),
                   ),
                 ],
               ),

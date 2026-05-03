@@ -12,6 +12,7 @@ import 'package:fitnessapp/data/models/template_exercise.dart';
 import 'package:fitnessapp/data/models/workout.dart';
 import 'package:fitnessapp/data/models/workout_detail.dart';
 import 'package:fitnessapp/data/models/workout_set.dart';
+import 'package:fitnessapp/data/models/workout_set_kind.dart';
 import 'package:fitnessapp/data/models/workout_template.dart';
 import 'package:fitnessapp/data/repositories/exercise_repository.dart';
 import 'package:fitnessapp/data/repositories/repository_exceptions.dart';
@@ -301,6 +302,17 @@ void main() {
         expect(detail.exercises[2].exercise.name, 'Treadmill');
         expect(detail.exercises[2].sets.single.distanceKm, 2.4);
         expect(detail.exercises[2].sets.single.durationSeconds, 900);
+
+        // Activity-tracking timestamps populated by the auto-close flow:
+        // every WorkoutExercise gets a createdAt and every WorkoutSet
+        // mutation bumps updatedAt. Completion sets completedAt.
+        for (final ex in detail.exercises) {
+          expect(ex.workoutExercise.createdAt, isNotNull);
+          for (final s in ex.sets) {
+            expect(s.updatedAt, isNotNull);
+            expect(s.completedAt, isNotNull, reason: 'completed sets get a timestamp');
+          }
+        }
       },
     );
 
@@ -442,6 +454,488 @@ void main() {
         ]);
       },
     );
+
+    group('intensity score', () {
+      test('is null on a freshly started workout', () async {
+        final Workout workout = await workoutRepository.startWorkout();
+        expect(workout.intensityScore, isNull);
+
+        final WorkoutDetail detail = await workoutRepository.getWorkoutById(
+          workout.id,
+        );
+        expect(detail.workout.intensityScore, isNull);
+      });
+
+      test('persists a value and reads it back', () async {
+        final Workout workout = await workoutRepository.startWorkout();
+
+        final Workout updated = await workoutRepository
+            .updateWorkoutIntensityScore(workoutId: workout.id, score: 7);
+
+        expect(updated.intensityScore, 7);
+        final WorkoutDetail detail = await workoutRepository.getWorkoutById(
+          workout.id,
+        );
+        expect(detail.workout.intensityScore, 7);
+      });
+
+      test('clamps below 1 up to 1', () async {
+        final Workout workout = await workoutRepository.startWorkout();
+
+        final Workout updated = await workoutRepository
+            .updateWorkoutIntensityScore(workoutId: workout.id, score: 0);
+
+        expect(updated.intensityScore, 1);
+      });
+
+      test('clamps above 10 down to 10', () async {
+        final Workout workout = await workoutRepository.startWorkout();
+
+        final Workout updated = await workoutRepository
+            .updateWorkoutIntensityScore(workoutId: workout.id, score: 11);
+
+        expect(updated.intensityScore, 10);
+      });
+
+      test('null clears a previously set score', () async {
+        final Workout workout = await workoutRepository.startWorkout();
+        await workoutRepository.updateWorkoutIntensityScore(
+          workoutId: workout.id,
+          score: 5,
+        );
+
+        final Workout cleared = await workoutRepository
+            .updateWorkoutIntensityScore(workoutId: workout.id, score: null);
+
+        expect(cleared.intensityScore, isNull);
+        final WorkoutDetail detail = await workoutRepository.getWorkoutById(
+          workout.id,
+        );
+        expect(detail.workout.intensityScore, isNull);
+      });
+
+      test('can be set on a finished workout from the summary screen',
+          () async {
+        final Workout workout = await workoutRepository.startWorkout();
+        await workoutRepository.endWorkout(workout.id);
+
+        final Workout updated = await workoutRepository
+            .updateWorkoutIntensityScore(workoutId: workout.id, score: 8);
+
+        expect(updated.intensityScore, 8);
+        expect(updated.isActive, isFalse);
+      });
+    });
+
+    group('staleness and auto-close', () {
+      Future<({Workout workout, String setId})>
+      seedActiveWithCompletedSet() async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final Workout workout = await workoutRepository.startWorkout();
+        final String exerciseId = defaultExerciseSeeds
+            .firstWhere((seed) => seed.name == 'Bench Press')
+            .id;
+        final detail = await workoutRepository.addExerciseToWorkout(
+          workoutId: workout.id,
+          exerciseId: exerciseId,
+        );
+        final WorkoutSet set =
+            await workoutRepository.addSetToWorkoutExercise(
+          detail.workoutExercise.id,
+        );
+        await workoutRepository.updateWorkoutSet(
+          workoutSetId: set.id,
+          weightKg: 80,
+          reps: 5,
+          distanceKm: null,
+          durationSeconds: null,
+          completed: true,
+        );
+        return (workout: workout, setId: set.id);
+      }
+
+      // Backdates a completed set's updatedAt + completedAt so the
+      // staleness snapshot's "last activity" appears to be `at`. The
+      // exercise's createdAt and the workout's startedAt are bumped
+      // back too, otherwise they would be the most-recent timestamps
+      // and shadow the set's. Uses Drift's typed update API so the
+      // value passes through the same DateTime serializer the repo uses.
+      Future<void> backdate(String workoutId, DateTime at) async {
+        final exerciseRows = await (database.select(database.workoutExercises)
+              ..where((tbl) => tbl.workoutId.equals(workoutId)))
+            .get();
+        final exerciseIds =
+            exerciseRows.map((row) => row.id).toList(growable: false);
+        if (exerciseIds.isNotEmpty) {
+          await (database.update(database.sets)
+                ..where((tbl) => tbl.workoutExerciseId.isIn(exerciseIds)))
+              .write(SetsCompanion(
+            updatedAt: drift.Value<DateTime?>(at),
+            completedAt: drift.Value<DateTime?>(at),
+          ));
+        }
+        await (database.update(database.workoutExercises)
+              ..where((tbl) => tbl.workoutId.equals(workoutId)))
+            .write(WorkoutExercisesCompanion(
+          createdAt: drift.Value<DateTime?>(at),
+        ));
+        await (database.update(database.workouts)
+              ..where((tbl) => tbl.id.equals(workoutId)))
+            .write(WorkoutsCompanion(startedAt: drift.Value<DateTime>(at)));
+      }
+
+      test('closes a stale workout at the last completed set time', () async {
+        final seeded = await seedActiveWithCompletedSet();
+        final DateTime longAgo = DateTime.utc(2024, 1, 1, 10);
+        await backdate(seeded.workout.id, longAgo);
+
+        // Sanity-check: the snapshot should reflect the backdate.
+        final snapshot =
+            await workoutRepository.getStalenessSnapshot(seeded.workout.id);
+        expect(
+          snapshot.lastCompletedSetAt?.toUtc(),
+          longAgo,
+          reason: 'snapshot.lastCompletedSetAt should match backdate',
+        );
+
+        final Workout? closed = await workoutRepository.autoCloseIfStale(
+          threshold: const Duration(hours: 1),
+          now: longAgo.add(const Duration(hours: 2)),
+        );
+
+        expect(closed, isNotNull);
+        expect(closed!.id, seeded.workout.id);
+        expect(
+          closed.endedAt?.toUtc(),
+          longAgo,
+          reason: 'endedAt should match the last completed set time',
+        );
+
+        final WorkoutDetail detail =
+            await workoutRepository.getWorkoutById(seeded.workout.id);
+        expect(detail.workout.endedAt?.toUtc(), longAgo);
+      });
+
+      test('silently discards a stale workout with zero completed sets',
+          () async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final Workout workout = await workoutRepository.startWorkout();
+        final String exerciseId = defaultExerciseSeeds
+            .firstWhere((seed) => seed.name == 'Bench Press')
+            .id;
+        final detail = await workoutRepository.addExerciseToWorkout(
+          workoutId: workout.id,
+          exerciseId: exerciseId,
+        );
+        // Add an uncompleted set (no completedAt).
+        await workoutRepository.addSetToWorkoutExercise(
+          detail.workoutExercise.id,
+        );
+
+        final DateTime longAgo = DateTime.utc(2024, 1, 1, 10);
+        await backdate(workout.id, longAgo);
+
+        final Workout? closed = await workoutRepository.autoCloseIfStale(
+          threshold: const Duration(hours: 1),
+          now: longAgo.add(const Duration(hours: 2)),
+        );
+
+        expect(closed, isNull, reason: 'no popup for empty discard');
+        expect(
+          () => workoutRepository.getWorkoutById(workout.id),
+          throwsA(isA<WorkoutNotFoundException>()),
+          reason: 'workout was deleted',
+        );
+      });
+
+      test('is a no-op when activity is within the threshold', () async {
+        final seeded = await seedActiveWithCompletedSet();
+        final DateTime now = DateTime.now().toUtc();
+
+        final Workout? closed = await workoutRepository.autoCloseIfStale(
+          threshold: const Duration(hours: 1),
+          now: now.add(const Duration(minutes: 5)),
+        );
+
+        expect(closed, isNull);
+        final WorkoutDetail detail =
+            await workoutRepository.getWorkoutById(seeded.workout.id);
+        expect(detail.workout.endedAt, isNull,
+            reason: 'workout still active');
+      });
+
+      test('is a no-op when no active workout exists', () async {
+        final Workout? closed = await workoutRepository.autoCloseIfStale(
+          threshold: const Duration(hours: 1),
+        );
+        expect(closed, isNull);
+      });
+
+      test('reopenWorkout clears endedAt on a finished workout', () async {
+        final Workout workout = await workoutRepository.startWorkout();
+        await workoutRepository.endWorkout(workout.id);
+
+        final Workout reopened = await workoutRepository.reopenWorkout(
+          workout.id,
+        );
+
+        expect(reopened.endedAt, isNull);
+        expect(reopened.isActive, isTrue);
+      });
+
+      test('reopenWorkout rejects a workout that is still active', () async {
+        final Workout workout = await workoutRepository.startWorkout();
+        expect(
+          () => workoutRepository.reopenWorkout(workout.id),
+          throwsA(isA<WorkoutNotEndedException>()),
+        );
+      });
+
+      test('reopenWorkout rejects when another workout is active', () async {
+        final Workout finished = await workoutRepository.startWorkout();
+        await workoutRepository.endWorkout(finished.id);
+        // Start a second active one.
+        await workoutRepository.startWorkout();
+        expect(
+          () => workoutRepository.reopenWorkout(finished.id),
+          throwsA(isA<ActiveWorkoutAlreadyExistsException>()),
+        );
+      });
+
+      test('adjustEndedAt updates a finished workout endedAt', () async {
+        final Workout workout = await workoutRepository.startWorkout();
+        await workoutRepository.endWorkout(workout.id);
+        final DateTime newEnd = DateTime.utc(2024, 1, 1, 12);
+
+        final Workout adjusted =
+            await workoutRepository.adjustEndedAt(workout.id, newEnd);
+
+        expect(adjusted.endedAt, newEnd);
+      });
+
+      test('adjustEndedAt rejects an active workout', () async {
+        final Workout workout = await workoutRepository.startWorkout();
+        expect(
+          () => workoutRepository.adjustEndedAt(
+            workout.id,
+            DateTime.utc(2024, 1, 1, 12),
+          ),
+          throwsA(isA<WorkoutNotEndedException>()),
+        );
+      });
+
+      test('deleteFinishedWorkout removes a closed workout', () async {
+        final Workout workout = await workoutRepository.startWorkout();
+        await workoutRepository.endWorkout(workout.id);
+
+        await workoutRepository.deleteFinishedWorkout(workout.id);
+
+        expect(
+          () => workoutRepository.getWorkoutById(workout.id),
+          throwsA(isA<WorkoutNotFoundException>()),
+        );
+      });
+
+      test('completedAt clears when a set is unmarked complete', () async {
+        final seeded = await seedActiveWithCompletedSet();
+        // Toggle back to incomplete.
+        final WorkoutSet toggled = await workoutRepository.updateWorkoutSet(
+          workoutSetId: seeded.setId,
+          weightKg: 80,
+          reps: 5,
+          distanceKm: null,
+          durationSeconds: null,
+          completed: false,
+        );
+        expect(toggled.completed, isFalse);
+        expect(toggled.completedAt, isNull);
+      });
+
+      test('completedAt is preserved on re-save of an already-completed set',
+          () async {
+        final seeded = await seedActiveWithCompletedSet();
+        final WorkoutDetail before =
+            await workoutRepository.getWorkoutById(seeded.workout.id);
+        final DateTime? originalCompletedAt =
+            before.exercises.single.sets.single.completedAt;
+        expect(originalCompletedAt, isNotNull);
+
+        // Re-save with same completed=true; should not bump completedAt.
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        await workoutRepository.updateWorkoutSet(
+          workoutSetId: seeded.setId,
+          weightKg: 82,
+          reps: 5,
+          distanceKm: null,
+          durationSeconds: null,
+          completed: true,
+        );
+
+        final WorkoutDetail after =
+            await workoutRepository.getWorkoutById(seeded.workout.id);
+        expect(
+          after.exercises.single.sets.single.completedAt,
+          originalCompletedAt,
+        );
+      });
+    });
+
+    group('set kinds, RPE, notes, and drop sets', () {
+      test('addSet defaults to normal kind with no parent / RPE / note',
+          () async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final Workout workout = await workoutRepository.startWorkout();
+        final WorkoutExerciseDetail ex =
+            await workoutRepository.addExerciseToWorkout(
+          workoutId: workout.id,
+          exerciseId: defaultExerciseSeeds
+              .firstWhere((s) => s.name == 'Bench Press')
+              .id,
+        );
+
+        final WorkoutSet seeded = await workoutRepository
+            .addSetToWorkoutExercise(ex.workoutExercise.id);
+
+        expect(seeded.kind, WorkoutSetKind.normal);
+        expect(seeded.parentSetId, isNull);
+        expect(seeded.rpe, isNull);
+        expect(seeded.note, isNull);
+      });
+
+      test('updateWorkoutSetExtras persists kind, rpe, and trimmed note',
+          () async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final Workout workout = await workoutRepository.startWorkout();
+        final WorkoutExerciseDetail ex =
+            await workoutRepository.addExerciseToWorkout(
+          workoutId: workout.id,
+          exerciseId: defaultExerciseSeeds
+              .firstWhere((s) => s.name == 'Bench Press')
+              .id,
+        );
+        final WorkoutSet seeded = await workoutRepository
+            .addSetToWorkoutExercise(ex.workoutExercise.id);
+
+        await workoutRepository.updateWorkoutSetExtras(
+          workoutSetId: seeded.id,
+          kind: WorkoutSetKind.warmUp,
+          rpe: 7,
+          note: '  felt fine  ',
+        );
+
+        final WorkoutDetail after =
+            await workoutRepository.getWorkoutById(workout.id);
+        final WorkoutSet refreshed = after.exercises.single.sets.single;
+        expect(refreshed.kind, WorkoutSetKind.warmUp);
+        expect(refreshed.rpe, 7);
+        expect(refreshed.note, 'felt fine');
+      });
+
+      test('drop sets require a parent and reference one', () async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final Workout workout = await workoutRepository.startWorkout();
+        final WorkoutExerciseDetail ex =
+            await workoutRepository.addExerciseToWorkout(
+          workoutId: workout.id,
+          exerciseId: defaultExerciseSeeds
+              .firstWhere((s) => s.name == 'Bench Press')
+              .id,
+        );
+        final WorkoutSet parent = await workoutRepository
+            .addSetToWorkoutExercise(ex.workoutExercise.id);
+
+        // Reject drop without parent.
+        expect(
+          () => workoutRepository.addSetToWorkoutExercise(
+            ex.workoutExercise.id,
+            kind: WorkoutSetKind.drop,
+          ),
+          throwsA(isA<InvalidWorkoutSetException>()),
+        );
+
+        // Accept drop with parent.
+        final WorkoutSet drop = await workoutRepository
+            .addSetToWorkoutExercise(
+          ex.workoutExercise.id,
+          kind: WorkoutSetKind.drop,
+          parentSetId: parent.id,
+        );
+        expect(drop.kind, WorkoutSetKind.drop);
+        expect(drop.parentSetId, parent.id);
+      });
+
+      test('deleting a parent re-parents drop children', () async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final Workout workout = await workoutRepository.startWorkout();
+        final WorkoutExerciseDetail ex =
+            await workoutRepository.addExerciseToWorkout(
+          workoutId: workout.id,
+          exerciseId: defaultExerciseSeeds
+              .firstWhere((s) => s.name == 'Bench Press')
+              .id,
+        );
+        final WorkoutSet parent1 = await workoutRepository
+            .addSetToWorkoutExercise(ex.workoutExercise.id);
+        final WorkoutSet child = await workoutRepository
+            .addSetToWorkoutExercise(
+          ex.workoutExercise.id,
+          kind: WorkoutSetKind.drop,
+          parentSetId: parent1.id,
+        );
+
+        await workoutRepository.deleteWorkoutSet(parent1.id);
+
+        final WorkoutDetail after =
+            await workoutRepository.getWorkoutById(workout.id);
+        final WorkoutSet refreshedChild =
+            after.exercises.single.sets.firstWhere((s) => s.id == child.id);
+        // parent1 had no parent of its own → child detaches cleanly.
+        expect(refreshedChild.parentSetId, isNull);
+      });
+
+      test('warm-ups are excluded from completed-set counts', () async {
+        await exerciseRepository.seedDefaultsIfNeeded();
+        final Workout workout = await workoutRepository.startWorkout();
+        final WorkoutExerciseDetail ex =
+            await workoutRepository.addExerciseToWorkout(
+          workoutId: workout.id,
+          exerciseId: defaultExerciseSeeds
+              .firstWhere((s) => s.name == 'Bench Press')
+              .id,
+        );
+        final WorkoutSet warmUp = await workoutRepository
+            .addSetToWorkoutExercise(ex.workoutExercise.id);
+        await workoutRepository.updateWorkoutSetExtras(
+          workoutSetId: warmUp.id,
+          kind: WorkoutSetKind.warmUp,
+        );
+        await workoutRepository.updateWorkoutSet(
+          workoutSetId: warmUp.id,
+          weightKg: 40,
+          reps: 10,
+          distanceKm: null,
+          durationSeconds: null,
+          completed: true,
+        );
+        final WorkoutSet working = await workoutRepository
+            .addSetToWorkoutExercise(ex.workoutExercise.id);
+        await workoutRepository.updateWorkoutSet(
+          workoutSetId: working.id,
+          weightKg: 80,
+          reps: 6,
+          distanceKm: null,
+          durationSeconds: null,
+          completed: true,
+        );
+        await workoutRepository.endWorkout(workout.id);
+
+        final Map<String, int> counts = await workoutRepository
+            .getCompletedSetCountsForWorkouts(<String>[workout.id]);
+
+        // Only the working set should be counted; warm-up is excluded.
+        expect(counts[workout.id], 1);
+      });
+    });
   });
 
   group('TemplateRepository', () {
@@ -546,5 +1040,158 @@ void main() {
         expect(detail.exercises.single.templateExercise.defaultSets, 4);
       },
     );
+  });
+
+  group('Rest timer metadata', () {
+    Future<({Workout workout, String workoutExerciseId, String exerciseId})>
+    seedActiveWorkout() async {
+      final Exercise exercise = await exerciseRepository.createExercise(
+        name: 'Squat',
+        type: ExerciseType.weighted,
+        muscleGroup: ExerciseMuscleGroup.legs,
+      );
+      final Workout workout = await workoutRepository.startWorkout();
+      final String workoutExerciseId = uuid.v4();
+      await database
+          .into(database.workoutExercises)
+          .insert(
+            WorkoutExercisesCompanion.insert(
+              id: workoutExerciseId,
+              workoutId: workout.id,
+              exerciseId: exercise.id,
+              orderIndex: 0,
+            ),
+          );
+      return (
+        workout: workout,
+        workoutExerciseId: workoutExerciseId,
+        exerciseId: exercise.id,
+      );
+    }
+
+    test(
+      'addSetToWorkoutExercise leaves startedAt null until first edit',
+      () async {
+        final ctx = await seedActiveWorkout();
+        final WorkoutSet created = await workoutRepository
+            .addSetToWorkoutExercise(ctx.workoutExerciseId);
+        expect(created.startedAt, isNull);
+      },
+    );
+
+    test('updateWorkoutSet captures startedAt on first edit and pins it',
+        () async {
+      final ctx = await seedActiveWorkout();
+      final WorkoutSet created = await workoutRepository
+          .addSetToWorkoutExercise(ctx.workoutExerciseId);
+
+      final WorkoutSet firstEdit = await workoutRepository.updateWorkoutSet(
+        workoutSetId: created.id,
+        weightKg: 60,
+        reps: 5,
+        distanceKm: null,
+        durationSeconds: null,
+        completed: false,
+      );
+      expect(firstEdit.startedAt, isNotNull);
+
+      // Wait one tick so any new "now" would visibly differ.
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      final WorkoutSet secondEdit = await workoutRepository.updateWorkoutSet(
+        workoutSetId: created.id,
+        weightKg: 65,
+        reps: 5,
+        distanceKm: null,
+        durationSeconds: null,
+        completed: true,
+      );
+      // Drift stores DateTime as Unix seconds and reads back local-zoned,
+      // so the returned values can differ in subseconds and timezone
+      // presentation. Compare as milliseconds-since-epoch — timezone-
+      // agnostic and within the second-level precision the column has.
+      expect(
+        secondEdit.startedAt!.millisecondsSinceEpoch ~/ 1000,
+        firstEdit.startedAt!.millisecondsSinceEpoch ~/ 1000,
+      );
+      expect(secondEdit.completedAt, isNotNull);
+    });
+
+    test('Exercise.effectiveRestSeconds returns per-type defaults', () async {
+      final Exercise weighted = await exerciseRepository.createExercise(
+        name: 'Row',
+        type: ExerciseType.weighted,
+        muscleGroup: ExerciseMuscleGroup.back,
+      );
+      final Exercise bodyweight = await exerciseRepository.createExercise(
+        name: 'Push-up',
+        type: ExerciseType.bodyweight,
+        muscleGroup: ExerciseMuscleGroup.chest,
+      );
+      final Exercise cardio = await exerciseRepository.createExercise(
+        name: 'Treadmill',
+        type: ExerciseType.cardio,
+        muscleGroup: ExerciseMuscleGroup.cardio,
+      );
+      expect(weighted.effectiveRestSeconds, 120);
+      expect(bodyweight.effectiveRestSeconds, 60);
+      expect(cardio.effectiveRestSeconds, 0);
+    });
+
+    test('updateExerciseRestSeconds round-trips, clears, and validates',
+        () async {
+      final Exercise created = await exerciseRepository.createExercise(
+        name: 'Bench',
+        type: ExerciseType.weighted,
+        muscleGroup: ExerciseMuscleGroup.chest,
+      );
+      expect(created.defaultRestSeconds, isNull);
+      expect(created.effectiveRestSeconds, 120);
+
+      final Exercise withOverride =
+          await exerciseRepository.updateExerciseRestSeconds(
+        exerciseId: created.id,
+        restSeconds: 45,
+      );
+      expect(withOverride.defaultRestSeconds, 45);
+      expect(withOverride.effectiveRestSeconds, 45);
+
+      final Exercise cleared =
+          await exerciseRepository.updateExerciseRestSeconds(
+        exerciseId: created.id,
+        restSeconds: null,
+      );
+      expect(cleared.defaultRestSeconds, isNull);
+      expect(cleared.effectiveRestSeconds, 120);
+
+      expect(
+        () => exerciseRepository.updateExerciseRestSeconds(
+          exerciseId: created.id,
+          restSeconds: -1,
+        ),
+        throwsA(isA<InvalidExerciseRestException>()),
+      );
+      expect(
+        () => exerciseRepository.updateExerciseRestSeconds(
+          exerciseId: created.id,
+          restSeconds: 3601,
+        ),
+        throwsA(isA<InvalidExerciseRestException>()),
+      );
+    });
+
+    test('createExercise persists defaultRestSeconds and refetches',
+        () async {
+      final Exercise created = await exerciseRepository.createExercise(
+        name: 'Pull-up',
+        type: ExerciseType.bodyweight,
+        muscleGroup: ExerciseMuscleGroup.back,
+        defaultRestSeconds: 75,
+      );
+      expect(created.defaultRestSeconds, 75);
+      final Exercise fetched =
+          await exerciseRepository.getExerciseById(created.id);
+      expect(fetched.defaultRestSeconds, 75);
+    });
   });
 }

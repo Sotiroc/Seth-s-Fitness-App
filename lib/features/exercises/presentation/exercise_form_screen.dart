@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,9 +7,11 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/images/exercise_thumbnail_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/utils/duration_formatter.dart';
 import '../../../data/models/exercise.dart';
 import '../../../data/models/exercise_muscle_group.dart';
 import '../../../data/models/exercise_type.dart';
+import '../../../data/repositories/app_settings_repository.dart';
 import '../../../data/repositories/exercise_repository.dart';
 import '../application/exercise_editor_controller.dart';
 import 'widgets/exercise_avatar.dart';
@@ -41,6 +42,10 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
   Exercise? _original;
   Uint8List? _thumbnailBytes;
   bool _thumbnailCleared = false;
+  // Per-exercise rest override. `null` means "fall back to the global
+  // default in Timer settings (or the type fallback if that's also
+  // unset)". `0` explicitly disables the timer for this exercise.
+  int? _restSeconds;
 
   @override
   void initState() {
@@ -70,6 +75,7 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
         _muscleGroup = exercise.muscleGroup;
         _isDefault = exercise.isDefault;
         _thumbnailBytes = exercise.thumbnailBytes;
+        _restSeconds = exercise.defaultRestSeconds;
         _loadingInitial = false;
       });
     } catch (e) {
@@ -100,6 +106,8 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
           muscleGroup: _muscleGroup,
           thumbnailBytes: _thumbnailCleared ? null : _thumbnailBytes,
           clearThumbnail: _thumbnailCleared,
+          defaultRestSeconds: _restSeconds,
+          clearDefaultRestSeconds: _restSeconds == null,
         );
       } else {
         result = await controller.createExercise(
@@ -107,6 +115,7 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
           type: _type,
           muscleGroup: _muscleGroup,
           thumbnailBytes: _thumbnailBytes,
+          defaultRestSeconds: _restSeconds,
         );
       }
 
@@ -135,7 +144,8 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
     if (_processingImage) return;
     final JellyBeanPalette palette = context.jellyBeanPalette;
     final bool hasImage = _thumbnailBytes != null;
-    final _ThumbnailAction? action = await showModalBottomSheet<_ThumbnailAction>(
+    final _ThumbnailAction?
+    action = await showModalBottomSheet<_ThumbnailAction>(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -152,17 +162,15 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
                   icon: Icons.photo_library_rounded,
                   label: 'Choose from library',
                   palette: palette,
-                  onTap: () => Navigator.of(sheetContext).pop(
-                    _ThumbnailAction.gallery,
-                  ),
+                  onTap: () =>
+                      Navigator.of(sheetContext).pop(_ThumbnailAction.gallery),
                 ),
                 _SheetTile(
                   icon: Icons.photo_camera_rounded,
                   label: 'Take photo',
                   palette: palette,
-                  onTap: () => Navigator.of(sheetContext).pop(
-                    _ThumbnailAction.camera,
-                  ),
+                  onTap: () =>
+                      Navigator.of(sheetContext).pop(_ThumbnailAction.camera),
                 ),
                 if (hasImage)
                   _SheetTile(
@@ -170,9 +178,8 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
                     label: 'Remove photo',
                     palette: palette,
                     destructive: true,
-                    onTap: () => Navigator.of(sheetContext).pop(
-                      _ThumbnailAction.remove,
-                    ),
+                    onTap: () =>
+                        Navigator.of(sheetContext).pop(_ThumbnailAction.remove),
                   ),
               ],
             ),
@@ -238,6 +245,10 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
   @override
   Widget build(BuildContext context) {
     final JellyBeanPalette palette = context.jellyBeanPalette;
+    final int? userDefaultRest = ref
+        .watch(defaultRestSecondsProvider)
+        .asData
+        ?.value;
 
     return Scaffold(
       backgroundColor: palette.shade50,
@@ -322,6 +333,21 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
                     selected: _muscleGroup,
                     onChanged: (value) => setState(() => _muscleGroup = value),
                   ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _FieldLabel(
+                    text: 'Rest between sets',
+                    palette: palette,
+                    icon: Icons.timer_outlined,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  _RestPicker(
+                    palette: palette,
+                    seconds: _restSeconds,
+                    typeFallbackSeconds: _typeFallbackRest(_type),
+                    userDefaultSeconds: userDefaultRest,
+                    onChanged: (int? value) =>
+                        setState(() => _restSeconds = value),
+                  ),
                   if (_isDefault) ...<Widget>[
                     const SizedBox(height: AppSpacing.lg),
                     Container(
@@ -359,14 +385,14 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: SizedBox(
-            height: 52,
+            height: 50,
             child: FilledButton(
               onPressed: _loading || _loadingInitial ? null : _save,
               style: FilledButton.styleFrom(
                 backgroundColor: palette.shade900,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
               child: _loading
@@ -395,15 +421,34 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
 
 enum _ThumbnailAction { gallery, camera, remove }
 
+/// Mirrors `Exercise.resolveRestSeconds` for the form, where the user is
+/// editing the *type* live and we want the hint to track the currently-
+/// selected type rather than the saved one.
+int _typeFallbackRest(ExerciseType type) {
+  switch (type) {
+    case ExerciseType.weighted:
+      return 120;
+    case ExerciseType.bodyweight:
+      return 60;
+    case ExerciseType.cardio:
+      return 0;
+  }
+}
+
 class _FieldLabel extends StatelessWidget {
-  const _FieldLabel({required this.text, required this.palette});
+  const _FieldLabel({required this.text, required this.palette, this.icon});
 
   final String text;
   final JellyBeanPalette palette;
 
+  /// Optional eyebrow icon rendered before the label. Used by sections
+  /// that benefit from a glanceable visual cue (e.g. the rest timer
+  /// section gets a clock icon).
+  final IconData? icon;
+
   @override
   Widget build(BuildContext context) {
-    return Text(
+    final Widget label = Text(
       text.toUpperCase(),
       style: TextStyle(
         color: palette.shade700,
@@ -411,6 +456,15 @@ class _FieldLabel extends StatelessWidget {
         fontWeight: FontWeight.w800,
         letterSpacing: 1.4,
       ),
+    );
+    if (icon == null) return label;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Icon(icon, size: 13, color: palette.shade700),
+        const SizedBox(width: 6),
+        label,
+      ],
     );
   }
 }
@@ -646,13 +700,9 @@ class _MuscleGroupPicker extends StatelessWidget {
                           ),
                         ),
                         trailing: group == selected
-                            ? Icon(
-                                Icons.check_rounded,
-                                color: palette.shade700,
-                              )
+                            ? Icon(Icons.check_rounded, color: palette.shade700)
                             : null,
-                        onTap: () =>
-                            Navigator.of(sheetContext).pop(group),
+                        onTap: () => Navigator.of(sheetContext).pop(group),
                       ),
                   ],
                 ),
@@ -765,7 +815,7 @@ class _TypeOption extends StatelessWidget {
                 maxLines: 1,
                 style: TextStyle(
                   color: selected ? Colors.white : palette.shade950,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.2,
                 ),
@@ -785,6 +835,353 @@ class _TypeOption extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Per-exercise rest picker rendered as a single dropdown row to keep
+/// the form compact. Items in order:
+///   - Preset durations (1:00 / 1:30 / 2:00 / 3:00) with timer icons.
+///   - Divider.
+///   - Default (clear override → fall back to the global default or
+///     per-type default), Off (disable for this exercise), Custom
+///     (reveal an mm:ss text input for an arbitrary value).
+///
+/// Sentinels in the dropdown's `int?` value space:
+///   `null`  → Default
+///   `0`     → Off
+///   60..180 → Preset
+///   `-1`    → Custom (input field is visible)
+///   `-2`    → Divider (`enabled: false`, never the selection)
+class _RestPicker extends StatefulWidget {
+  const _RestPicker({
+    required this.palette,
+    required this.seconds,
+    required this.typeFallbackSeconds,
+    required this.userDefaultSeconds,
+    required this.onChanged,
+  });
+
+  final JellyBeanPalette palette;
+  final int? seconds;
+  final int typeFallbackSeconds;
+
+  /// User-level global default (from Timer settings). Drives the hint
+  /// text under the "Default" tile so users see what their override
+  /// would fall back to.
+  final int? userDefaultSeconds;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  State<_RestPicker> createState() => _RestPickerState();
+}
+
+class _RestPickerState extends State<_RestPicker> {
+  static const List<int> _presets = <int>[0, 60, 90, 120, 180];
+
+  bool _editingCustom = false;
+  late TextEditingController _customController;
+  String? _customError;
+
+  @override
+  void initState() {
+    super.initState();
+    _customController = TextEditingController(text: _initialCustomText());
+    _editingCustom = _isCustomValue(widget.seconds);
+  }
+
+  @override
+  void didUpdateWidget(covariant _RestPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.seconds != widget.seconds) {
+      final String next = _initialCustomText();
+      if (_customController.text != next) {
+        _customController.text = next;
+      }
+      _editingCustom = _isCustomValue(widget.seconds);
+    }
+  }
+
+  @override
+  void dispose() {
+    _customController.dispose();
+    super.dispose();
+  }
+
+  String _initialCustomText() {
+    final int? c = widget.seconds;
+    if (c == null || _presets.contains(c)) return '';
+    return DurationFormatter.formatSeconds(c);
+  }
+
+  bool _isCustomValue(int? value) => value != null && !_presets.contains(value);
+
+  String _hintForDefault() {
+    final int? userDefault = widget.userDefaultSeconds;
+    if (userDefault != null) {
+      return userDefault == 0
+          ? 'Falls back to your global default — currently off.'
+          : 'Falls back to your global default — currently ${DurationFormatter.formatSeconds(userDefault)}.';
+    }
+    return widget.typeFallbackSeconds == 0
+        ? 'Falls back to off for this exercise type.'
+        : 'Falls back to ${DurationFormatter.formatSeconds(widget.typeFallbackSeconds)} for this exercise type.';
+  }
+
+  /// Closed-state label when the dropdown is on the Custom row. While
+  /// the user is editing (has just picked Custom but hasn't entered a
+  /// value yet), the input field below is the source of truth — show
+  /// "Custom" so the trigger isn't confusingly empty. Once a valid
+  /// custom value is saved, show the formatted time so a glance at the
+  /// closed dropdown reveals what's set.
+  String _customClosedLabel() {
+    final int? c = widget.seconds;
+    if (c == null || _presets.contains(c)) return 'Custom';
+    return DurationFormatter.formatSeconds(c);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final JellyBeanPalette palette = widget.palette;
+    final int? current = widget.seconds;
+    final bool useDefault = current == null && !_editingCustom;
+
+    // The dropdown's `value` is one of the menu sentinels (null, 0,
+    // a preset, or -1 for Custom). We resolve from the persisted
+    // seconds: a non-preset positive value lives behind the Custom
+    // sentinel with the actual seconds shown in the input field below.
+    final int? selectionValue = _editingCustom
+        ? _kCustomSentinel
+        : (current == null
+              ? null
+              : (_presets.contains(current) ? current : _kCustomSentinel));
+
+    final List<DropdownMenuItem<int?>> items = <DropdownMenuItem<int?>>[
+      for (final int preset in _presets.where((int p) => p != 0))
+        DropdownMenuItem<int?>(
+          value: preset,
+          child: _Item(
+            palette: palette,
+            icon: Icons.timer_outlined,
+            label: DurationFormatter.formatSeconds(preset),
+          ),
+        ),
+      DropdownMenuItem<int?>(
+        value: _kDividerSentinel,
+        enabled: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Divider(height: 1, color: palette.shade100),
+        ),
+      ),
+      DropdownMenuItem<int?>(
+        value: null,
+        child: _Item(
+          palette: palette,
+          icon: Icons.auto_awesome_rounded,
+          label: 'Default',
+        ),
+      ),
+      DropdownMenuItem<int?>(
+        value: 0,
+        child: _Item(
+          palette: palette,
+          icon: Icons.timer_off_rounded,
+          label: 'Off',
+        ),
+      ),
+      DropdownMenuItem<int?>(
+        value: _kCustomSentinel,
+        child: _Item(
+          palette: palette,
+          icon: Icons.edit_rounded,
+          label: 'Custom…',
+        ),
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        // Single white pill that matches the muscle-group / type pickers
+        // elsewhere on this form. The dropdown's internal item height is
+        // already the field's primary vertical contribution; we add only
+        // a small horizontal padding here to align the trigger content.
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: palette.shade100),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int?>(
+              isExpanded: true,
+              value: selectionValue,
+              items: items,
+              selectedItemBuilder: (BuildContext context) {
+                // Use the same layout in the closed state, but show the
+                // resolved label/icon — including the actual mm:ss when
+                // the user has saved a non-preset custom value.
+                return <Widget>[
+                  for (final int preset in _presets.where((p) => p != 0))
+                    _Item(
+                      palette: palette,
+                      icon: Icons.timer_outlined,
+                      label: DurationFormatter.formatSeconds(preset),
+                    ),
+                  const SizedBox.shrink(),
+                  _Item(
+                    palette: palette,
+                    icon: Icons.auto_awesome_rounded,
+                    label: 'Default',
+                  ),
+                  _Item(
+                    palette: palette,
+                    icon: Icons.timer_off_rounded,
+                    label: 'Off',
+                  ),
+                  _Item(
+                    palette: palette,
+                    icon: Icons.edit_rounded,
+                    label: _customClosedLabel(),
+                  ),
+                ];
+              },
+              onChanged: (int? next) {
+                if (next == _kDividerSentinel) return;
+                setState(() {
+                  _customError = null;
+                  if (next == _kCustomSentinel) {
+                    _editingCustom = true;
+                    return;
+                  }
+                  _editingCustom = false;
+                });
+                if (next == _kCustomSentinel) return;
+                widget.onChanged(next);
+              },
+              icon: Icon(Icons.expand_more_rounded, color: palette.shade700),
+              style: TextStyle(
+                color: palette.shade950,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+              dropdownColor: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+        if (_editingCustom) ...<Widget>[
+          const SizedBox(height: AppSpacing.sm),
+          TextField(
+            controller: _customController,
+            autofocus: true,
+            keyboardType: TextInputType.text,
+            inputFormatters: <TextInputFormatter>[
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
+            ],
+            style: TextStyle(
+              color: palette.shade950,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
+            decoration: InputDecoration(
+              hintText: '01:30',
+              suffixText: 'mm:ss',
+              suffixStyle: TextStyle(
+                color: palette.shade700,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              errorText: _customError,
+              filled: true,
+              fillColor: palette.shade50,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: palette.shade100),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: palette.shade100),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: palette.shade500, width: 1.5),
+              ),
+            ),
+            onChanged: (String raw) {
+              final String trimmed = raw.trim();
+              if (trimmed.isEmpty) {
+                setState(() => _customError = null);
+                widget.onChanged(null);
+                return;
+              }
+              final int? parsed = DurationFormatter.parseSeconds(trimmed);
+              if (parsed == null || parsed > 3600) {
+                setState(() => _customError = 'Up to 60:00');
+                return;
+              }
+              setState(() => _customError = null);
+              widget.onChanged(parsed);
+            },
+          ),
+        ],
+        if (useDefault) ...<Widget>[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            _hintForDefault(),
+            style: TextStyle(
+              color: palette.shade700.withValues(alpha: 0.8),
+              fontSize: 12,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// Sentinels for non-preset DropdownMenuItem values. Negative so they
+// can't collide with real preset seconds.
+const int _kCustomSentinel = -1;
+const int _kDividerSentinel = -2;
+
+/// Single dropdown row: leading icon + label. Used for both the open-
+/// menu items and (via `selectedItemBuilder`) the closed-state display
+/// so the two stay visually identical.
+class _Item extends StatelessWidget {
+  const _Item({required this.palette, required this.icon, required this.label});
+
+  final JellyBeanPalette palette;
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Icon(icon, size: 18, color: palette.shade700),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: palette.shade950,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

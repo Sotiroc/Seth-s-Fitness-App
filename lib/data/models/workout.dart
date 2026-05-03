@@ -6,6 +6,7 @@ class Workout {
     this.templateId,
     this.notes,
     this.name,
+    this.intensityScore,
   });
 
   final String id;
@@ -18,6 +19,10 @@ class Workout {
   /// the UI should fall back to a date/template-derived label.
   final String? name;
 
+  /// Optional 1–10 session RPE captured on the summary screen. Null means
+  /// the user skipped it.
+  final int? intensityScore;
+
   bool get isActive => endedAt == null;
 
   Workout copyWith({
@@ -27,17 +32,23 @@ class Workout {
     String? templateId,
     String? notes,
     String? name,
+    int? intensityScore,
     bool clearTemplateId = false,
     bool clearNotes = false,
     bool clearName = false,
+    bool clearIntensityScore = false,
+    bool clearEndedAt = false,
   }) {
     return Workout(
       id: id ?? this.id,
       startedAt: startedAt ?? this.startedAt,
-      endedAt: endedAt ?? this.endedAt,
+      endedAt: clearEndedAt ? null : endedAt ?? this.endedAt,
       templateId: clearTemplateId ? null : templateId ?? this.templateId,
       notes: clearNotes ? null : notes ?? this.notes,
       name: clearName ? null : name ?? this.name,
+      intensityScore: clearIntensityScore
+          ? null
+          : intensityScore ?? this.intensityScore,
     );
   }
 }

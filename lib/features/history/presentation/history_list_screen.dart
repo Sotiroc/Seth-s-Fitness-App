@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/duration_formatter.dart';
+import '../../../core/widgets/illustrated_empty_state.dart';
 import '../../../data/models/workout.dart';
 import '../application/history_providers.dart';
 
@@ -36,9 +37,9 @@ class HistoryListScreen extends ConsumerWidget {
                   .where((w) => w.endedAt != null)
                   .toList(growable: false);
               if (finished.isEmpty) {
-                return SliverFillRemaining(
+                return const SliverFillRemaining(
                   hasScrollBody: false,
-                  child: _EmptyState(palette: palette),
+                  child: _EmptyState(),
                 );
               }
               final List<_HistorySection> sections = _groupByMonth(finished);
@@ -189,6 +190,18 @@ class _Header extends StatelessWidget {
             children: <Widget>[
               Row(
                 children: <Widget>[
+                  IconButton(
+                    onPressed: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    color: Colors.white,
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
                   Container(width: 2, height: 14, color: palette.shade300),
                   const SizedBox(width: 8),
                   Text(
@@ -469,36 +482,16 @@ class _SetCountBadge extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.palette});
-
-  final JellyBeanPalette palette;
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          const SizedBox(height: AppSpacing.xl),
-          Icon(Icons.history_rounded, size: 48, color: palette.shade400),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'No workouts yet',
-            style: TextStyle(
-              color: palette.shade950,
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Finish a session and it will show up here.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: palette.shade800.withValues(alpha: 0.8)),
-          ),
-        ],
-      ),
+    return const IllustratedEmptyState(
+      illustrationAsset: AppIllustrations.emptyHistory,
+      title: 'Your training journal starts here',
+      message:
+          'Finish your first workout and it will land here, '
+          'with duration, exercises, and your set-by-set log.',
     );
   }
 }

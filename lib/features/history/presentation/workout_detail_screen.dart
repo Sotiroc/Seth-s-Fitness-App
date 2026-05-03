@@ -8,6 +8,7 @@ import '../../../core/utils/duration_formatter.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_set.dart';
+import '../../../data/models/workout_set_kind.dart';
 import '../../exercises/presentation/widgets/exercise_avatar.dart';
 import '../../exercises/presentation/widgets/exercise_muscle_group_badge.dart';
 import '../../exercises/presentation/widgets/exercise_type_badge.dart';
@@ -101,11 +102,15 @@ class _DetailBody extends StatelessWidget {
     return end.difference(detail.workout.startedAt);
   }
 
-  int get _completedSets =>
-      detail.exercises.expand((e) => e.sets).where((s) => s.completed).length;
+  int get _completedSets => detail.exercises
+      .expand((e) => e.sets)
+      .where((s) => s.completed && s.kind.countsAsWorkingSet)
+      .length;
 
-  int get _totalSets =>
-      detail.exercises.fold<int>(0, (sum, e) => sum + e.sets.length);
+  int get _totalSets => detail.exercises.fold<int>(
+    0,
+    (sum, e) => sum + e.sets.where((s) => s.kind.countsAsWorkingSet).length,
+  );
 
   double get _totalVolumeKg {
     double total = 0;
@@ -113,6 +118,7 @@ class _DetailBody extends StatelessWidget {
       if (e.exercise.type != ExerciseType.weighted) continue;
       for (final WorkoutSet s in e.sets) {
         if (!s.completed) continue;
+        if (s.kind == WorkoutSetKind.warmUp) continue;
         total += (s.weightKg ?? 0) * (s.reps ?? 0);
       }
     }
@@ -125,6 +131,7 @@ class _DetailBody extends StatelessWidget {
       if (e.exercise.type != ExerciseType.cardio) continue;
       for (final WorkoutSet s in e.sets) {
         if (!s.completed) continue;
+        if (s.kind == WorkoutSetKind.warmUp) continue;
         total += s.distanceKm ?? 0;
       }
     }
@@ -152,6 +159,7 @@ class _DetailBody extends StatelessWidget {
             totalSets: _totalSets,
             totalVolumeKg: _totalVolumeKg,
             totalDistanceKm: _totalDistanceKm,
+            intensityScore: detail.workout.intensityScore,
           ),
         ),
         if (detail.workout.notes != null &&
@@ -248,6 +256,7 @@ class _Hero extends StatelessWidget {
     required this.totalSets,
     required this.totalVolumeKg,
     required this.totalDistanceKm,
+    required this.intensityScore,
   });
 
   final JellyBeanPalette palette;
@@ -259,6 +268,7 @@ class _Hero extends StatelessWidget {
   final int totalSets;
   final double totalVolumeKg;
   final double totalDistanceKm;
+  final int? intensityScore;
 
   String _formatKg(double value) {
     if (value <= 0) return '0';
@@ -459,6 +469,20 @@ class _Hero extends StatelessWidget {
                   label: 'Distance',
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _HeroStat(
+                  palette: palette,
+                  value: intensityScore != null ? '$intensityScore/10' : '—',
+                  label: 'Intensity',
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              const Expanded(child: SizedBox.shrink()),
             ],
           ),
         ],

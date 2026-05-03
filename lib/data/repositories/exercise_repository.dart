@@ -134,9 +134,11 @@ class ExerciseRepository {
     String? thumbnailPath,
     Uint8List? thumbnailBytes,
     bool isDefault = false,
+    int? defaultRestSeconds,
   }) async {
     final DateTime now = _utcNow();
     final String trimmedName = _validatedName(name);
+    _validateRestSeconds(defaultRestSeconds);
     final Exercise exercise = Exercise(
       id: _uuid.v4(),
       name: trimmedName,
@@ -147,6 +149,7 @@ class ExerciseRepository {
       isDefault: isDefault,
       createdAt: now,
       updatedAt: now,
+      defaultRestSeconds: defaultRestSeconds,
     );
 
     await _database
@@ -162,6 +165,7 @@ class ExerciseRepository {
             isDefault: Value<bool>(exercise.isDefault),
             createdAt: exercise.createdAt,
             updatedAt: exercise.updatedAt,
+            defaultRestSeconds: Value<int?>(exercise.defaultRestSeconds),
           ),
         );
 
@@ -170,6 +174,7 @@ class ExerciseRepository {
 
   Future<Exercise> updateExercise(Exercise exercise) async {
     await getExerciseById(exercise.id);
+    _validateRestSeconds(exercise.defaultRestSeconds);
 
     final Exercise updatedExercise = exercise.copyWith(
       name: _validatedName(exercise.name),
@@ -187,10 +192,37 @@ class ExerciseRepository {
         thumbnailBytes: Value<Uint8List?>(updatedExercise.thumbnailBytes),
         isDefault: Value<bool>(updatedExercise.isDefault),
         updatedAt: Value<DateTime>(updatedExercise.updatedAt),
+        defaultRestSeconds: Value<int?>(updatedExercise.defaultRestSeconds),
       ),
     );
 
     return updatedExercise;
+  }
+
+  /// Updates only the rest-timer override for an exercise. `null` clears
+  /// the override (resolution falls back to the user-level default or
+  /// per-type default). `0` explicitly disables the timer for this
+  /// exercise even when the user has set a global default.
+  Future<Exercise> updateExerciseRestSeconds({
+    required String exerciseId,
+    required int? restSeconds,
+  }) async {
+    _validateRestSeconds(restSeconds);
+    final Exercise existing = await getExerciseById(exerciseId);
+    final DateTime now = _utcNow();
+    await (_database.update(
+      _database.exercises,
+    )..where((tbl) => tbl.id.equals(exerciseId))).write(
+      ExercisesCompanion(
+        defaultRestSeconds: Value<int?>(restSeconds),
+        updatedAt: Value<DateTime>(now),
+      ),
+    );
+    return existing.copyWith(
+      defaultRestSeconds: restSeconds,
+      clearDefaultRestSeconds: restSeconds == null,
+      updatedAt: now,
+    );
   }
 
   Future<void> deleteExercise(String exerciseId) async {
@@ -233,5 +265,12 @@ class ExerciseRepository {
       throw InvalidExerciseNameException();
     }
     return trimmedName;
+  }
+
+  void _validateRestSeconds(int? restSeconds) {
+    if (restSeconds == null) return;
+    if (restSeconds < 0 || restSeconds > 3600) {
+      throw InvalidExerciseRestException();
+    }
   }
 }

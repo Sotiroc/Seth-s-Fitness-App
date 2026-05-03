@@ -40,4 +40,4 @@ final class DatabaseBootstrapProvider
   }
 }
 
-String _$databaseBootstrapHash() => r'74b3caf0f5d31deeaa3038246d88c784f647c45d';
+String _$databaseBootstrapHash() => r'e0e97491c93ed38a25ffef21cb1ace9eadbf28ed';

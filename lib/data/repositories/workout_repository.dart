@@ -4,15 +4,20 @@ import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/utils/strength_formulas.dart';
 import '../db/app_database.dart';
 import '../db/database_providers.dart';
 import '../models/database_mappers.dart';
 import '../models/exercise.dart';
+import '../models/exercise_history_day.dart';
+import '../models/exercise_muscle_group.dart';
 import '../models/exercise_type.dart';
+import '../models/pr_event.dart';
 import '../models/workout.dart';
 import '../models/workout_detail.dart';
 import '../models/workout_exercise.dart';
 import '../models/workout_set.dart';
+import '../models/workout_set_kind.dart';
 import 'repository_exceptions.dart';
 
 part 'workout_repository.g.dart';
@@ -183,6 +188,32 @@ class WorkoutRepository {
     return updated;
   }
 
+  /// Updates the workout's optional 1–10 session intensity score. Works on
+  /// both active and finished workouts (input lives on the summary screen).
+  /// Out-of-range values are clamped silently to 1..10; null clears the
+  /// score.
+  Future<Workout> updateWorkoutIntensityScore({
+    required String workoutId,
+    required int? score,
+  }) async {
+    final WorkoutRow workoutRow = await _getWorkoutRow(workoutId);
+    final int? clamped = score?.clamp(1, 10);
+    final Workout updated = workoutRow.toModel().copyWith(
+      intensityScore: clamped,
+      clearIntensityScore: clamped == null,
+    );
+
+    await (_database.update(_database.workouts)
+          ..where((tbl) => tbl.id.equals(workoutId)))
+        .write(
+          WorkoutsCompanion(
+            intensityScore: Value<int?>(updated.intensityScore),
+          ),
+        );
+
+    return updated;
+  }
+
   Future<WorkoutExerciseDetail> addExerciseToWorkout({
     required String workoutId,
     required String exerciseId,
@@ -191,6 +222,7 @@ class WorkoutRepository {
     final ExerciseRow exerciseRow = await _getExerciseRow(exerciseId);
     final int orderIndex = await _nextWorkoutExerciseOrderIndex(workoutId);
     final String workoutExerciseId = _uuid.v4();
+    final DateTime createdAt = _utcNow();
 
     await _database
         .into(_database.workoutExercises)
@@ -200,6 +232,7 @@ class WorkoutRepository {
             workoutId: workoutId,
             exerciseId: exerciseId,
             orderIndex: orderIndex,
+            createdAt: Value<DateTime?>(createdAt),
           ),
         );
 
@@ -209,23 +242,42 @@ class WorkoutRepository {
         workoutId: workoutId,
         exerciseId: exerciseId,
         orderIndex: orderIndex,
+        createdAt: createdAt,
       ),
       exercise: exerciseRow.toModel(),
       sets: const <WorkoutSet>[],
     );
   }
 
-  Future<WorkoutSet> addSetToWorkoutExercise(String workoutExerciseId) async {
+  Future<WorkoutSet> addSetToWorkoutExercise(
+    String workoutExerciseId, {
+    WorkoutSetKind kind = WorkoutSetKind.normal,
+    String? parentSetId,
+  }) async {
     final _WorkoutExerciseContext context = await _getWorkoutExerciseContext(
       workoutExerciseId,
     );
     _ensureWorkoutIsActive(context.workout);
+    if (kind == WorkoutSetKind.drop && parentSetId == null) {
+      throw InvalidWorkoutSetException(
+        'Drop sets must reference a parent set.',
+      );
+    }
+    if (kind != WorkoutSetKind.drop && parentSetId != null) {
+      throw InvalidWorkoutSetException(
+        'Only drop sets can have a parent set.',
+      );
+    }
     final int setNumber = await _nextSetNumber(workoutExerciseId);
+    final DateTime now = _utcNow();
     final WorkoutSet workoutSet = WorkoutSet(
       id: _uuid.v4(),
       workoutExerciseId: workoutExerciseId,
       setNumber: setNumber,
       completed: false,
+      updatedAt: now,
+      kind: kind,
+      parentSetId: parentSetId,
     );
 
     await _database
@@ -240,6 +292,13 @@ class WorkoutRepository {
             distanceKm: const Value<double?>(null),
             durationSeconds: const Value<int?>(null),
             completed: Value<bool>(workoutSet.completed),
+            completedAt: const Value<DateTime?>(null),
+            updatedAt: Value<DateTime?>(now),
+            // startedAt left null on insert; the first updateWorkoutSet
+            // call captures the user's first-edit timestamp.
+            startedAt: const Value<DateTime?>(null),
+            kind: Value<String>(kind.name),
+            parentSetId: Value<String?>(parentSetId),
           ),
         );
 
@@ -268,16 +327,33 @@ class WorkoutRepository {
       completed: completed,
     );
 
+    final DateTime now = _utcNow();
+    // completedAt tracks the timestamp of the most recent false→true
+    // transition. Re-saving an already-completed set keeps the original
+    // timestamp so the auto-close duration anchors to when the user
+    // *actually* finished the set, not when they re-tapped Save.
+    final bool wasCompleted = setRow.completed;
+    final DateTime? newCompletedAt = completed
+        ? (wasCompleted ? setRow.completedAt : now)
+        : null;
+    // startedAt is first-edit-wins: capture once and never move. Combined
+    // with completedAt this gives true per-set timing for analytics.
+    final DateTime newStartedAt = setRow.startedAt ?? now;
+
     final WorkoutSet updated = setRow.toModel().copyWith(
       weightKg: weightKg,
       reps: reps,
       distanceKm: distanceKm,
       durationSeconds: durationSeconds,
       completed: completed,
+      completedAt: newCompletedAt,
+      updatedAt: now,
+      startedAt: newStartedAt,
       clearWeightKg: weightKg == null,
       clearReps: reps == null,
       clearDistanceKm: distanceKm == null,
       clearDurationSeconds: durationSeconds == null,
+      clearCompletedAt: newCompletedAt == null,
     );
 
     await (_database.update(
@@ -289,15 +365,162 @@ class WorkoutRepository {
         distanceKm: Value<double?>(updated.distanceKm),
         durationSeconds: Value<int?>(updated.durationSeconds),
         completed: Value<bool>(updated.completed),
+        completedAt: Value<DateTime?>(updated.completedAt),
+        updatedAt: Value<DateTime?>(updated.updatedAt),
+        startedAt: Value<DateTime?>(updated.startedAt),
       ),
     );
 
     return updated;
   }
 
+  /// Updates the "extras" attached to a set: its [kind] (warm-up / normal /
+  /// drop / failure), optional 1–10 [rpe], and free-text [note]. Doesn't
+  /// touch weight/reps/completed — those flow through [updateWorkoutSet].
+  ///
+  /// Switching a set's kind has structural implications:
+  /// - changing kind to/from [WorkoutSetKind.drop] flips parent linkage:
+  ///   - drop → other: clears [parentSetId]
+  ///   - other → drop: requires [parentSetId] to be passed in [parentSetId]
+  /// - changing kind from [WorkoutSetKind.drop] to anything else, when
+  ///   the row had children (other drops chained off it), leaves those
+  ///   children orphaned — but the previous parent had no link of its
+  ///   own to give up, so this is a no-op cleanup-wise. We do, however,
+  ///   re-parent any direct children of *this* set when it becomes a
+  ///   non-parent (e.g. user demotes a parent working set to a warm-up):
+  ///   children are re-pointed at this set's previous parent (or detached
+  ///   if there isn't one). Keeps the chain intact instead of dangling.
+  Future<WorkoutSet> updateWorkoutSetExtras({
+    required String workoutSetId,
+    required WorkoutSetKind kind,
+    int? rpe,
+    String? note,
+    String? parentSetId,
+    bool clearParentSetId = false,
+  }) async {
+    final WorkoutSetRow setRow = await _getWorkoutSetRow(workoutSetId);
+    final _WorkoutExerciseContext context = await _getWorkoutExerciseContext(
+      setRow.workoutExerciseId,
+    );
+    _ensureWorkoutIsActive(context.workout);
+
+    final int? clampedRpe = rpe?.clamp(1, 10);
+    final String? trimmedNote = _trimmed(note);
+
+    String? nextParentSetId;
+    if (kind == WorkoutSetKind.drop) {
+      // When promoting to drop, caller must supply a parent (or the row
+      // already had one we keep).
+      nextParentSetId = parentSetId ?? setRow.parentSetId;
+      if (nextParentSetId == null) {
+        throw InvalidWorkoutSetException(
+          'A drop set must reference a parent set.',
+        );
+      }
+    } else {
+      // Non-drop kinds never carry a parent reference.
+      nextParentSetId = null;
+    }
+    // `clearParentSetId` is honoured for drop kinds only when caller
+    // explicitly asks for it; for non-drop kinds the parent is always
+    // cleared regardless.
+    if (clearParentSetId && kind == WorkoutSetKind.drop) {
+      throw InvalidWorkoutSetException(
+        'Cannot clear parent on a drop set.',
+      );
+    }
+
+    await _database.transaction(() async {
+      // If this set is changing away from being a parent (i.e., not a
+      // working set anymore), re-parent its direct drop children to its
+      // own parent so the chain doesn't dangle.
+      final bool wasWorkingSet =
+          WorkoutSetKind.fromName(setRow.kind).countsAsWorkingSet &&
+          setRow.kind != WorkoutSetKind.drop.name;
+      final bool willStillBeWorkingSet =
+          kind.countsAsWorkingSet && kind != WorkoutSetKind.drop;
+      if (wasWorkingSet && !willStillBeWorkingSet) {
+        await (_database.update(_database.sets)
+              ..where((tbl) => tbl.parentSetId.equals(workoutSetId)))
+            .write(
+              SetsCompanion(
+                parentSetId: Value<String?>(setRow.parentSetId),
+              ),
+            );
+      }
+
+      await (_database.update(_database.sets)
+            ..where((tbl) => tbl.id.equals(workoutSetId)))
+          .write(
+            SetsCompanion(
+              kind: Value<String>(kind.name),
+              parentSetId: Value<String?>(nextParentSetId),
+              rpe: Value<int?>(clampedRpe),
+              note: Value<String?>(trimmedNote),
+              updatedAt: Value<DateTime?>(_utcNow()),
+            ),
+          );
+    });
+
+    return setRow.toModel().copyWith(
+      kind: kind,
+      parentSetId: nextParentSetId,
+      clearParentSetId: nextParentSetId == null,
+      rpe: clampedRpe,
+      clearRpe: clampedRpe == null,
+      note: trimmedNote,
+      clearNote: trimmedNote == null,
+      updatedAt: _utcNow(),
+    );
+  }
+
+  /// Removes a workout_exercise (and its sets, via cascade) from the workout
+  /// and renumbers the remaining exercises so [WorkoutExercise.orderIndex]
+  /// stays contiguous (0, 1, 2...). Only allowed while the workout is active.
+  Future<void> removeExerciseFromWorkout(String workoutExerciseId) async {
+    final _WorkoutExerciseContext context = await _getWorkoutExerciseContext(
+      workoutExerciseId,
+    );
+    _ensureWorkoutIsActive(context.workout);
+    final WorkoutExerciseRow target = context.workoutExercise;
+
+    await _database.transaction(() async {
+      await (_database.delete(
+        _database.workoutExercises,
+      )..where((tbl) => tbl.id.equals(workoutExerciseId))).go();
+
+      final List<WorkoutExerciseRow> following =
+          await (_database.select(_database.workoutExercises)
+                ..where(
+                  (tbl) =>
+                      tbl.workoutId.equals(target.workoutId) &
+                      tbl.orderIndex.isBiggerThanValue(target.orderIndex),
+                )
+                ..orderBy(<OrderingTerm Function(WorkoutExercises)>[
+                  (tbl) => OrderingTerm(expression: tbl.orderIndex),
+                ]))
+              .get();
+
+      for (final WorkoutExerciseRow row in following) {
+        await (_database.update(_database.workoutExercises)
+              ..where((tbl) => tbl.id.equals(row.id)))
+            .write(
+              WorkoutExercisesCompanion(
+                orderIndex: Value<int>(row.orderIndex - 1),
+              ),
+            );
+      }
+    });
+  }
+
   /// Deletes a single set and renumbers the remaining sets for that exercise
   /// so setNumber stays contiguous (1, 2, 3...). Only allowed while the
   /// workout is active.
+  ///
+  /// If the deleted set is a parent of any drop sets, those children are
+  /// re-pointed at the deleted set's own parent (or detached entirely if
+  /// it had none) so the chain doesn't dangle. The children themselves
+  /// are kept — the user can re-attach them via the set details sheet.
   Future<void> deleteWorkoutSet(String workoutSetId) async {
     final WorkoutSetRow setRow = await _getWorkoutSetRow(workoutSetId);
     final _WorkoutExerciseContext context = await _getWorkoutExerciseContext(
@@ -306,6 +529,16 @@ class WorkoutRepository {
     _ensureWorkoutIsActive(context.workout);
 
     await _database.transaction(() async {
+      // Re-parent any direct drop children of this set so the chain
+      // stays valid after the row is gone.
+      await (_database.update(_database.sets)
+            ..where((tbl) => tbl.parentSetId.equals(workoutSetId)))
+          .write(
+            SetsCompanion(
+              parentSetId: Value<String?>(setRow.parentSetId),
+            ),
+          );
+
       await (_database.delete(
         _database.sets,
       )..where((tbl) => tbl.id.equals(workoutSetId))).go();
@@ -353,6 +586,189 @@ class WorkoutRepository {
     if (deleted == 0) {
       throw WorkoutNotFoundException(workoutId);
     }
+  }
+
+  /// Deletes a workout regardless of whether it is active or finished. Used
+  /// by the recovery dialog's "Discard" action on a workout that the
+  /// auto-close flow already moved into the finished state.
+  Future<void> deleteFinishedWorkout(String workoutId) async {
+    final int deleted = await (_database.delete(
+      _database.workouts,
+    )..where((tbl) => tbl.id.equals(workoutId))).go();
+
+    if (deleted == 0) {
+      throw WorkoutNotFoundException(workoutId);
+    }
+  }
+
+  /// Re-activates a finished workout so the user can keep logging sets in
+  /// it. Symmetric to [endWorkout] but for the auto-close recovery flow:
+  /// when the user picks "Edit / Add" in the recovery dialog we clear
+  /// `endedAt` and the existing active-workout UI takes over.
+  Future<Workout> reopenWorkout(String workoutId) async {
+    final WorkoutRow row = await _getWorkoutRow(workoutId);
+    if (row.endedAt == null) {
+      throw WorkoutNotEndedException(workoutId);
+    }
+    // Don't allow reopening if another workout is already active — would
+    // violate the "only one active workout" invariant enforced by
+    // [startWorkout].
+    final WorkoutRow? otherActive = await (_database.select(
+      _database.workouts,
+    )..where((tbl) => tbl.endedAt.isNull())).getSingleOrNull();
+    if (otherActive != null) {
+      throw ActiveWorkoutAlreadyExistsException(otherActive.id);
+    }
+
+    await (_database.update(_database.workouts)
+          ..where((tbl) => tbl.id.equals(workoutId)))
+        .write(const WorkoutsCompanion(endedAt: Value<DateTime?>(null)));
+    return row.toModel().copyWith(clearEndedAt: true);
+  }
+
+  /// Updates `endedAt` on a workout that is already finished. Sibling to
+  /// [endWorkout] (which only works on active workouts). Used by the
+  /// recovery dialog's "Save" action when the user edits the duration.
+  Future<Workout> adjustEndedAt(String workoutId, DateTime endedAt) async {
+    final WorkoutRow row = await _getWorkoutRow(workoutId);
+    if (row.endedAt == null) {
+      throw WorkoutNotEndedException(workoutId);
+    }
+    await (_database.update(_database.workouts)
+          ..where((tbl) => tbl.id.equals(workoutId)))
+        .write(WorkoutsCompanion(endedAt: Value<DateTime?>(endedAt)));
+    return row.toModel().copyWith(endedAt: endedAt);
+  }
+
+  /// Returns the data needed to decide whether [autoCloseIfStale] should
+  /// fire on a given workout: the most recent activity timestamp (set
+  /// edits, set completions, exercise additions, or — as fallback — the
+  /// workout's `startedAt`); the time of the last *completed* set
+  /// (used as the auto-closed `endedAt`); and the count of completed sets
+  /// (used to decide between auto-close and silent discard).
+  Future<({DateTime lastActivityAt, DateTime? lastCompletedSetAt, int completedSetCount})>
+  getStalenessSnapshot(String workoutId) async {
+    final WorkoutRow workoutRow = await _getWorkoutRow(workoutId);
+
+    final List<WorkoutExerciseRow> exercises =
+        await (_database.select(_database.workoutExercises)
+              ..where((tbl) => tbl.workoutId.equals(workoutId)))
+            .get();
+
+    DateTime lastActivityAt = workoutRow.startedAt;
+    for (final WorkoutExerciseRow exercise in exercises) {
+      final DateTime? createdAt = exercise.createdAt;
+      if (createdAt != null && createdAt.isAfter(lastActivityAt)) {
+        lastActivityAt = createdAt;
+      }
+    }
+
+    if (exercises.isEmpty) {
+      return (
+        lastActivityAt: lastActivityAt,
+        lastCompletedSetAt: null,
+        completedSetCount: 0,
+      );
+    }
+
+    final List<String> exerciseIds =
+        exercises.map((e) => e.id).toList(growable: false);
+    final List<WorkoutSetRow> sets =
+        await (_database.select(_database.sets)
+              ..where((tbl) => tbl.workoutExerciseId.isIn(exerciseIds)))
+            .get();
+
+    DateTime? lastCompletedSetAt;
+    int completedSetCount = 0;
+    for (final WorkoutSetRow set in sets) {
+      final DateTime? updatedAt = set.updatedAt;
+      if (updatedAt != null && updatedAt.isAfter(lastActivityAt)) {
+        lastActivityAt = updatedAt;
+      }
+      if (set.completed) {
+        completedSetCount++;
+        final DateTime? completedAt = set.completedAt;
+        if (completedAt != null &&
+            (lastCompletedSetAt == null ||
+                completedAt.isAfter(lastCompletedSetAt))) {
+          lastCompletedSetAt = completedAt;
+        }
+      }
+    }
+
+    return (
+      lastActivityAt: lastActivityAt,
+      lastCompletedSetAt: lastCompletedSetAt,
+      completedSetCount: completedSetCount,
+    );
+  }
+
+  /// Auto-closes the active workout if its inactivity exceeds [threshold].
+  ///
+  /// - Returns `null` if there is no active workout, the workout is still
+  ///   within the threshold, or the workout had zero completed sets (in
+  ///   which case it is silently deleted — there's nothing meaningful to
+  ///   recover).
+  /// - Otherwise sets `endedAt` to the timestamp of the last completed
+  ///   set so the recorded duration reflects training time rather than
+  ///   the wall-clock gap until the next app launch, and returns the
+  ///   freshly-closed [Workout].
+  ///
+  /// Iterates over every active row defensively in case the DB ends up
+  /// holding more than one (the schema doesn't enforce uniqueness, only
+  /// [startWorkout] does). Re-checks `endedAt` inside the transaction to
+  /// guard against the race where the user manually finishes the workout
+  /// between snapshot and write.
+  Future<Workout?> autoCloseIfStale({
+    Duration threshold = const Duration(hours: 1),
+    DateTime? now,
+  }) async {
+    final DateTime resolvedNow = now ?? _utcNow();
+
+    return _database.transaction<Workout?>(() async {
+      final List<WorkoutRow> activeRows =
+          await (_database.select(_database.workouts)
+                ..where((tbl) => tbl.endedAt.isNull()))
+              .get();
+      if (activeRows.isEmpty) return null;
+
+      Workout? recovered;
+      for (final WorkoutRow row in activeRows) {
+        // Re-read inside the transaction to detect the user-finished-it race.
+        final WorkoutRow? fresh = await (_database.select(
+          _database.workouts,
+        )..where((tbl) => tbl.id.equals(row.id))).getSingleOrNull();
+        if (fresh == null || fresh.endedAt != null) continue;
+
+        final ({
+          DateTime lastActivityAt,
+          DateTime? lastCompletedSetAt,
+          int completedSetCount,
+        })
+        snapshot = await getStalenessSnapshot(row.id);
+        if (snapshot.lastActivityAt.add(threshold).isAfter(resolvedNow)) {
+          continue;
+        }
+
+        if (snapshot.completedSetCount == 0) {
+          // Silent discard. Bypass cancelWorkout's active-only guard —
+          // we just verified active above and deletion is the right
+          // outcome regardless.
+          await (_database.delete(_database.workouts)
+                ..where((tbl) => tbl.id.equals(row.id)))
+              .go();
+          continue;
+        }
+
+        final DateTime endedAt = snapshot.lastCompletedSetAt!;
+        await (_database.update(_database.workouts)
+              ..where((tbl) => tbl.id.equals(row.id)))
+            .write(WorkoutsCompanion(endedAt: Value<DateTime?>(endedAt)));
+        recovered ??= row.toModel().copyWith(endedAt: endedAt);
+      }
+
+      return recovered;
+    });
   }
 
   Future<List<Workout>> listHistory() async {
@@ -462,9 +878,10 @@ class WorkoutRepository {
     };
   }
 
-  /// Counts completed sets for each of the given [workoutIds]. Used by the
-  /// history list to surface a "sets" tally on each workout tile. Workouts
-  /// with zero completed sets are omitted from the result map.
+  /// Counts completed *working* sets (i.e. excludes warm-ups) for each of
+  /// the given [workoutIds]. Used by the history list to surface a "sets"
+  /// tally on each workout tile. Workouts with zero qualifying sets are
+  /// omitted from the result map.
   Future<Map<String, int>> getCompletedSetCountsForWorkouts(
     List<String> workoutIds,
   ) async {
@@ -478,7 +895,8 @@ class WorkoutRepository {
       'SELECT we.workout_id AS workout_id, COUNT(s.id) AS set_count '
       'FROM sets s '
       'INNER JOIN workout_exercises we ON s.workout_exercise_id = we.id '
-      'WHERE s.completed = 1 AND we.workout_id IN ($placeholders) '
+      "WHERE s.completed = 1 AND s.kind != 'warmUp' "
+      'AND we.workout_id IN ($placeholders) '
       'GROUP BY we.workout_id',
       variables: <Variable<Object>>[
         for (final String id in workoutIds) Variable<String>(id),
@@ -489,6 +907,408 @@ class WorkoutRepository {
       for (final QueryRow row in rows)
         row.read<String>('workout_id'): row.read<int>('set_count'),
     };
+  }
+
+  /// Counts completed sets per [ExerciseMuscleGroup] for any workout whose
+  /// [Workout.startedAt] falls within the half-open range
+  /// [`rangeStart`, `rangeEnd`). Used by the workouts hero card to surface
+  /// "this week's volume" at a glance — and counts in-progress workouts so
+  /// the number ticks up as the user completes sets in the live session.
+  ///
+  /// Muscle groups with zero completed sets are omitted from the result.
+  Stream<Map<ExerciseMuscleGroup, int>> watchSetCountsByMuscleGroup({
+    required DateTime rangeStart,
+    required DateTime rangeEnd,
+  }) {
+    final Selectable<QueryRow> query = _database.customSelect(
+      'SELECT e.muscle_group AS muscle_group, COUNT(s.id) AS set_count '
+      'FROM sets s '
+      'INNER JOIN workout_exercises we ON s.workout_exercise_id = we.id '
+      'INNER JOIN exercises e ON we.exercise_id = e.id '
+      'INNER JOIN workouts w ON we.workout_id = w.id '
+      'WHERE s.completed = 1 '
+      "  AND s.kind != 'warmUp' "
+      '  AND w.started_at >= ? '
+      '  AND w.started_at < ? '
+      'GROUP BY e.muscle_group',
+      variables: <Variable<Object>>[
+        Variable<DateTime>(rangeStart),
+        Variable<DateTime>(rangeEnd),
+      ],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{
+        _database.sets,
+        _database.workoutExercises,
+        _database.exercises,
+        _database.workouts,
+      },
+    );
+
+    return query.watch().map((List<QueryRow> rows) {
+      final Map<ExerciseMuscleGroup, int> result =
+          <ExerciseMuscleGroup, int>{};
+      for (final QueryRow row in rows) {
+        final String name = row.read<String>('muscle_group');
+        final ExerciseMuscleGroup? mg = _muscleGroupByName(name);
+        if (mg == null) continue;
+        result[mg] = row.read<int>('set_count');
+      }
+      return result;
+    });
+  }
+
+  /// Sum of `duration_seconds` across every completed cardio set whose
+  /// parent workout started within `[rangeStart, rangeEnd)`. Streams from
+  /// Drift so the in-workout strip updates in real time as the user logs
+  /// cardio minutes.
+  ///
+  /// Cardio exercises are identified via `e.muscle_group = 'cardio'` —
+  /// the same convention used by [watchSetCountsByMuscleGroup].
+  Stream<int> watchCardioDurationSecondsForRange({
+    required DateTime rangeStart,
+    required DateTime rangeEnd,
+  }) {
+    final Selectable<QueryRow> query = _database.customSelect(
+      'SELECT COALESCE(SUM(s.duration_seconds), 0) AS total_seconds '
+      'FROM sets s '
+      'INNER JOIN workout_exercises we ON s.workout_exercise_id = we.id '
+      'INNER JOIN exercises e ON we.exercise_id = e.id '
+      'INNER JOIN workouts w ON we.workout_id = w.id '
+      'WHERE s.completed = 1 '
+      "  AND s.kind != 'warmUp' "
+      "  AND e.muscle_group = 'cardio' "
+      '  AND s.duration_seconds IS NOT NULL '
+      '  AND w.started_at >= ? '
+      '  AND w.started_at < ?',
+      variables: <Variable<Object>>[
+        Variable<DateTime>(rangeStart),
+        Variable<DateTime>(rangeEnd),
+      ],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{
+        _database.sets,
+        _database.workoutExercises,
+        _database.exercises,
+        _database.workouts,
+      },
+    );
+
+    return query.watch().map((List<QueryRow> rows) {
+      if (rows.isEmpty) return 0;
+      return rows.first.read<int>('total_seconds');
+    });
+  }
+
+  /// Sum of `weight_kg × reps` across every completed set whose parent
+  /// workout started within `[rangeStart, rangeEnd)`. Streams from Drift;
+  /// updates the moment a set is marked complete during a live workout.
+  ///
+  /// Returns total kilograms moved (a.k.a. "tonnage"), in canonical kg
+  /// regardless of the user's display unit system. Cardio sets are
+  /// excluded automatically — they have no `weight_kg`/`reps`.
+  Stream<double> watchTotalVolumeKgForRange({
+    required DateTime rangeStart,
+    required DateTime rangeEnd,
+  }) {
+    final Selectable<QueryRow> query = _database.customSelect(
+      'SELECT COALESCE(SUM(s.weight_kg * s.reps), 0.0) AS total_volume '
+      'FROM sets s '
+      'INNER JOIN workout_exercises we ON s.workout_exercise_id = we.id '
+      'INNER JOIN workouts w ON we.workout_id = w.id '
+      'WHERE s.completed = 1 '
+      "  AND s.kind != 'warmUp' "
+      '  AND s.weight_kg IS NOT NULL '
+      '  AND s.reps IS NOT NULL '
+      '  AND w.started_at >= ? '
+      '  AND w.started_at < ?',
+      variables: <Variable<Object>>[
+        Variable<DateTime>(rangeStart),
+        Variable<DateTime>(rangeEnd),
+      ],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{
+        _database.sets,
+        _database.workoutExercises,
+        _database.workouts,
+      },
+    );
+
+    return query.watch().map((List<QueryRow> rows) {
+      if (rows.isEmpty) return 0.0;
+      // SUM with REAL operands returns REAL; COALESCE keeps it non-null.
+      return rows.first.read<double>('total_volume');
+    });
+  }
+
+  /// Per-day completed set counts within `[rangeStart, rangeEnd)`, keyed
+  /// by local-time midnight DateTime so the calendar heatmap can index
+  /// directly. Streams from Drift; ticks up live as sets complete.
+  ///
+  /// Days with zero training are absent from the map (consumers default
+  /// to 0). Grouping uses the parent workout's `started_at` so a session
+  /// that crosses midnight stays on its starting day, matching how the
+  /// rest of the app reasons about training days.
+  Stream<Map<DateTime, int>> watchDailySetCountsForRange({
+    required DateTime rangeStart,
+    required DateTime rangeEnd,
+  }) {
+    final Selectable<QueryRow> query = _database.customSelect(
+      'SELECT w.id AS workout_id, w.started_at AS started_at, '
+      '       COUNT(s.id) AS set_count '
+      'FROM sets s '
+      'INNER JOIN workout_exercises we ON s.workout_exercise_id = we.id '
+      'INNER JOIN workouts w ON we.workout_id = w.id '
+      'WHERE s.completed = 1 '
+      "  AND s.kind != 'warmUp' "
+      '  AND w.started_at >= ? '
+      '  AND w.started_at < ? '
+      'GROUP BY w.id',
+      variables: <Variable<Object>>[
+        Variable<DateTime>(rangeStart),
+        Variable<DateTime>(rangeEnd),
+      ],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{
+        _database.sets,
+        _database.workoutExercises,
+        _database.workouts,
+      },
+    );
+
+    return query.watch().map((List<QueryRow> rows) {
+      final Map<DateTime, int> result = <DateTime, int>{};
+      for (final QueryRow row in rows) {
+        final DateTime startedAt = row.read<DateTime>('started_at');
+        final int count = row.read<int>('set_count');
+        final DateTime local = startedAt.toLocal();
+        final DateTime day = DateTime(local.year, local.month, local.day);
+        result[day] = (result[day] ?? 0) + count;
+      }
+      return result;
+    });
+  }
+
+  /// Every PR moment across every weighted exercise, newest-first. Walks
+  /// every completed (weight, reps) set in chronological order, tracks
+  /// the running max estimated 1RM per exercise, and emits a [PrEvent]
+  /// each time a set strictly exceeds all prior sets on the same exercise.
+  ///
+  /// Streams from Drift so the feed re-emits the moment a new PR lands —
+  /// no manual invalidation. Single SQL query + linear scan; cheap enough
+  /// for tens of thousands of sets.
+  Stream<List<PrEvent>> watchAllPrEvents() {
+    final Selectable<QueryRow> query = _database.customSelect(
+      'SELECT s.id AS set_id, s.weight_kg AS weight_kg, s.reps AS reps, '
+      '       w.started_at AS started_at, '
+      '       e.id AS exercise_id, e.name AS exercise_name '
+      'FROM sets s '
+      'INNER JOIN workout_exercises we ON s.workout_exercise_id = we.id '
+      'INNER JOIN workouts w ON we.workout_id = w.id '
+      'INNER JOIN exercises e ON we.exercise_id = e.id '
+      'WHERE s.completed = 1 '
+      "  AND s.kind IN ('normal', 'failure') "
+      '  AND s.weight_kg IS NOT NULL AND s.weight_kg > 0 '
+      '  AND s.reps IS NOT NULL AND s.reps > 0 '
+      'ORDER BY w.started_at ASC, s.set_number ASC',
+      variables: <Variable<Object>>[],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{
+        _database.sets,
+        _database.workoutExercises,
+        _database.workouts,
+        _database.exercises,
+      },
+    );
+
+    return query.watch().map((List<QueryRow> rows) {
+      final Map<String, double> runningMaxByExercise = <String, double>{};
+      final List<PrEvent> events = <PrEvent>[];
+      for (final QueryRow row in rows) {
+        final double weightKg = row.read<double>('weight_kg');
+        final int reps = row.read<int>('reps');
+        final double? oneRm = StrengthFormulas.epley1RMKg(
+          weightKg: weightKg,
+          reps: reps,
+        );
+        if (oneRm == null) continue;
+        final String exerciseId = row.read<String>('exercise_id');
+        final double prevMax = runningMaxByExercise[exerciseId] ?? 0.0;
+        if (oneRm <= prevMax) continue;
+        runningMaxByExercise[exerciseId] = oneRm;
+        events.add(
+          PrEvent(
+            exerciseId: exerciseId,
+            exerciseName: row.read<String>('exercise_name'),
+            setId: row.read<String>('set_id'),
+            weightKg: weightKg,
+            reps: reps,
+            oneRepMaxKg: oneRm,
+            achievedAt: row.read<DateTime>('started_at'),
+          ),
+        );
+      }
+      return events.reversed.toList(growable: false);
+    });
+  }
+
+  static ExerciseMuscleGroup? _muscleGroupByName(String name) {
+    for (final ExerciseMuscleGroup mg in ExerciseMuscleGroup.values) {
+      if (mg.name == name) return mg;
+    }
+    return null;
+  }
+
+  /// Returns one entry per (workout, exercise) occurrence — i.e. every
+  /// historical session that contained [exerciseId], ordered newest first
+  /// by workout start time. Includes only completed sets; entries whose
+  /// parent workout has been finished AND that contributed at least one
+  /// completed set are returned. The active in-progress workout is excluded.
+  ///
+  /// Powers the per-exercise history screen reachable by tapping an
+  /// exercise's name on the active workout card.
+  Future<List<ExerciseHistoryDay>> getExerciseHistoryByDay(
+    String exerciseId,
+  ) async {
+    // 1. Find every workout_exercise row pointing at this exercise.
+    final List<WorkoutExerciseRow> workoutExerciseRows =
+        await (_database.select(_database.workoutExercises)
+              ..where((tbl) => tbl.exerciseId.equals(exerciseId)))
+            .get();
+    if (workoutExerciseRows.isEmpty) return const <ExerciseHistoryDay>[];
+
+    // 2. Pull the parent workouts; keep only finished ones.
+    final List<String> workoutIds = workoutExerciseRows
+        .map((row) => row.workoutId)
+        .toSet()
+        .toList(growable: false);
+    final List<WorkoutRow> workoutRows =
+        await (_database.select(_database.workouts)
+              ..where(
+                (tbl) => tbl.id.isIn(workoutIds) & tbl.endedAt.isNotNull(),
+              ))
+            .get();
+    if (workoutRows.isEmpty) return const <ExerciseHistoryDay>[];
+
+    final Map<String, WorkoutRow> workoutById = <String, WorkoutRow>{
+      for (final WorkoutRow row in workoutRows) row.id: row,
+    };
+
+    // 3. Load every completed set for those workout_exercise rows.
+    final List<String> finishedWorkoutExerciseIds = workoutExerciseRows
+        .where((row) => workoutById.containsKey(row.workoutId))
+        .map((row) => row.id)
+        .toList(growable: false);
+    if (finishedWorkoutExerciseIds.isEmpty) {
+      return const <ExerciseHistoryDay>[];
+    }
+
+    final List<WorkoutSetRow> setRows =
+        await (_database.select(_database.sets)
+              ..where(
+                (tbl) =>
+                    tbl.workoutExerciseId.isIn(finishedWorkoutExerciseIds) &
+                    tbl.completed.equals(true),
+              )
+              ..orderBy(<OrderingTerm Function(Sets)>[
+                (tbl) => OrderingTerm(expression: tbl.setNumber),
+              ]))
+            .get();
+    if (setRows.isEmpty) return const <ExerciseHistoryDay>[];
+
+    // 4. Group sets by workout_exercise_id, then map into per-day entries.
+    final Map<String, List<WorkoutSet>> setsByWorkoutExerciseId =
+        <String, List<WorkoutSet>>{};
+    for (final WorkoutSetRow row in setRows) {
+      setsByWorkoutExerciseId
+          .putIfAbsent(row.workoutExerciseId, () => <WorkoutSet>[])
+          .add(row.toModel());
+    }
+
+    final List<ExerciseHistoryDay> entries = <ExerciseHistoryDay>[];
+    for (final WorkoutExerciseRow weRow in workoutExerciseRows) {
+      final WorkoutRow? workout = workoutById[weRow.workoutId];
+      if (workout == null) continue;
+      final List<WorkoutSet>? sets = setsByWorkoutExerciseId[weRow.id];
+      if (sets == null || sets.isEmpty) continue;
+
+      final DateTime localStarted = workout.startedAt.toLocal();
+      final DateTime dayKey = DateTime(
+        localStarted.year,
+        localStarted.month,
+        localStarted.day,
+      );
+
+      entries.add(
+        ExerciseHistoryDay(
+          date: dayKey,
+          workoutId: workout.id,
+          workoutName: workout.name,
+          workoutStartedAt: workout.startedAt,
+          sets: List<WorkoutSet>.unmodifiable(sets),
+        ),
+      );
+    }
+
+    // 5. Newest first.
+    entries.sort(
+      (a, b) => b.workoutStartedAt.compareTo(a.workoutStartedAt),
+    );
+    return List<ExerciseHistoryDay>.unmodifiable(entries);
+  }
+
+  Stream<List<ExerciseHistoryDay>> watchExerciseHistoryByDay(
+    String exerciseId,
+  ) {
+    late final StreamController<List<ExerciseHistoryDay>> controller;
+    final List<StreamSubscription<Object?>> subscriptions =
+        <StreamSubscription<Object?>>[];
+    bool closed = false;
+    bool loading = false;
+    bool queued = false;
+
+    Future<void> emit() async {
+      if (closed) return;
+      if (loading) {
+        queued = true;
+        return;
+      }
+      loading = true;
+      try {
+        controller.add(await getExerciseHistoryByDay(exerciseId));
+      } catch (error, stackTrace) {
+        controller.addError(error, stackTrace);
+      } finally {
+        loading = false;
+      }
+      if (queued && !closed) {
+        queued = false;
+        unawaited(emit());
+      }
+    }
+
+    void schedule() => unawaited(emit());
+
+    controller = StreamController<List<ExerciseHistoryDay>>.broadcast(
+      onListen: () {
+        subscriptions.addAll(<StreamSubscription<Object?>>[
+          _database
+              .tableUpdates(TableUpdateQuery.onTable(_database.workouts))
+              .listen((_) => schedule()),
+          _database
+              .tableUpdates(
+                TableUpdateQuery.onTable(_database.workoutExercises),
+              )
+              .listen((_) => schedule()),
+          _database
+              .tableUpdates(TableUpdateQuery.onTable(_database.sets))
+              .listen((_) => schedule()),
+        ]);
+        schedule();
+      },
+      onCancel: () async {
+        closed = true;
+        for (final StreamSubscription<Object?> sub in subscriptions) {
+          await sub.cancel();
+        }
+      },
+    );
+
+    return controller.stream;
   }
 
   Future<WorkoutDetail> getWorkoutById(String workoutId) async {

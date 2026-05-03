@@ -20,6 +20,7 @@ class ExerciseEditorController extends _$ExerciseEditorController {
     required ExerciseType type,
     required ExerciseMuscleGroup muscleGroup,
     Uint8List? thumbnailBytes,
+    int? defaultRestSeconds,
   }) {
     return _runMutation(() async {
       final ExerciseRepository repository = ref.read(
@@ -30,6 +31,7 @@ class ExerciseEditorController extends _$ExerciseEditorController {
         type: type,
         muscleGroup: muscleGroup,
         thumbnailBytes: thumbnailBytes,
+        defaultRestSeconds: defaultRestSeconds,
       );
     });
   }
@@ -41,6 +43,8 @@ class ExerciseEditorController extends _$ExerciseEditorController {
     required ExerciseMuscleGroup muscleGroup,
     Uint8List? thumbnailBytes,
     bool clearThumbnail = false,
+    int? defaultRestSeconds,
+    bool clearDefaultRestSeconds = false,
   }) {
     return _runMutation(() async {
       final ExerciseRepository repository = ref.read(
@@ -53,6 +57,8 @@ class ExerciseEditorController extends _$ExerciseEditorController {
           muscleGroup: muscleGroup,
           thumbnailBytes: thumbnailBytes,
           clearThumbnailBytes: clearThumbnail,
+          defaultRestSeconds: defaultRestSeconds,
+          clearDefaultRestSeconds: clearDefaultRestSeconds,
         ),
       );
     });

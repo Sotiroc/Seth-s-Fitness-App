@@ -4,12 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/illustrated_empty_state.dart';
 import '../../../data/models/exercise.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/repositories/repository_exceptions.dart';
+import '../../home/presentation/widgets/menu_icon_button.dart';
 import '../application/exercise_editor_controller.dart';
 import '../application/exercise_list_provider.dart';
 import 'widgets/exercise_avatar.dart';
+import 'widgets/exercise_history_sheet.dart';
 import 'widgets/exercise_muscle_group_badge.dart';
 import 'widgets/exercise_type_badge.dart';
 
@@ -28,6 +31,7 @@ class ExerciseListScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: palette.shade50,
+      drawerEnableOpenDragGesture: false,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/exercises/new'),
         icon: const Icon(Icons.add_rounded),
@@ -57,7 +61,6 @@ class ExerciseListScreen extends ConsumerWidget {
                   ? SliverFillRemaining(
                       hasScrollBody: false,
                       child: _EmptyState(
-                        palette: palette,
                         hasFilter:
                             filter.query.isNotEmpty || filter.type != null,
                         onClear: () =>
@@ -80,11 +83,18 @@ class ExerciseListScreen extends ConsumerWidget {
                           return _ExerciseTile(
                             exercise: exercise,
                             palette: palette,
-                            onTap: () =>
-                                context.push('/exercises/${exercise.id}/edit'),
+                            onTap: () => ExerciseHistorySheet.show(
+                              context,
+                              exerciseId: exercise.id,
+                              showEditButton: true,
+                            ),
                             onEdit: () =>
                                 context.push('/exercises/${exercise.id}/edit'),
-                            onViewHistory: () => _notifyHistoryStub(context),
+                            onViewHistory: () => ExerciseHistorySheet.show(
+                              context,
+                              exerciseId: exercise.id,
+                              showEditButton: true,
+                            ),
                             onDelete: () =>
                                 _confirmDelete(context, ref, exercise),
                           );
@@ -106,15 +116,6 @@ class ExerciseListScreen extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _notifyHistoryStub(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Exercise history lands in Phase 7.'),
-        duration: Duration(seconds: 2),
       ),
     );
   }
@@ -210,6 +211,8 @@ class _Header extends StatelessWidget {
             children: <Widget>[
               Row(
                 children: <Widget>[
+                  const MenuIconButton(),
+                  const SizedBox(width: AppSpacing.sm),
                   Container(width: 2, height: 14, color: palette.shade300),
                   const SizedBox(width: 8),
                   Text(
@@ -504,7 +507,10 @@ class _ExerciseTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 8,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: palette.shade100),
@@ -512,7 +518,7 @@ class _ExerciseTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              ExerciseAvatar(exercise: exercise, size: 52),
+              ExerciseAvatar(exercise: exercise, size: 44),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
@@ -541,7 +547,7 @@ class _ExerciseTile extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Wrap(
                       spacing: AppSpacing.xs,
                       runSpacing: AppSpacing.xs,
@@ -648,63 +654,23 @@ class _MenuRow extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({
-    required this.palette,
     required this.hasFilter,
     required this.onClear,
   });
 
-  final JellyBeanPalette palette;
   final bool hasFilter;
   final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: palette.shade100,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(
-              hasFilter
-                  ? Icons.search_off_rounded
-                  : Icons.fitness_center_rounded,
-              color: palette.shade700,
-              size: 28,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            hasFilter ? 'No matches' : 'No exercises yet',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: palette.shade950,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            hasFilter
-                ? 'Try a different search or clear the filter.'
-                : 'Add your first exercise to start building workouts.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: palette.shade800.withValues(alpha: 0.75),
-            ),
-          ),
-          if (hasFilter) ...<Widget>[
-            const SizedBox(height: AppSpacing.md),
-            TextButton(onPressed: onClear, child: const Text('Clear filters')),
-          ],
-        ],
-      ),
+    return IllustratedEmptyState(
+      illustrationAsset: AppIllustrations.emptyExercises,
+      title: hasFilter ? 'Nothing matches' : 'No exercises yet',
+      message: hasFilter
+          ? 'Try a different search or clear the filter to see your full library.'
+          : 'Add your first exercise to start building workouts.',
+      actionLabel: hasFilter ? 'Clear filters' : null,
+      onAction: hasFilter ? onClear : null,
     );
   }
 }
