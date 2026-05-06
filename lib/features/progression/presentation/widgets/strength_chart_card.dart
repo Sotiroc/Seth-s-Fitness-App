@@ -12,11 +12,12 @@ import '../../../../data/models/strength_point.dart';
 import '../../../../data/models/unit_system.dart';
 import '../../../../data/models/user_profile.dart';
 import '../../../profile/application/user_profile_provider.dart';
+import '../../application/chart_data_providers.dart';
 import '../../application/progression_range.dart';
 import '../../application/strength_series_provider.dart';
 import 'exercise_picker_field.dart';
 import 'progression_chart_empty_state.dart';
-import 'range_selector.dart';
+import 'range_dropdown.dart';
 
 /// Per-exercise estimated 1RM card. The user picks one of their
 /// "trackable" exercises (weighted, with at least one qualifying logged
@@ -62,23 +63,11 @@ class StrengthChartCard extends ConsumerWidget {
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: palette.shade100,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  'Epley formula',
-                  style: TextStyle(
-                    color: palette.shade700,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+              ProgressionRangeDropdown(
+                selected: range,
+                onChanged: (ProgressionRange r) => ref
+                    .read(strengthRangeFilterProvider.notifier)
+                    .set(r),
               ),
             ],
           ),
@@ -118,17 +107,6 @@ class StrengthChartCard extends ConsumerWidget {
               );
             },
           ),
-          if (selectedId != null) ...<Widget>[
-            const SizedBox(height: AppSpacing.md),
-            Center(
-              child: RangeSelector(
-                selected: range,
-                onChanged: (ProgressionRange r) => ref
-                    .read(strengthRangeFilterProvider.notifier)
-                    .set(r),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -152,6 +130,13 @@ class _PickerAndChart extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Precompute name lookup once per build instead of walking the
+    // `trackable` list inside `_nameFor` on every rebuild. Cheap on small
+    // lists, but lifts the cost out of the per-frame profile traces.
+    final Map<String, String> namesById = <String, String>{
+      for (final Exercise e in trackable) e.id: e.name,
+    };
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -172,19 +157,12 @@ class _PickerAndChart extends ConsumerWidget {
           _SelectedExerciseChart(
             palette: palette,
             exerciseId: selectedId!,
-            exerciseName: _nameFor(selectedId!),
+            exerciseName: namesById[selectedId!] ?? 'Exercise',
             range: range,
             unitSystem: unitSystem,
           ),
       ],
     );
-  }
-
-  String _nameFor(String id) {
-    for (final Exercise e in trackable) {
-      if (e.id == id) return e.name;
-    }
-    return 'Exercise';
   }
 }
 
@@ -238,6 +216,15 @@ class _SelectedExerciseChart extends ConsumerWidget {
           );
         }
 
+        // Pre-computed once per (filtered points, range, unit-system)
+        // change rather than on every rebuild.
+        final StrengthChartData? chartData = ref.watch(
+          strengthChartDataProvider(exerciseId),
+        );
+        final bool hasRangePoints = filtered.maybeWhen<bool>(
+          data: (List<StrengthPoint> e) => e.isNotEmpty,
+          orElse: () => false,
+        );
         final List<StrengthPoint> rangePoints =
             filtered.maybeWhen<List<StrengthPoint>>(
               data: (List<StrengthPoint> e) => e,
@@ -294,7 +281,7 @@ class _SelectedExerciseChart extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             SizedBox(
               height: 220,
-              child: rangePoints.isEmpty
+              child: !hasRangePoints || chartData == null
                   ? ProgressionChartEmptyState(
                       icon: Icons.timeline_rounded,
                       title: 'No sets in this range',
@@ -307,8 +294,8 @@ class _SelectedExerciseChart extends ConsumerWidget {
                     )
                   : _StrengthLineChart(
                       palette: palette,
+                      data: chartData,
                       points: rangePoints,
-                      range: range,
                       unitSystem: unitSystem,
                     ),
             ),
@@ -322,34 +309,24 @@ class _SelectedExerciseChart extends ConsumerWidget {
 class _StrengthLineChart extends StatelessWidget {
   const _StrengthLineChart({
     required this.palette,
+    required this.data,
     required this.points,
-    required this.range,
     required this.unitSystem,
   });
 
   final JellyBeanPalette palette;
+  final StrengthChartData data;
   final List<StrengthPoint> points;
-  final ProgressionRange range;
   final UnitSystem unitSystem;
 
   @override
   Widget build(BuildContext context) {
-    final List<FlSpot> spots = points
-        .map(
-          (StrengthPoint p) =>
-              FlSpot(_xFor(p.date), _displayValue(p.oneRepMaxKg)),
-        )
-        .toList(growable: false);
-
-    final double minX = spots.first.x;
-    final double maxX = spots.last.x == minX ? minX + 1 : spots.last.x;
-    final double minY = spots.map((FlSpot s) => s.y).reduce(_min);
-    final double maxY = spots.map((FlSpot s) => s.y).reduce(_max);
-    final double yPadding = ((maxY - minY).abs() * 0.15).clamp(1.0, 10.0);
-    final double yMin = minY - yPadding;
-    final double yMax = maxY + yPadding;
-
-    final DateFormat dateFmt = _dateFormatFor(range);
+    final List<FlSpot> spots = data.spots;
+    final double minX = data.minX;
+    final double maxX = data.maxX;
+    final double yMin = data.minY;
+    final double yMax = data.maxY;
+    final DateFormat dateFmt = data.dateFormat;
 
     return LineChart(
       LineChartData(
@@ -378,11 +355,14 @@ class _StrengthLineChart extends StatelessWidget {
               reservedSize: 40,
               interval: ((yMax - yMin) / 3).clamp(1.0, double.infinity),
               getTitlesWidget: (double value, TitleMeta meta) {
+                // Edge ticks crowd the chart border; skip them.
                 if (value == meta.min || value == meta.max) {
                   return const SizedBox.shrink();
                 }
-                return Padding(
-                  padding: const EdgeInsets.only(right: 4),
+                return SideTitleWidget(
+                  meta: meta,
+                  space: 6,
+                  fitInside: SideTitleFitInsideData.fromTitleMeta(meta),
                   child: Text(
                     value.toStringAsFixed(0),
                     style: TextStyle(
@@ -399,14 +379,15 @@ class _StrengthLineChart extends StatelessWidget {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 24,
-              interval: ((maxX - minX) / 3).clamp(1, double.infinity),
+              // Bias toward more ticks so the first and last dates are
+              // both reachable; fitInside keeps them from overflowing.
+              interval: ((maxX - minX) / 4).clamp(1, double.infinity),
               getTitlesWidget: (double value, TitleMeta meta) {
-                if (value == meta.min || value == meta.max) {
-                  return const SizedBox.shrink();
-                }
                 final DateTime d = _dateFor(value);
-                return Padding(
-                  padding: const EdgeInsets.only(top: 6),
+                return SideTitleWidget(
+                  meta: meta,
+                  space: 6,
+                  fitInside: SideTitleFitInsideData.fromTitleMeta(meta),
                   child: Text(
                     dateFmt.format(d),
                     style: TextStyle(
@@ -487,30 +468,8 @@ class _StrengthLineChart extends StatelessWidget {
     );
   }
 
-  double _displayValue(double kg) => unitSystem == UnitSystem.metric
-      ? kg
-      : UnitConversions.kgToLb(kg);
-
-  static double _xFor(DateTime instant) =>
-      instant.toUtc().millisecondsSinceEpoch / Duration.millisecondsPerDay;
-
   static DateTime _dateFor(double daysSinceEpoch) {
     final int ms = (daysSinceEpoch * Duration.millisecondsPerDay).round();
     return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
-  }
-
-  static double _min(double a, double b) => a < b ? a : b;
-  static double _max(double a, double b) => a > b ? a : b;
-
-  static DateFormat _dateFormatFor(ProgressionRange range) {
-    switch (range) {
-      case ProgressionRange.oneMonth:
-      case ProgressionRange.threeMonths:
-        return DateFormat.MMMd();
-      case ProgressionRange.sixMonths:
-      case ProgressionRange.oneYear:
-      case ProgressionRange.all:
-        return DateFormat.MMM();
-    }
   }
 }

@@ -77,9 +77,9 @@ abstract class _$StrengthExerciseSelection extends $Notifier<String?> {
 /// Sorted by most-recent-session DESC so the picker surfaces what the
 /// user is currently training.
 ///
-/// Implementation: O(N) per-exercise reads; fine for dozens of
-/// exercises. Replace with a single SQL aggregate if this ever shows up
-/// in profiling.
+/// Single SQL aggregate (`getLatestQualifyingSessionPerExercise`) returns
+/// the latest qualifying session per exercise; the provider then sorts
+/// the small result in memory.
 
 @ProviderFor(trackableExercises)
 const trackableExercisesProvider = TrackableExercisesProvider._();
@@ -89,9 +89,9 @@ const trackableExercisesProvider = TrackableExercisesProvider._();
 /// Sorted by most-recent-session DESC so the picker surfaces what the
 /// user is currently training.
 ///
-/// Implementation: O(N) per-exercise reads; fine for dozens of
-/// exercises. Replace with a single SQL aggregate if this ever shows up
-/// in profiling.
+/// Single SQL aggregate (`getLatestQualifyingSessionPerExercise`) returns
+/// the latest qualifying session per exercise; the provider then sorts
+/// the small result in memory.
 
 final class TrackableExercisesProvider
     extends
@@ -106,9 +106,9 @@ final class TrackableExercisesProvider
   /// Sorted by most-recent-session DESC so the picker surfaces what the
   /// user is currently training.
   ///
-  /// Implementation: O(N) per-exercise reads; fine for dozens of
-  /// exercises. Replace with a single SQL aggregate if this ever shows up
-  /// in profiling.
+  /// Single SQL aggregate (`getLatestQualifyingSessionPerExercise`) returns
+  /// the latest qualifying session per exercise; the provider then sorts
+  /// the small result in memory.
   const TrackableExercisesProvider._()
     : super(
         from: null,
@@ -136,7 +136,7 @@ final class TrackableExercisesProvider
 }
 
 String _$trackableExercisesHash() =>
-    r'aabdee24edd7371a28bd964160478597fe64c9de';
+    r'1acf408bfc09b95d9657bd0825cf87c89f3f0dc1';
 
 /// Per-exercise strength series: one [StrengthPoint] per session, where
 /// each point is the best Epley-estimated 1RM achieved across that
@@ -145,6 +145,10 @@ String _$trackableExercisesHash() =>
 ///
 /// Powered by the existing `WorkoutRepository.watchExerciseHistoryByDay`
 /// stream so points appear in real time as sets are completed.
+///
+/// Auto-disposed — only one exercise's series is on screen at a time
+/// and re-subscribing is cheap (the local DB stream re-emits within a
+/// frame).
 
 @ProviderFor(exerciseStrengthSeries)
 const exerciseStrengthSeriesProvider = ExerciseStrengthSeriesFamily._();
@@ -156,6 +160,10 @@ const exerciseStrengthSeriesProvider = ExerciseStrengthSeriesFamily._();
 ///
 /// Powered by the existing `WorkoutRepository.watchExerciseHistoryByDay`
 /// stream so points appear in real time as sets are completed.
+///
+/// Auto-disposed — only one exercise's series is on screen at a time
+/// and re-subscribing is cheap (the local DB stream re-emits within a
+/// frame).
 
 final class ExerciseStrengthSeriesProvider
     extends
@@ -174,13 +182,17 @@ final class ExerciseStrengthSeriesProvider
   ///
   /// Powered by the existing `WorkoutRepository.watchExerciseHistoryByDay`
   /// stream so points appear in real time as sets are completed.
+  ///
+  /// Auto-disposed — only one exercise's series is on screen at a time
+  /// and re-subscribing is cheap (the local DB stream re-emits within a
+  /// frame).
   const ExerciseStrengthSeriesProvider._({
     required ExerciseStrengthSeriesFamily super.from,
     required String super.argument,
   }) : super(
          retry: null,
          name: r'exerciseStrengthSeriesProvider',
-         isAutoDispose: false,
+         isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
@@ -220,7 +232,7 @@ final class ExerciseStrengthSeriesProvider
 }
 
 String _$exerciseStrengthSeriesHash() =>
-    r'b1bbe8ff536b0422b016c5565cab7cfca450c358';
+    r'a0dd2297a6f4a1a0f6217bda3cb55dce230d8804';
 
 /// Per-exercise strength series: one [StrengthPoint] per session, where
 /// each point is the best Epley-estimated 1RM achieved across that
@@ -229,6 +241,10 @@ String _$exerciseStrengthSeriesHash() =>
 ///
 /// Powered by the existing `WorkoutRepository.watchExerciseHistoryByDay`
 /// stream so points appear in real time as sets are completed.
+///
+/// Auto-disposed — only one exercise's series is on screen at a time
+/// and re-subscribing is cheap (the local DB stream re-emits within a
+/// frame).
 
 final class ExerciseStrengthSeriesFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<StrengthPoint>>, String> {
@@ -238,7 +254,7 @@ final class ExerciseStrengthSeriesFamily extends $Family
         name: r'exerciseStrengthSeriesProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
-        isAutoDispose: false,
+        isAutoDispose: true,
       );
 
   /// Per-exercise strength series: one [StrengthPoint] per session, where
@@ -248,6 +264,10 @@ final class ExerciseStrengthSeriesFamily extends $Family
   ///
   /// Powered by the existing `WorkoutRepository.watchExerciseHistoryByDay`
   /// stream so points appear in real time as sets are completed.
+  ///
+  /// Auto-disposed — only one exercise's series is on screen at a time
+  /// and re-subscribing is cheap (the local DB stream re-emits within a
+  /// frame).
 
   ExerciseStrengthSeriesProvider call(String exerciseId) =>
       ExerciseStrengthSeriesProvider._(argument: exerciseId, from: this);
@@ -257,14 +277,16 @@ final class ExerciseStrengthSeriesFamily extends $Family
 }
 
 /// Strength series filtered to the currently-selected
-/// [StrengthRangeFilter] window.
+/// [StrengthRangeFilter] window. Auto-disposed alongside its source
+/// series.
 
 @ProviderFor(filteredExerciseStrengthSeries)
 const filteredExerciseStrengthSeriesProvider =
     FilteredExerciseStrengthSeriesFamily._();
 
 /// Strength series filtered to the currently-selected
-/// [StrengthRangeFilter] window.
+/// [StrengthRangeFilter] window. Auto-disposed alongside its source
+/// series.
 
 final class FilteredExerciseStrengthSeriesProvider
     extends
@@ -275,14 +297,15 @@ final class FilteredExerciseStrengthSeriesProvider
         >
     with $Provider<AsyncValue<List<StrengthPoint>>> {
   /// Strength series filtered to the currently-selected
-  /// [StrengthRangeFilter] window.
+  /// [StrengthRangeFilter] window. Auto-disposed alongside its source
+  /// series.
   const FilteredExerciseStrengthSeriesProvider._({
     required FilteredExerciseStrengthSeriesFamily super.from,
     required String super.argument,
   }) : super(
          retry: null,
          name: r'filteredExerciseStrengthSeriesProvider',
-         isAutoDispose: false,
+         isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
@@ -332,10 +355,11 @@ final class FilteredExerciseStrengthSeriesProvider
 }
 
 String _$filteredExerciseStrengthSeriesHash() =>
-    r'5b4bf66fc10d2931cbc74dc75a6e65be86abf1d8';
+    r'691c6d5dd9a4f4490cbfac8c2c3b55c9505619c4';
 
 /// Strength series filtered to the currently-selected
-/// [StrengthRangeFilter] window.
+/// [StrengthRangeFilter] window. Auto-disposed alongside its source
+/// series.
 
 final class FilteredExerciseStrengthSeriesFamily extends $Family
     with $FunctionalFamilyOverride<AsyncValue<List<StrengthPoint>>, String> {
@@ -345,11 +369,12 @@ final class FilteredExerciseStrengthSeriesFamily extends $Family
         name: r'filteredExerciseStrengthSeriesProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
-        isAutoDispose: false,
+        isAutoDispose: true,
       );
 
   /// Strength series filtered to the currently-selected
-  /// [StrengthRangeFilter] window.
+  /// [StrengthRangeFilter] window. Auto-disposed alongside its source
+  /// series.
 
   FilteredExerciseStrengthSeriesProvider call(String exerciseId) =>
       FilteredExerciseStrengthSeriesProvider._(
@@ -365,7 +390,8 @@ final class FilteredExerciseStrengthSeriesFamily extends $Family
 /// estimated 1RM across every completed session. `null` when the user has
 /// no qualifying sets yet (and always `null` for non-weighted exercises,
 /// whose series is empty by construction). Reactive — updates the moment a
-/// new PR is logged.
+/// new PR is logged. Auto-disposed; recomputes from the underlying
+/// stream on revisit.
 
 @ProviderFor(exerciseAllTimePr)
 const exerciseAllTimePrProvider = ExerciseAllTimePrFamily._();
@@ -374,7 +400,8 @@ const exerciseAllTimePrProvider = ExerciseAllTimePrFamily._();
 /// estimated 1RM across every completed session. `null` when the user has
 /// no qualifying sets yet (and always `null` for non-weighted exercises,
 /// whose series is empty by construction). Reactive — updates the moment a
-/// new PR is logged.
+/// new PR is logged. Auto-disposed; recomputes from the underlying
+/// stream on revisit.
 
 final class ExerciseAllTimePrProvider
     extends
@@ -388,14 +415,15 @@ final class ExerciseAllTimePrProvider
   /// estimated 1RM across every completed session. `null` when the user has
   /// no qualifying sets yet (and always `null` for non-weighted exercises,
   /// whose series is empty by construction). Reactive — updates the moment a
-  /// new PR is logged.
+  /// new PR is logged. Auto-disposed; recomputes from the underlying
+  /// stream on revisit.
   const ExerciseAllTimePrProvider._({
     required ExerciseAllTimePrFamily super.from,
     required String super.argument,
   }) : super(
          retry: null,
          name: r'exerciseAllTimePrProvider',
-         isAutoDispose: false,
+         isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
@@ -441,13 +469,14 @@ final class ExerciseAllTimePrProvider
   }
 }
 
-String _$exerciseAllTimePrHash() => r'5e5ffac8a0c333acc30c7a92aef707056945bf71';
+String _$exerciseAllTimePrHash() => r'6a1a0f2d47b0a85015bfb5e1f2b6ac5a035bf992';
 
 /// All-time best lift for an exercise: the [StrengthPoint] with the highest
 /// estimated 1RM across every completed session. `null` when the user has
 /// no qualifying sets yet (and always `null` for non-weighted exercises,
 /// whose series is empty by construction). Reactive — updates the moment a
-/// new PR is logged.
+/// new PR is logged. Auto-disposed; recomputes from the underlying
+/// stream on revisit.
 
 final class ExerciseAllTimePrFamily extends $Family
     with $FunctionalFamilyOverride<AsyncValue<StrengthPoint?>, String> {
@@ -457,14 +486,15 @@ final class ExerciseAllTimePrFamily extends $Family
         name: r'exerciseAllTimePrProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
-        isAutoDispose: false,
+        isAutoDispose: true,
       );
 
   /// All-time best lift for an exercise: the [StrengthPoint] with the highest
   /// estimated 1RM across every completed session. `null` when the user has
   /// no qualifying sets yet (and always `null` for non-weighted exercises,
   /// whose series is empty by construction). Reactive — updates the moment a
-  /// new PR is logged.
+  /// new PR is logged. Auto-disposed; recomputes from the underlying
+  /// stream on revisit.
 
   ExerciseAllTimePrProvider call(String exerciseId) =>
       ExerciseAllTimePrProvider._(argument: exerciseId, from: this);
@@ -479,7 +509,8 @@ final class ExerciseAllTimePrFamily extends $Family
 /// exceeds all prior ones is a PR.
 ///
 /// Empty for non-weighted exercises (no qualifying sets). Used by the
-/// exercise history sheet to mark milestone sets with a trophy.
+/// exercise history sheet to mark milestone sets with a trophy. Auto-
+/// disposed — only loaded while the sheet is open.
 
 @ProviderFor(exercisePrSetIds)
 const exercisePrSetIdsProvider = ExercisePrSetIdsFamily._();
@@ -490,7 +521,8 @@ const exercisePrSetIdsProvider = ExercisePrSetIdsFamily._();
 /// exceeds all prior ones is a PR.
 ///
 /// Empty for non-weighted exercises (no qualifying sets). Used by the
-/// exercise history sheet to mark milestone sets with a trophy.
+/// exercise history sheet to mark milestone sets with a trophy. Auto-
+/// disposed — only loaded while the sheet is open.
 
 final class ExercisePrSetIdsProvider
     extends
@@ -506,14 +538,15 @@ final class ExercisePrSetIdsProvider
   /// exceeds all prior ones is a PR.
   ///
   /// Empty for non-weighted exercises (no qualifying sets). Used by the
-  /// exercise history sheet to mark milestone sets with a trophy.
+  /// exercise history sheet to mark milestone sets with a trophy. Auto-
+  /// disposed — only loaded while the sheet is open.
   const ExercisePrSetIdsProvider._({
     required ExercisePrSetIdsFamily super.from,
     required String super.argument,
   }) : super(
          retry: null,
          name: r'exercisePrSetIdsProvider',
-         isAutoDispose: false,
+         isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
@@ -559,7 +592,7 @@ final class ExercisePrSetIdsProvider
   }
 }
 
-String _$exercisePrSetIdsHash() => r'34b3bea215755b9a9931256e0ae0122539441495';
+String _$exercisePrSetIdsHash() => r'f8917d242916de5de97f4c5782c9d478606ea5c8';
 
 /// IDs of every completed set that established a new estimated-1RM PR at
 /// the time it was logged. Walks every qualifying set in chronological
@@ -567,7 +600,8 @@ String _$exercisePrSetIdsHash() => r'34b3bea215755b9a9931256e0ae0122539441495';
 /// exceeds all prior ones is a PR.
 ///
 /// Empty for non-weighted exercises (no qualifying sets). Used by the
-/// exercise history sheet to mark milestone sets with a trophy.
+/// exercise history sheet to mark milestone sets with a trophy. Auto-
+/// disposed — only loaded while the sheet is open.
 
 final class ExercisePrSetIdsFamily extends $Family
     with $FunctionalFamilyOverride<AsyncValue<Set<String>>, String> {
@@ -577,7 +611,7 @@ final class ExercisePrSetIdsFamily extends $Family
         name: r'exercisePrSetIdsProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
-        isAutoDispose: false,
+        isAutoDispose: true,
       );
 
   /// IDs of every completed set that established a new estimated-1RM PR at
@@ -586,7 +620,8 @@ final class ExercisePrSetIdsFamily extends $Family
   /// exceeds all prior ones is a PR.
   ///
   /// Empty for non-weighted exercises (no qualifying sets). Used by the
-  /// exercise history sheet to mark milestone sets with a trophy.
+  /// exercise history sheet to mark milestone sets with a trophy. Auto-
+  /// disposed — only loaded while the sheet is open.
 
   ExercisePrSetIdsProvider call(String exerciseId) =>
       ExercisePrSetIdsProvider._(argument: exerciseId, from: this);

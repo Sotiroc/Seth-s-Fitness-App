@@ -10,7 +10,9 @@ import '../../../data/repositories/exercise_repository.dart';
 
 part 'exercise_editor_controller.g.dart';
 
-@Riverpod(keepAlive: true)
+/// Page-local — only the exercise form mounts this. Auto-dispose so the
+/// busy/error AsyncValue resets cleanly when the editor closes.
+@riverpod
 class ExerciseEditorController extends _$ExerciseEditorController {
   @override
   FutureOr<void> build() {}
@@ -22,10 +24,12 @@ class ExerciseEditorController extends _$ExerciseEditorController {
     Uint8List? thumbnailBytes,
     int? defaultRestSeconds,
   }) {
-    return _runMutation(() async {
-      final ExerciseRepository repository = ref.read(
-        exerciseRepositoryProvider,
-      );
+    // Resolve the repository synchronously before any async gap. This
+    // controller is auto-disposed by Riverpod, and reading `ref` inside
+    // the async closure can race with disposal — surfaces as
+    // "Cannot use the Ref of … after it has been disposed".
+    final ExerciseRepository repository = ref.read(exerciseRepositoryProvider);
+    return _runMutation(() {
       return repository.createExercise(
         name: name,
         type: type,
@@ -46,10 +50,8 @@ class ExerciseEditorController extends _$ExerciseEditorController {
     int? defaultRestSeconds,
     bool clearDefaultRestSeconds = false,
   }) {
-    return _runMutation(() async {
-      final ExerciseRepository repository = ref.read(
-        exerciseRepositoryProvider,
-      );
+    final ExerciseRepository repository = ref.read(exerciseRepositoryProvider);
+    return _runMutation(() {
       return repository.updateExercise(
         exercise.copyWith(
           name: name,
@@ -65,10 +67,8 @@ class ExerciseEditorController extends _$ExerciseEditorController {
   }
 
   Future<void> deleteExercise(Exercise exercise) {
+    final ExerciseRepository repository = ref.read(exerciseRepositoryProvider);
     return _runMutation(() async {
-      final ExerciseRepository repository = ref.read(
-        exerciseRepositoryProvider,
-      );
       await repository.deleteExercise(exercise.id);
     });
   }
@@ -77,10 +77,17 @@ class ExerciseEditorController extends _$ExerciseEditorController {
     state = const AsyncLoading();
     try {
       final T result = await action();
-      state = const AsyncData(null);
+      // Guard against disposal during the async gap — the controller is
+      // auto-disposed and a navigation pop in the caller's `then` chain
+      // can race ahead of this assignment.
+      if (ref.mounted) {
+        state = const AsyncData(null);
+      }
       return result;
     } catch (error, stackTrace) {
-      state = AsyncError(error, stackTrace);
+      if (ref.mounted) {
+        state = AsyncError(error, stackTrace);
+      }
       rethrow;
     }
   }

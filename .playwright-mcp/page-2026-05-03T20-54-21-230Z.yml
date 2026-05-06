@@ -1,0 +1,19 @@
+- generic [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - button "Dismiss" [ref=e24]
+          - generic "Navigation menu":
+            - generic [ref=e25]:
+              - generic: Welcome
+            - button "Set up your profile" [ref=e26]
+            - button "Profile" [active] [ref=e27]
+            - button "History" [ref=e28]
+            - button "Log weight" [ref=e29]
+            - button "Add exercise" [ref=e30]
+            - group "Units":
+              - button "kg" [ref=e31]
+              - button "lb" [ref=e32]
+            - button "Timer settings" [ref=e33]
+            - button "Settings" [ref=e34]

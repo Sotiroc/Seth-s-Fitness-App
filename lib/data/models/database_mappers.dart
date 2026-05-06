@@ -74,6 +74,7 @@ extension WorkoutExerciseRowMapper on WorkoutExerciseRow {
       exerciseId: exerciseId,
       orderIndex: orderIndex,
       createdAt: createdAt,
+      notes: notes,
     );
   }
 }

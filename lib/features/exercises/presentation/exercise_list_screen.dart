@@ -52,8 +52,6 @@ class ExerciseListScreen extends ConsumerWidget {
                 filter: filter,
                 onQueryChanged: (value) =>
                     ref.read(exerciseFilterProvider.notifier).setQuery(value),
-                onTypeChanged: (value) =>
-                    ref.read(exerciseFilterProvider.notifier).setType(value),
               ),
             ),
             filtered.when(
@@ -277,13 +275,11 @@ class _FilterBar extends StatelessWidget {
     required this.palette,
     required this.filter,
     required this.onQueryChanged,
-    required this.onTypeChanged,
   });
 
   final JellyBeanPalette palette;
   final ExerciseListFilter filter;
   final ValueChanged<String> onQueryChanged;
-  final ValueChanged<ExerciseType?> onTypeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -303,11 +299,9 @@ class _FilterBar extends StatelessWidget {
             onChanged: onQueryChanged,
           ),
           const SizedBox(height: AppSpacing.md),
-          _TypeChips(
-            palette: palette,
-            selected: filter.type,
-            onChanged: onTypeChanged,
-          ),
+          // _TypeChips watches only the selected-type slice itself, so
+          // the chip row doesn't rebuild when the search query changes.
+          _TypeChips(palette: palette),
         ],
       ),
     );
@@ -398,19 +392,21 @@ class _SearchFieldState extends State<_SearchField> {
   }
 }
 
-class _TypeChips extends StatelessWidget {
-  const _TypeChips({
-    required this.palette,
-    required this.selected,
-    required this.onChanged,
-  });
+class _TypeChips extends ConsumerWidget {
+  const _TypeChips({required this.palette});
 
   final JellyBeanPalette palette;
-  final ExerciseType? selected;
-  final ValueChanged<ExerciseType?> onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watches only the selected-type slice, so query keystrokes (which
+    // mutate `filter.query`) do not invalidate this row.
+    final ExerciseType? selected = ref.watch(
+      exerciseFilterProvider.select(
+        (ExerciseListFilter f) => f.type,
+      ),
+    );
+    final ExerciseFilter notifier = ref.read(exerciseFilterProvider.notifier);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const ClampingScrollPhysics(),
@@ -420,7 +416,7 @@ class _TypeChips extends StatelessWidget {
             palette: palette,
             label: 'All',
             selected: selected == null,
-            onTap: () => onChanged(null),
+            onTap: () => notifier.setType(null),
           ),
           const SizedBox(width: AppSpacing.xs),
           for (final ExerciseType type in ExerciseType.values) ...<Widget>[
@@ -428,7 +424,7 @@ class _TypeChips extends StatelessWidget {
               palette: palette,
               label: type.label,
               selected: selected == type,
-              onTap: () => onChanged(type),
+              onTap: () => notifier.setType(type),
             ),
             const SizedBox(width: AppSpacing.xs),
           ],
@@ -518,7 +514,11 @@ class _ExerciseTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              ExerciseAvatar(exercise: exercise, size: 44),
+              ExerciseAvatar(
+                exercise: exercise,
+                size: 44,
+                letterBackgroundColor: palette.shade500,
+              ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
@@ -530,7 +530,7 @@ class _ExerciseTile extends StatelessWidget {
                           child: Text(
                             exercise.name,
                             style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w600,
                               color: palette.shade950,
                               letterSpacing: -0.2,
                             ),

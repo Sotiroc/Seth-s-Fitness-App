@@ -1892,6 +1892,15 @@ class $WorkoutExercisesTable extends WorkoutExercises
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1899,6 +1908,7 @@ class $WorkoutExercisesTable extends WorkoutExercises
     exerciseId,
     orderIndex,
     createdAt,
+    notes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1947,6 +1957,12 @@ class $WorkoutExercisesTable extends WorkoutExercises
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
     return context;
   }
 
@@ -1976,6 +1992,10 @@ class $WorkoutExercisesTable extends WorkoutExercises
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
     );
   }
 
@@ -1997,12 +2017,20 @@ class WorkoutExerciseRow extends DataClass
   /// workout for the auto-close-stale-workout flow. Nullable because
   /// pre-v9 rows are backfilled to the parent workout's `startedAt`.
   final DateTime? createdAt;
+
+  /// Optional free-text note attached to this exercise *within this workout*
+  /// (e.g. "left shoulder felt tight on bench"). Distinct from the global
+  /// exercise definition — lives on the workout-exercise instance so it
+  /// only surfaces alongside the session it was written in. Trimmed at
+  /// write time; null/empty means "no note".
+  final String? notes;
   const WorkoutExerciseRow({
     required this.id,
     required this.workoutId,
     required this.exerciseId,
     required this.orderIndex,
     this.createdAt,
+    this.notes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2013,6 +2041,9 @@ class WorkoutExerciseRow extends DataClass
     map['order_index'] = Variable<int>(orderIndex);
     if (!nullToAbsent || createdAt != null) {
       map['created_at'] = Variable<DateTime>(createdAt);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
     }
     return map;
   }
@@ -2026,6 +2057,9 @@ class WorkoutExerciseRow extends DataClass
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
           : Value(createdAt),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
     );
   }
 
@@ -2040,6 +2074,7 @@ class WorkoutExerciseRow extends DataClass
       exerciseId: serializer.fromJson<String>(json['exerciseId']),
       orderIndex: serializer.fromJson<int>(json['orderIndex']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      notes: serializer.fromJson<String?>(json['notes']),
     );
   }
   @override
@@ -2051,6 +2086,7 @@ class WorkoutExerciseRow extends DataClass
       'exerciseId': serializer.toJson<String>(exerciseId),
       'orderIndex': serializer.toJson<int>(orderIndex),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'notes': serializer.toJson<String?>(notes),
     };
   }
 
@@ -2060,12 +2096,14 @@ class WorkoutExerciseRow extends DataClass
     String? exerciseId,
     int? orderIndex,
     Value<DateTime?> createdAt = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
   }) => WorkoutExerciseRow(
     id: id ?? this.id,
     workoutId: workoutId ?? this.workoutId,
     exerciseId: exerciseId ?? this.exerciseId,
     orderIndex: orderIndex ?? this.orderIndex,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    notes: notes.present ? notes.value : this.notes,
   );
   WorkoutExerciseRow copyWithCompanion(WorkoutExercisesCompanion data) {
     return WorkoutExerciseRow(
@@ -2078,6 +2116,7 @@ class WorkoutExerciseRow extends DataClass
           ? data.orderIndex.value
           : this.orderIndex,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      notes: data.notes.present ? data.notes.value : this.notes,
     );
   }
 
@@ -2088,14 +2127,15 @@ class WorkoutExerciseRow extends DataClass
           ..write('workoutId: $workoutId, ')
           ..write('exerciseId: $exerciseId, ')
           ..write('orderIndex: $orderIndex, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, workoutId, exerciseId, orderIndex, createdAt);
+      Object.hash(id, workoutId, exerciseId, orderIndex, createdAt, notes);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2104,7 +2144,8 @@ class WorkoutExerciseRow extends DataClass
           other.workoutId == this.workoutId &&
           other.exerciseId == this.exerciseId &&
           other.orderIndex == this.orderIndex &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.notes == this.notes);
 }
 
 class WorkoutExercisesCompanion extends UpdateCompanion<WorkoutExerciseRow> {
@@ -2113,6 +2154,7 @@ class WorkoutExercisesCompanion extends UpdateCompanion<WorkoutExerciseRow> {
   final Value<String> exerciseId;
   final Value<int> orderIndex;
   final Value<DateTime?> createdAt;
+  final Value<String?> notes;
   final Value<int> rowid;
   const WorkoutExercisesCompanion({
     this.id = const Value.absent(),
@@ -2120,6 +2162,7 @@ class WorkoutExercisesCompanion extends UpdateCompanion<WorkoutExerciseRow> {
     this.exerciseId = const Value.absent(),
     this.orderIndex = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.notes = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   WorkoutExercisesCompanion.insert({
@@ -2128,6 +2171,7 @@ class WorkoutExercisesCompanion extends UpdateCompanion<WorkoutExerciseRow> {
     required String exerciseId,
     required int orderIndex,
     this.createdAt = const Value.absent(),
+    this.notes = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        workoutId = Value(workoutId),
@@ -2139,6 +2183,7 @@ class WorkoutExercisesCompanion extends UpdateCompanion<WorkoutExerciseRow> {
     Expression<String>? exerciseId,
     Expression<int>? orderIndex,
     Expression<DateTime>? createdAt,
+    Expression<String>? notes,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2147,6 +2192,7 @@ class WorkoutExercisesCompanion extends UpdateCompanion<WorkoutExerciseRow> {
       if (exerciseId != null) 'exercise_id': exerciseId,
       if (orderIndex != null) 'order_index': orderIndex,
       if (createdAt != null) 'created_at': createdAt,
+      if (notes != null) 'notes': notes,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2157,6 +2203,7 @@ class WorkoutExercisesCompanion extends UpdateCompanion<WorkoutExerciseRow> {
     Value<String>? exerciseId,
     Value<int>? orderIndex,
     Value<DateTime?>? createdAt,
+    Value<String?>? notes,
     Value<int>? rowid,
   }) {
     return WorkoutExercisesCompanion(
@@ -2165,6 +2212,7 @@ class WorkoutExercisesCompanion extends UpdateCompanion<WorkoutExerciseRow> {
       exerciseId: exerciseId ?? this.exerciseId,
       orderIndex: orderIndex ?? this.orderIndex,
       createdAt: createdAt ?? this.createdAt,
+      notes: notes ?? this.notes,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2187,6 +2235,9 @@ class WorkoutExercisesCompanion extends UpdateCompanion<WorkoutExerciseRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2201,6 +2252,7 @@ class WorkoutExercisesCompanion extends UpdateCompanion<WorkoutExerciseRow> {
           ..write('exerciseId: $exerciseId, ')
           ..write('orderIndex: $orderIndex, ')
           ..write('createdAt: $createdAt, ')
+          ..write('notes: $notes, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6439,6 +6491,7 @@ typedef $$WorkoutExercisesTableCreateCompanionBuilder =
       required String exerciseId,
       required int orderIndex,
       Value<DateTime?> createdAt,
+      Value<String?> notes,
       Value<int> rowid,
     });
 typedef $$WorkoutExercisesTableUpdateCompanionBuilder =
@@ -6448,6 +6501,7 @@ typedef $$WorkoutExercisesTableUpdateCompanionBuilder =
       Value<String> exerciseId,
       Value<int> orderIndex,
       Value<DateTime?> createdAt,
+      Value<String?> notes,
       Value<int> rowid,
     });
 
@@ -6548,6 +6602,11 @@ class $$WorkoutExercisesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$WorkoutsTableFilterComposer get workoutId {
     final $$WorkoutsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -6644,6 +6703,11 @@ class $$WorkoutExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$WorkoutsTableOrderingComposer get workoutId {
     final $$WorkoutsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -6710,6 +6774,9 @@ class $$WorkoutExercisesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
 
   $$WorkoutsTableAnnotationComposer get workoutId {
     final $$WorkoutsTableAnnotationComposer composer = $composerBuilder(
@@ -6822,6 +6889,7 @@ class $$WorkoutExercisesTableTableManager
                 Value<String> exerciseId = const Value.absent(),
                 Value<int> orderIndex = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WorkoutExercisesCompanion(
                 id: id,
@@ -6829,6 +6897,7 @@ class $$WorkoutExercisesTableTableManager
                 exerciseId: exerciseId,
                 orderIndex: orderIndex,
                 createdAt: createdAt,
+                notes: notes,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6838,6 +6907,7 @@ class $$WorkoutExercisesTableTableManager
                 required String exerciseId,
                 required int orderIndex,
                 Value<DateTime?> createdAt = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => WorkoutExercisesCompanion.insert(
                 id: id,
@@ -6845,6 +6915,7 @@ class $$WorkoutExercisesTableTableManager
                 exerciseId: exerciseId,
                 orderIndex: orderIndex,
                 createdAt: createdAt,
+                notes: notes,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

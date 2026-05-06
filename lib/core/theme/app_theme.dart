@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
 abstract final class AppTheme {
   static const Color seedColor = Color(0xFF289CB2);
+  static const String _fontFamily = 'Inter';
   static const List<String> _fontFamilyFallback = <String>['Manrope'];
   static final ThemeData _lightTheme = _buildTheme(Brightness.light);
   static final ThemeData _darkTheme = _buildTheme(Brightness.dark);
@@ -22,14 +22,14 @@ abstract final class AppTheme {
       seedColor: seedColor,
       brightness: brightness,
     );
+    final TextTheme baseTextTheme = ThemeData(
+      colorScheme: colorScheme,
+      brightness: brightness,
+      useMaterial3: true,
+    ).textTheme;
     final TextTheme textTheme = _withFallback(
-      GoogleFonts.interTextTheme(
-        ThemeData(
-          colorScheme: colorScheme,
-          brightness: brightness,
-          useMaterial3: true,
-        ).textTheme,
-      ).apply(
+      baseTextTheme.apply(
+        fontFamily: _fontFamily,
         bodyColor: colorScheme.onSurface,
         displayColor: colorScheme.onSurface,
       ),

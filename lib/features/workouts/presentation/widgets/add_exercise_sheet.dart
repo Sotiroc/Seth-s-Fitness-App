@@ -399,7 +399,11 @@ class _ExerciseOption extends StatelessWidget {
           ),
           child: Row(
             children: <Widget>[
-              ExerciseAvatar(exercise: exercise, size: 40),
+              ExerciseAvatar(
+                exercise: exercise,
+                size: 40,
+                letterBackgroundColor: palette.shade500,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(

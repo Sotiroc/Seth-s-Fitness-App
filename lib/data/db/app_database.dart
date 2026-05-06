@@ -168,6 +168,13 @@ class WorkoutExercises extends Table {
   /// pre-v9 rows are backfilled to the parent workout's `startedAt`.
   DateTimeColumn get createdAt => dateTime().nullable()();
 
+  /// Optional free-text note attached to this exercise *within this workout*
+  /// (e.g. "left shoulder felt tight on bench"). Distinct from the global
+  /// exercise definition — lives on the workout-exercise instance so it
+  /// only surfaces alongside the session it was written in. Trimmed at
+  /// write time; null/empty means "no note".
+  TextColumn get notes => text().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
 }
@@ -332,16 +339,13 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator m) async {
       await m.createAll();
-      await customStatement(
-        'CREATE INDEX IF NOT EXISTS idx_weight_entries_measured_at '
-        'ON weight_entries (measured_at)',
-      );
+      await _createHotPathIndexes();
     },
     onUpgrade: (Migrator m, int from, int to) async {
       if (from < 2) {
@@ -464,8 +468,48 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(sets, sets.rpe);
         await m.addColumn(sets, sets.note);
       }
+      if (from < 12) {
+        // Per-exercise (per workout-exercise instance) free-text note.
+        // Existing rows leave notes NULL; users add them via the active
+        // workout screen "+ Note" affordance.
+        await m.addColumn(workoutExercises, workoutExercises.notes);
+      }
+      if (from < 13) {
+        // Indexes on hot-path foreign-key and date columns. Without these
+        // SQLite full-scans on every history/progression/active-workout
+        // lookup. CREATE INDEX IF NOT EXISTS keeps this idempotent for
+        // databases that already have idx_weight_entries_measured_at.
+        await _createHotPathIndexes();
+      }
     },
   );
+
+  Future<void> _createHotPathIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sets_workout_exercise_id '
+      'ON sets (workout_exercise_id)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_workout_exercises_workout_id '
+      'ON workout_exercises (workout_id)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_workout_exercises_exercise_id '
+      'ON workout_exercises (exercise_id)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_workouts_started_at '
+      'ON workouts (started_at)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_workouts_ended_at '
+      'ON workouts (ended_at)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_weight_entries_measured_at '
+      'ON weight_entries (measured_at)',
+    );
+  }
 }
 
 QueryExecutor _openConnection() => openAppDatabaseConnection();

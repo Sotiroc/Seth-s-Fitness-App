@@ -8,19 +8,25 @@ part of 'template_editor_controller.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Page-local — bound to the template form's lifecycle. Auto-disposed
+/// so the busy/error AsyncValue resets cleanly when the editor closes.
 
 @ProviderFor(TemplateEditorController)
 const templateEditorControllerProvider = TemplateEditorControllerProvider._();
 
+/// Page-local — bound to the template form's lifecycle. Auto-disposed
+/// so the busy/error AsyncValue resets cleanly when the editor closes.
 final class TemplateEditorControllerProvider
     extends $AsyncNotifierProvider<TemplateEditorController, void> {
+  /// Page-local — bound to the template form's lifecycle. Auto-disposed
+  /// so the busy/error AsyncValue resets cleanly when the editor closes.
   const TemplateEditorControllerProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
         name: r'templateEditorControllerProvider',
-        isAutoDispose: false,
+        isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -34,7 +40,10 @@ final class TemplateEditorControllerProvider
 }
 
 String _$templateEditorControllerHash() =>
-    r'003cad218bbddc19e3e85a0fb3bc7c5350c552f3';
+    r'40ca93191ba577f0281e9dbf11d096e3fd1af55c';
+
+/// Page-local — bound to the template form's lifecycle. Auto-disposed
+/// so the busy/error AsyncValue resets cleanly when the editor closes.
 
 abstract class _$TemplateEditorController extends $AsyncNotifier<void> {
   FutureOr<void> build();

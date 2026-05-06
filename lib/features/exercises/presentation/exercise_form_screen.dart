@@ -323,17 +323,31 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
                   _TypePicker(
                     palette: palette,
                     selected: _type,
-                    onChanged: (value) => setState(() => _type = value),
+                    onChanged: (value) => setState(() {
+                      _type = value;
+                      // Cardio exercises don't have a muscle group selector
+                      // (they're tracked separately in cardio minutes).
+                      // Auto-coerce the underlying value so saves stay
+                      // consistent without surfacing the picker.
+                      if (value == ExerciseType.cardio) {
+                        _muscleGroup = ExerciseMuscleGroup.cardio;
+                      } else if (_muscleGroup == ExerciseMuscleGroup.cardio) {
+                        _muscleGroup = ExerciseMuscleGroup.chest;
+                      }
+                    }),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  _FieldLabel(text: 'Muscle Group', palette: palette),
-                  const SizedBox(height: AppSpacing.xs),
-                  _MuscleGroupPicker(
-                    palette: palette,
-                    selected: _muscleGroup,
-                    onChanged: (value) => setState(() => _muscleGroup = value),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
+                  if (_type != ExerciseType.cardio) ...<Widget>[
+                    _FieldLabel(text: 'Muscle Group', palette: palette),
+                    const SizedBox(height: AppSpacing.xs),
+                    _MuscleGroupPicker(
+                      palette: palette,
+                      selected: _muscleGroup,
+                      onChanged: (value) =>
+                          setState(() => _muscleGroup = value),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
                   _FieldLabel(
                     text: 'Rest between sets',
                     palette: palette,

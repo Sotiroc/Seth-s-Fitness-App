@@ -118,6 +118,12 @@ class _HeartbeatLogoState extends State<HeartbeatLogo>
     return SizedBox(
       width: haloMax,
       height: haloMax,
+      // Image.asset is passed as the `child:` argument of AnimatedBuilder
+      // and re-used inside the builder via the `child` parameter. This
+      // means the image widget is constructed ONCE and only the animated
+      // transforms (scale + halo gradient) are rebuilt per frame. Keep
+      // the image outside the builder closure — moving it inside would
+      // re-decode/reconstruct the asset at ~60fps.
       child: AnimatedBuilder(
         animation: _controller,
         builder: (BuildContext context, Widget? child) {

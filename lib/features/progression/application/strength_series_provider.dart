@@ -29,34 +29,25 @@ class StrengthExerciseSelection extends _$StrengthExerciseSelection {
 /// Sorted by most-recent-session DESC so the picker surfaces what the
 /// user is currently training.
 ///
-/// Implementation: O(N) per-exercise reads; fine for dozens of
-/// exercises. Replace with a single SQL aggregate if this ever shows up
-/// in profiling.
+/// Single SQL aggregate (`getLatestQualifyingSessionPerExercise`) returns
+/// the latest qualifying session per exercise; the provider then sorts
+/// the small result in memory.
 @Riverpod(keepAlive: true)
 Future<List<Exercise>> trackableExercises(Ref ref) async {
   await ref.watch(databaseBootstrapProvider.future);
   final List<Exercise> all = await ref.watch(exerciseListProvider.future);
-  final List<Exercise> weighted = all
-      .where((Exercise e) => e.type == ExerciseType.weighted)
-      .toList(growable: false);
-
   final WorkoutRepository repo = ref.watch(workoutRepositoryProvider);
+  final Map<String, DateTime> latestByExercise = await repo
+      .getLatestQualifyingSessionPerExercise();
 
   final List<_TrackableEntry> annotated = <_TrackableEntry>[];
-  for (final Exercise exercise in weighted) {
-    final List<ExerciseHistoryDay> history =
-        await repo.getExerciseHistoryByDay(exercise.id);
-    DateTime? mostRecent;
-    for (final ExerciseHistoryDay day in history) {
-      final bool hasQualifying = day.sets.any(_isQualifyingSet);
-      if (!hasQualifying) continue;
-      if (mostRecent == null || day.workoutStartedAt.isAfter(mostRecent)) {
-        mostRecent = day.workoutStartedAt;
-      }
-    }
-    if (mostRecent != null) {
-      annotated.add(_TrackableEntry(exercise: exercise, lastSession: mostRecent));
-    }
+  for (final Exercise exercise in all) {
+    if (exercise.type != ExerciseType.weighted) continue;
+    final DateTime? lastSession = latestByExercise[exercise.id];
+    if (lastSession == null) continue;
+    annotated.add(
+      _TrackableEntry(exercise: exercise, lastSession: lastSession),
+    );
   }
 
   annotated.sort(
@@ -81,19 +72,42 @@ class _TrackableEntry {
 ///
 /// Powered by the existing `WorkoutRepository.watchExerciseHistoryByDay`
 /// stream so points appear in real time as sets are completed.
-@Riverpod(keepAlive: true)
+///
+/// Auto-disposed — only one exercise's series is on screen at a time
+/// and re-subscribing is cheap (the local DB stream re-emits within a
+/// frame).
+@riverpod
 Stream<List<StrengthPoint>> exerciseStrengthSeries(
   Ref ref,
   String exerciseId,
 ) async* {
   await ref.watch(databaseBootstrapProvider.future);
   final WorkoutRepository repo = ref.watch(workoutRepositoryProvider);
-  yield* repo.watchExerciseHistoryByDay(exerciseId).map(_mapHistoryToPoints);
+  // Memoize the mapping so a re-emission of a structurally-equal history
+  // (the upstream dedupe is best-effort) returns the exact same
+  // List<StrengthPoint> instance — Riverpod then sees the new AsyncData
+  // as identical to the previous one and skips downstream rebuilds.
+  List<ExerciseHistoryDay>? cachedInput;
+  List<StrengthPoint>? cachedOutput;
+  yield* repo.watchExerciseHistoryByDay(exerciseId).map((
+    List<ExerciseHistoryDay> history,
+  ) {
+    if (cachedOutput != null &&
+        cachedInput != null &&
+        exerciseHistoryDayListsStructurallyEqual(history, cachedInput!)) {
+      return cachedOutput!;
+    }
+    final List<StrengthPoint> result = _mapHistoryToPoints(history);
+    cachedInput = history;
+    cachedOutput = result;
+    return result;
+  });
 }
 
 /// Strength series filtered to the currently-selected
-/// [StrengthRangeFilter] window.
-@Riverpod(keepAlive: true)
+/// [StrengthRangeFilter] window. Auto-disposed alongside its source
+/// series.
+@riverpod
 AsyncValue<List<StrengthPoint>> filteredExerciseStrengthSeries(
   Ref ref,
   String exerciseId,
@@ -115,8 +129,9 @@ AsyncValue<List<StrengthPoint>> filteredExerciseStrengthSeries(
 /// estimated 1RM across every completed session. `null` when the user has
 /// no qualifying sets yet (and always `null` for non-weighted exercises,
 /// whose series is empty by construction). Reactive — updates the moment a
-/// new PR is logged.
-@Riverpod(keepAlive: true)
+/// new PR is logged. Auto-disposed; recomputes from the underlying
+/// stream on revisit.
+@riverpod
 AsyncValue<StrengthPoint?> exerciseAllTimePr(Ref ref, String exerciseId) {
   final AsyncValue<List<StrengthPoint>> series = ref.watch(
     exerciseStrengthSeriesProvider(exerciseId),
@@ -136,8 +151,9 @@ AsyncValue<StrengthPoint?> exerciseAllTimePr(Ref ref, String exerciseId) {
 /// exceeds all prior ones is a PR.
 ///
 /// Empty for non-weighted exercises (no qualifying sets). Used by the
-/// exercise history sheet to mark milestone sets with a trophy.
-@Riverpod(keepAlive: true)
+/// exercise history sheet to mark milestone sets with a trophy. Auto-
+/// disposed — only loaded while the sheet is open.
+@riverpod
 AsyncValue<Set<String>> exercisePrSetIds(Ref ref, String exerciseId) {
   final AsyncValue<List<ExerciseHistoryDay>> historyAsync = ref.watch(
     exerciseHistoryByDayProvider(exerciseId),

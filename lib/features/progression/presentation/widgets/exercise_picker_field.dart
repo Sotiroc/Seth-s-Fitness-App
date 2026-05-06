@@ -135,16 +135,23 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
   Widget build(BuildContext context) {
     final JellyBeanPalette palette = context.jellyBeanPalette;
     final List<Exercise> visible = _filtered;
+    final MediaQueryData mq = MediaQuery.of(context);
+    // Target ~85% of the screen so the picker dominates the view, but
+    // shrink by the keyboard height when it's open so the sheet doesn't
+    // overflow the viewport. Falls back gracefully on very short screens.
+    final double availableHeight = mq.size.height - mq.viewInsets.bottom;
+    final double targetHeight = (availableHeight * 0.85).clamp(
+      300.0,
+      availableHeight,
+    );
 
     return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
-        ),
+      child: SizedBox(
+        height: targetHeight,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.max,
             children: <Widget>[
               Padding(
                 padding: const EdgeInsets.symmetric(
@@ -234,7 +241,6 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
                         ),
                       )
                     : ListView.builder(
-                        shrinkWrap: true,
                         itemCount: visible.length,
                         itemBuilder: (BuildContext _, int index) {
                           final Exercise e = visible[index];

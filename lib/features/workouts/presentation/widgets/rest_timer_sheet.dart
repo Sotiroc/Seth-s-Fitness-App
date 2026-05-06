@@ -18,7 +18,13 @@ class RestTimerSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final RestTimerState state = ref.watch(restTimerControllerProvider);
+    // Only re-listen when the active flag flips. The ticking countdown
+    // and seconds-remaining are read inside `_RestTimerSheetBody`, so
+    // this outer wrapper avoids rebuilding on every internal state
+    // tweak.
+    final bool active = ref.watch(
+      restTimerControllerProvider.select((RestTimerState s) => s.isActive),
+    );
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
       switchInCurve: Curves.easeOutCubic,
@@ -33,7 +39,7 @@ class RestTimerSheet extends ConsumerWidget {
           child: FadeTransition(opacity: animation, child: child),
         );
       },
-      child: state.isActive
+      child: active
           ? _RestTimerSheetBody(key: const ValueKey<String>('rest-timer-sheet'))
           : const SizedBox.shrink(key: ValueKey<String>('rest-timer-empty')),
     );

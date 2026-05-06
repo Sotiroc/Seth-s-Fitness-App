@@ -182,22 +182,39 @@ class _CalendarBodyState extends State<_CalendarBody> {
           weeks: widget.weeks,
         );
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            _DayLabelsColumn(palette: widget.palette, cellSize: cellSize),
-            const SizedBox(width: TrainingCalendarHeatmap.dayLabelGap),
-            Expanded(
-              child: useScroll
-                  ? SingleChildScrollView(
-                      controller: _scrollController,
-                      scrollDirection: Axis.horizontal,
-                      physics: const ClampingScrollPhysics(),
-                      child: grid,
-                    )
-                  : grid,
-            ),
-          ],
+        // Day labels sit on the left of the grid. When the grid fits
+        // naturally (no scrolling), we wrap the whole [labels][gap][grid]
+        // group in `Center` so it doesn't pin to the left edge on wider
+        // viewports. When scrolling, the grid takes Expanded so the
+        // SingleChildScrollView gets a bounded width and the labels stay
+        // pinned to the left of the visible viewport.
+        if (useScroll) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _DayLabelsColumn(palette: widget.palette, cellSize: cellSize),
+              const SizedBox(width: TrainingCalendarHeatmap.dayLabelGap),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const ClampingScrollPhysics(),
+                  child: grid,
+                ),
+              ),
+            ],
+          );
+        }
+        return Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _DayLabelsColumn(palette: widget.palette, cellSize: cellSize),
+              const SizedBox(width: TrainingCalendarHeatmap.dayLabelGap),
+              grid,
+            ],
+          ),
         );
       },
     );
@@ -210,7 +227,19 @@ class _DayLabelsColumn extends StatelessWidget {
   final JellyBeanPalette palette;
   final double cellSize;
 
-  static const List<String> _dayLabels = <String>['M', 'W', 'F'];
+  // Mon → Sun. All seven labels render so each row is identifiable, not
+  // just every other row. Duplicate letters (T/T, S/S) are unavoidable
+  // with single-character abbreviations and match the convention used by
+  // most fitness apps.
+  static const List<String> _dayLabels = <String>[
+    'M',
+    'T',
+    'W',
+    'T',
+    'F',
+    'S',
+    'S',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -232,16 +261,14 @@ class _DayLabelsColumn extends StatelessWidget {
                 day++)
               SizedBox(
                 height: cellSize + TrainingCalendarHeatmap.cellGap,
-                child: (day == 0 || day == 2 || day == 4)
-                    ? Text(
-                        _dayLabels[day ~/ 2],
-                        style: TextStyle(
-                          color: palette.shade700,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      )
-                    : null,
+                child: Text(
+                  _dayLabels[day],
+                  style: TextStyle(
+                    color: palette.shade700,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
           ],
         ),

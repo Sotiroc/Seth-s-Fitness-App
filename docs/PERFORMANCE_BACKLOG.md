@@ -4,19 +4,25 @@ Generated from a full audit of the app on 2026-05-03. Ordered by impact-per-effo
 
 Each entry is **self-contained** — a fresh agent can pick one up cold without reading the others. Each entry includes:
 
+- **Complexity** — S (small, ~30 min, mechanical) · M (medium, ~1–2h, some judgment required) · L (large, 2h+, multi-subsystem coordination)
+- **Touches** — the files an agent will edit. Two tasks that share any file in `Touches` should **not** run in parallel.
 - **Feels like** — what the user notices once it's fixed
-- **Where it lives** — files involved (so the agent knows where to look)
+- **Where it lives** — files involved, with line numbers (so the agent knows where to look)
 - **What's happening today** — the current behavior causing the slowdown
 - **Fix direction** — the shape of the change (not a step-by-step)
-- **Done when** — acceptance signal..
+- **Done when** — acceptance signal
 
 When a task is complete, mark its title with a trailing ✅ and leave the entry in place for reference.
+
+For an at-a-glance schedule of what can run in parallel, see [Parallel-safe groupings](#parallel-safe-groupings) at the bottom.
 
 ---
 
 ## High impact
 
-### 1. Add missing database indexes
+### 1. Add missing database indexes ✅
+
+**Complexity:** S · **Touches:** `lib/data/db/app_database.dart`
 
 **Feels like:** lookups across history (active workout previous sets, exercise history sheet, progression charts, workout detail) become near-instant. Especially noticeable as a user accumulates more workouts.
 
@@ -30,7 +36,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 2. Bundle the Inter font instead of fetching it from Google
+### 2. Bundle the Inter font instead of fetching it from Google ✅
+
+**Complexity:** S · **Touches:** `lib/core/theme/app_theme.dart`, `pubspec.yaml`, `assets/fonts/`
 
 **Feels like:** the app paints the right font on the very first frame instead of briefly showing a fallback and then snapping to Inter. No network request on cold start.
 
@@ -44,7 +52,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 3. Stop the live-workout typing storm
+### 3. Stop the live-workout typing storm ✅
+
+**Complexity:** L · **Touches:** `lib/data/repositories/workout_repository.dart`, `lib/features/workouts/application/active_workout_provider.dart`, `lib/features/progression/application/strength_series_provider.dart`
 
 **Feels like:** typing weight and reps during an active workout stays buttery even after months of history. No mounting lag as you add more workouts.
 
@@ -68,7 +78,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 4. Single-query the progression first-load
+### 4. Single-query the progression first-load ✅
+
+**Complexity:** M · **Touches:** `lib/features/progression/application/strength_series_provider.dart`, `lib/data/repositories/workout_repository.dart`
 
 **Feels like:** the progression tab opens immediately the first time, even for a user with dozens of distinct exercises in their history.
 
@@ -82,7 +94,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 5. Refresh "previous set" data for one exercise, not all of them
+### 5. Refresh "previous set" data for one exercise, not all of them ✅
+
+**Complexity:** M · **Touches:** `lib/features/workouts/application/active_workout_provider.dart`, `lib/data/repositories/workout_repository.dart`
 
 **Feels like:** adding or removing an exercise mid-workout is instant, no half-second pause.
 
@@ -96,7 +110,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 6. Memoize the active-workout header aggregates
+### 6. Memoize the active-workout header aggregates ✅
+
+**Complexity:** M · **Touches:** `lib/features/workouts/presentation/active_workout_screen.dart` (plus a new provider file under `lib/features/workouts/application/`)
 
 **Feels like:** the header at the top of the active workout (set counts, totals) doesn't burn CPU re-counting every frame while you're typing.
 
@@ -110,7 +126,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 7. Memoize the chart data + isolate chart paints
+### 7. Memoize the chart data + isolate chart paints ✅
+
+**Complexity:** M · **Touches:** `lib/features/progression/presentation/widgets/body_weight_chart_card.dart`, `lib/features/progression/presentation/widgets/strength_chart_card.dart`, `lib/features/progression/presentation/progression_screen.dart`, `lib/features/progression/application/strength_series_provider.dart`
 
 **Feels like:** charts on the progression tab don't repaint each other when you change the time range on one. Less GPU/CPU when scrolling through the page.
 
@@ -129,7 +147,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 8. Memoize history list grouping and labels
+### 8. Memoize history list grouping and labels ✅
+
+**Complexity:** S · **Touches:** `lib/features/history/presentation/history_list_screen.dart` (plus a new provider under `lib/features/history/application/`)
 
 **Feels like:** scrolling the history list is consistently smooth even with hundreds of workouts.
 
@@ -143,7 +163,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 9. Tighten set-row rebuild scope
+### 9. Tighten set-row rebuild scope ✅
+
+**Complexity:** M · **Touches:** `lib/features/workouts/presentation/widgets/set_row.dart`, `lib/features/workouts/presentation/active_workout_screen.dart`
 
 **Feels like:** focusing or editing one set doesn't rebuild the entire set table for that exercise.
 
@@ -159,7 +181,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ## Medium impact
 
-### 10. Audit `ref.watch` for missing `.select` filters
+### 10. Audit `ref.watch` for missing `.select` filters ✅
+
+**Complexity:** M · **Touches:** `lib/features/workouts/presentation/active_workout_screen.dart`, plus various screens under `lib/features/workouts/presentation/`, `lib/features/profile/presentation/`, and `lib/features/home/presentation/`
 
 **Feels like:** the active workout screen rebuilds less often, especially while the rest timer is ticking.
 
@@ -173,7 +197,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 11. Memoize workout-detail aggregations
+### 11. Memoize workout-detail aggregations ✅
+
+**Complexity:** S · **Touches:** `lib/features/history/presentation/workout_detail_screen.dart`
 
 **Feels like:** opening a past workout from history is snappy even for sessions with many exercises.
 
@@ -187,7 +213,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 12. Debounce the exercise-list filter
+### 12. Debounce the exercise-list filter ✅
+
+**Complexity:** S · **Touches:** `lib/features/exercises/application/exercise_list_provider.dart`
 
 **Feels like:** typing quickly into the exercise search field stays smooth and doesn't re-scan the list on every keystroke.
 
@@ -201,7 +229,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 13. Decouple letter-avatar rendering from theme palette
+### 13. Decouple letter-avatar rendering from theme palette ✅
+
+**Complexity:** S · **Touches:** `lib/features/exercises/presentation/widgets/exercise_avatar.dart`, plus call sites in `lib/features/exercises/presentation/exercise_list_screen.dart`, `lib/features/workouts/presentation/widgets/add_exercise_sheet.dart`, and any other place avatars are rendered
 
 **Feels like:** lists of exercises don't ripple-rebuild when an unrelated theme value changes.
 
@@ -215,7 +245,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 14. Narrow the workout-detail stream
+### 14. Narrow the workout-detail stream ✅
+
+**Complexity:** M · **Touches:** `lib/data/repositories/workout_repository.dart`, `lib/features/history/presentation/workout_detail_screen.dart`
 
 **Feels like:** tweaking small per-set fields (set kind, RPE) on a past workout's detail screen doesn't cause a visible flicker as the whole detail rebuilds.
 
@@ -229,7 +261,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 15. Audit `keepAlive: true` across providers
+### 15. Audit `keepAlive: true` across providers ✅
+
+**Complexity:** M · **Touches:** `lib/data/db/database_providers.dart`, plus most files under `lib/features/*/application/` (provider definitions throughout)
 
 **Feels like:** memory usage stays flat over multi-day app sessions instead of slowly creeping up.
 
@@ -243,7 +277,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 16. Memoize the type-chip filter row
+### 16. Memoize the type-chip filter row ✅
+
+**Complexity:** S · **Touches:** `lib/features/exercises/presentation/exercise_list_screen.dart`
 
 **Feels like:** typing into the exercise search doesn't waste work rebuilding the unrelated type-chip strip above it.
 
@@ -259,7 +295,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ## Low impact / polish
 
-### 17. Move the splash logo image out of the animation builder
+### 17. Move the splash logo image out of the animation builder ✅
+
+**Complexity:** S · **Touches:** `lib/core/widgets/heartbeat_logo.dart`
 
 **Feels like:** marginally cooler GPU on the splash screen; tiny battery improvement on cold start.
 
@@ -273,7 +311,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 18. Memoize chart helper formatters and lookups
+### 18. Memoize chart helper formatters and lookups ✅
+
+**Complexity:** S · **Touches:** `lib/features/progression/presentation/widgets/body_weight_chart_card.dart`, `lib/features/progression/presentation/widgets/strength_chart_card.dart`, `lib/features/workouts/presentation/active_workout_screen.dart`
 
 **Feels like:** marginal CPU savings on the progression tab.
 
@@ -290,7 +330,9 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-### 19. Add equality short-circuits to derived profile providers
+### 19. Add equality short-circuits to derived profile providers ✅
+
+**Complexity:** S · **Touches:** `lib/features/workouts/application/muscle_goals_provider.dart`, `lib/features/profile/application/profile_stats_provider.dart`
 
 **Feels like:** editing your name or other unrelated profile fields doesn't unnecessarily kick downstream providers (muscle goals, profile stats).
 
@@ -307,6 +349,8 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 ---
 
 ### 20. Replace remaining client-side aggregations with SQL
+
+**Complexity:** M · **Touches:** `lib/features/progression/application/weight_entries_provider.dart`, `lib/features/workouts/application/workout_stats_provider.dart`, `lib/data/repositories/workout_repository.dart`
 
 **Feels like:** mostly invisible, but cleaner code and faster on large datasets.
 
@@ -325,6 +369,8 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ### 21. Reduce deep `Theme.of` / `MediaQuery.of` reads
 
+**Complexity:** M · **Touches:** various widgets under `lib/features/history/presentation/`, `lib/features/workouts/presentation/`, deep in headers and tiles
+
 **Feels like:** mostly invisible, but reduces the blast radius of theme/media changes.
 
 **Where it lives:** various widgets in `lib/features/history/presentation/`, `lib/features/workouts/presentation/`, deep in headers and tiles.
@@ -337,9 +383,71 @@ When a task is complete, mark its title with a trailing ✅ and leave the entry 
 
 ---
 
-## Order of attack — recommendation
+## Parallel-safe groupings
 
-For maximum felt improvement at minimum risk:
+Each group below is **safe to dispatch in parallel** to separate agents — no two tasks in the same group touch the same files. Run groups in order; within a group, fire them all at once.
+
+The "blocker" tasks (`#3`, `#10`, `#15`, `#21`) touch a lot of surface area and should run alone, not bundled with anything that overlaps their files.
+
+### Group A — fully isolated, parallel-safe right now (8 tasks)
+
+Send all of these to separate agents simultaneously. None overlap.
+
+- **#1** (S) — database indexes
+- **#2** (S) — bundle Inter font
+- **#8** (S) — history list grouping
+- **#11** (S) — workout-detail aggregations
+- **#12** (S) — exercise filter debounce
+- **#16** (S) — type-chip memo
+- **#17** (S) — splash logo image
+- **#19** (S) — profile provider equality
+
+### Group B — parallel-safe with each other and with anything in Group A
+
+These touch different files from each other and from Group A.
+
+- **#7** (M) — chart memoization + RepaintBoundary
+- **#13** (S) — letter-avatar decoupling
+
+### Group C — repository-side fixes, do these one at a time
+
+All four touch `workout_repository.dart`. Do them sequentially or merge two into one agent if scope is similar. Don't run any of these alongside #3.
+
+- **#4** (M) — single-query progression first-load
+- **#5** (M) — per-exercise previous-set refresh
+- **#14** (M) — narrow workout-detail stream
+- **#20** (M) — replace client aggregations with SQL
+
+### Group D — active-workout-screen UI fixes, do these one at a time
+
+All three touch `active_workout_screen.dart`. Do them sequentially. Could be batched into one agent as "active workout rebuild cleanup."
+
+- **#6** (M) — header aggregates memo
+- **#9** (M) — set-row rebuild scope
+- **#18** (S) — chart helper formatters (also touches active_workout_screen.dart)
+
+### Solo tasks — run alone, no parallelism
+
+Each of these has wide blast radius and should not share an agent with any other backlog item.
+
+- **#3** (L) — live-workout typing storm. Touches the repository **and** the active workout providers **and** the strength-series provider. Blocks Group C and parts of Group D until done. Do this alone, with focused review.
+- **#10** (M) — `ref.watch` / `.select` audit. Touches multiple presentation files, including `active_workout_screen.dart`. Don't run alongside Group D.
+- **#15** (M) — `keepAlive` audit. Sweeps through nearly every provider file. Don't run alongside anything that's adding new providers (notably #6, #7, #8 if they create new providers).
+- **#21** (M) — `Theme.of` / `MediaQuery.of` audit. Touches many presentation files. Don't run alongside Group D, #10, or #13.
+
+### Suggested wave plan
+
+1. **Wave 1:** Group A (8 agents in parallel). Cheap wins, mostly mechanical, no overlaps anywhere.
+2. **Wave 2:** Group B (2 agents in parallel) + start the first task in Group C and Group D (1 agent each). 4 agents total.
+3. **Wave 3:** Continue draining Group C and Group D one task at a time.
+4. **Wave 4:** Solo task #3 (the big one). Single agent, careful review.
+5. **Wave 5:** Solo audits #10, #15, #21 — one at a time.
+
+---
+
+## Order of attack — recommendation (impact-first)
+
+If you're going one-at-a-time and want maximum felt improvement at minimum risk:
 
 1. **#1 (indexes)** — fastest win, every query benefits.
 2. **#2 (font)** — instant first-paint improvement, you'll feel it on the next reload.

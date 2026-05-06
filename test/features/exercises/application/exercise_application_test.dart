@@ -55,6 +55,9 @@ void main() {
     expect(initial.requireValue, hasLength(18));
 
     container.read(exerciseFilterProvider.notifier).setQuery('press');
+    // setQuery is debounced (~300ms) so the search field can stay smooth
+    // while typing — wait past the debounce window before sampling.
+    await Future<void>.delayed(const Duration(milliseconds: 350));
     final List<String> queryResults = container
         .read(filteredExercisesProvider)
         .requireValue
@@ -68,7 +71,8 @@ void main() {
       'Overhead Press',
     ]);
 
-    container.read(exerciseFilterProvider.notifier).setQuery('');
+    // clear() applies immediately (no debounce); setType is also instant.
+    container.read(exerciseFilterProvider.notifier).clear();
     container
         .read(exerciseFilterProvider.notifier)
         .setType(ExerciseType.bodyweight);

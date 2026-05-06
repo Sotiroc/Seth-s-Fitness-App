@@ -1,36 +1,47 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../data/models/strength_point.dart';
+import '../../../../data/models/exercise_type.dart';
+import '../../../../data/models/pr_event.dart';
+import '../../../../data/models/unit_system.dart';
+import '../../../progression/application/pr_events_provider.dart';
+import '../../../progression/presentation/widgets/pr_event_formatting.dart';
 
-/// Hero "personal record" card for an exercise's history view: shows the
-/// best Epley-estimated 1RM the user has ever logged, the source set
-/// (weight × reps), and the date it happened. Collapses to nothing when no
-/// PR exists (empty history or non-weighted exercise).
+/// "Personal records" header card on the exercise history sheet.
+/// Type-aware — for weighted exercises shows best set, e1RM, and the
+/// rep-range bests; for cardio shows longest distance / duration; for
+/// bodyweight shows most reps in a set / workout.
+///
+/// Collapses to nothing when no PRs exist (empty history or first-ever
+/// session that hasn't been compared against priors yet).
 class ExerciseHistoryPrCard extends StatelessWidget {
   const ExerciseHistoryPrCard({
     super.key,
     required this.palette,
-    required this.pr,
+    required this.bests,
+    required this.exerciseType,
+    required this.unitSystem,
+    this.onTapEvent,
   });
 
   final JellyBeanPalette palette;
-  final StrengthPoint? pr;
+  final ExercisePrBests bests;
+  final ExerciseType exerciseType;
+  final UnitSystem unitSystem;
+
+  /// Called when the user taps a single PR row. The receiver typically
+  /// scrolls the parent history list to the day card that contains the
+  /// originating set so the user can see the source session in context.
+  /// `null` disables the tap behaviour entirely.
+  final ValueChanged<PrEvent>? onTapEvent;
 
   @override
   Widget build(BuildContext context) {
-    final StrengthPoint? record = pr;
-    if (record == null) return const SizedBox.shrink();
+    if (bests.isEmpty) return const SizedBox.shrink();
 
-    final ThemeData theme = Theme.of(context);
-    final String oneRm = _formatNumber(record.oneRepMaxKg);
-    final String weight = _formatNumber(record.bestSetWeightKg);
-    final String reps = '${record.bestSetReps}';
-    final String dateLabel = DateFormat(
-      'MMM d, yyyy',
-    ).format(record.date.toLocal());
+    final List<PrEvent> rows = _rowsForType();
+    if (rows.isEmpty) return const SizedBox.shrink();
 
     return Container(
       decoration: BoxDecoration(
@@ -69,7 +80,7 @@ class ExerciseHistoryPrCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      'ALL-TIME BEST',
+                      'PERSONAL RECORDS',
                       style: TextStyle(
                         color: palette.shade100,
                         fontSize: 10.5,
@@ -80,102 +91,127 @@ class ExerciseHistoryPrCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Spacer(),
-              Text(
-                dateLabel,
-                style: TextStyle(
-                  color: palette.shade100.withValues(alpha: 0.85),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: <Widget>[
-              Text(
-                oneRm,
-                style: theme.textTheme.displaySmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -1.4,
-                  height: 1,
-                  fontFeatures: const <FontFeature>[
-                    FontFeature.tabularFigures(),
-                  ],
-                ),
+          for (int i = 0; i < rows.length; i++) ...<Widget>[
+            if (i > 0)
+              Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(vertical: 2),
+                color: Colors.white.withValues(alpha: 0.10),
               ),
-              const SizedBox(width: 6),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  'kg',
-                  style: TextStyle(
-                    color: palette.shade200,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  'est. 1RM',
-                  style: TextStyle(
-                    color: palette.shade200.withValues(alpha: 0.7),
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
+            _PrLine(
+              event: rows[i],
+              palette: palette,
+              unitSystem: unitSystem,
+              onTap: onTapEvent == null
+                  ? null
+                  : () => onTapEvent!(rows[i]),
             ),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-            ),
-            child: Row(
-              children: <Widget>[
-                Icon(
-                  Icons.fitness_center_rounded,
-                  size: 14,
-                  color: palette.shade100,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'From $weight kg × $reps reps',
-                  style: TextStyle(
-                    color: palette.shade100,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.1,
-                    fontFeatures: const <FontFeature>[
-                      FontFeature.tabularFigures(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ],
         ],
       ),
     );
   }
+
+  /// Picks which PRs to render in which order based on the exercise's
+  /// type. Weighted leads with best set + e1RM, then rep-range bests
+  /// sorted ascending by rep count. Cardio and bodyweight render their
+  /// two domain PRs.
+  List<PrEvent> _rowsForType() {
+    switch (exerciseType) {
+      case ExerciseType.weighted:
+        final List<MapEntry<int, PrEvent>> repMaxRows = bests.repMaxes.entries
+            .toList(growable: false)
+          ..sort(
+            (MapEntry<int, PrEvent> a, MapEntry<int, PrEvent> b) =>
+                a.key.compareTo(b.key),
+          );
+        return <PrEvent>[
+          if (bests.bestSet != null) bests.bestSet!,
+          if (bests.e1rm != null) bests.e1rm!,
+          for (final MapEntry<int, PrEvent> e in repMaxRows) e.value,
+        ];
+      case ExerciseType.bodyweight:
+        return <PrEvent>[
+          if (bests.mostRepsInSet != null) bests.mostRepsInSet!,
+          if (bests.mostRepsInWorkout != null) bests.mostRepsInWorkout!,
+        ];
+      case ExerciseType.cardio:
+        return <PrEvent>[
+          if (bests.longestDistance != null) bests.longestDistance!,
+          if (bests.longestDuration != null) bests.longestDuration!,
+        ];
+    }
+  }
 }
 
-String _formatNumber(double v) {
-  if (v == v.roundToDouble()) return v.toStringAsFixed(0);
-  return v.toStringAsFixed(1);
+class _PrLine extends StatelessWidget {
+  const _PrLine({
+    required this.event,
+    required this.palette,
+    required this.unitSystem,
+    this.onTap,
+  });
+
+  final PrEvent event;
+  final JellyBeanPalette palette;
+  final UnitSystem unitSystem;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final String value = PrEventFormatting.value(event, unitSystem);
+    final String typeLabel = PrEventFormatting.typeLabel(event);
+    final Widget content = Row(
+      children: <Widget>[
+        Expanded(
+          child: Text(
+            typeLabel,
+            style: TextStyle(
+              color: palette.shade100,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
+            fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+          ),
+        ),
+        if (onTap != null) ...<Widget>[
+          const SizedBox(width: 6),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: palette.shade100.withValues(alpha: 0.7),
+          ),
+        ],
+      ],
+    );
+
+    final Widget body = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: content,
+    );
+
+    if (onTap == null) return body;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: body,
+      ),
+    );
+  }
 }

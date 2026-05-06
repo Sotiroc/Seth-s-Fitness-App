@@ -66,4 +66,4 @@ final class MuscleGoalsProvider
   }
 }
 
-String _$muscleGoalsHash() => r'07d4761a34cf51fbd32f91ea71d38deb428bbe00';
+String _$muscleGoalsHash() => r'2cad87827d8d5c11a68963800d2cbdad7ca6f403';

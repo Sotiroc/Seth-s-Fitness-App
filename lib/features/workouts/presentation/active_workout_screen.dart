@@ -24,11 +24,13 @@ import '../../exercises/presentation/widgets/exercise_thumbnail_editor.dart';
 import '../../home/presentation/widgets/menu_icon_button.dart';
 import '../../templates/application/template_editor_controller.dart';
 import '../../templates/application/template_providers.dart';
+import '../application/active_workout_aggregates_provider.dart';
 import '../application/active_workout_provider.dart';
 import '../application/rest_timer_controller.dart';
 import '../application/workout_session_controller.dart';
 import '../application/workout_stats_provider.dart';
 import 'widgets/add_exercise_sheet.dart';
+import 'widgets/exercise_note_sheet.dart';
 import 'widgets/rest_timer_sheet.dart';
 import 'widgets/set_details_sheet.dart';
 import 'widgets/set_kind_visuals.dart';
@@ -130,6 +132,30 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     }
   }
 
+  Future<void> _handleEditExerciseNote({
+    required String workoutExerciseId,
+    required String exerciseName,
+    required String? currentNote,
+  }) async {
+    final ExerciseNoteSheetResult? result = await showExerciseNoteSheet(
+      context,
+      exerciseName: exerciseName,
+      initialNote: currentNote,
+    );
+    if (result == null || !mounted) return;
+    try {
+      await ref
+          .read(workoutSessionControllerProvider.notifier)
+          .updateExerciseNotes(
+            workoutExerciseId: workoutExerciseId,
+            notes: result.note,
+          );
+    } catch (error) {
+      if (!mounted) return;
+      _showError('Could not save note: ${_humanError(error)}');
+    }
+  }
+
   Future<void> _handleAddSet(String workoutExerciseId) async {
     try {
       await ref
@@ -209,14 +235,20 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
         return;
       }
     }
+    // Marking a set as "failure" implies maximum effort, so seed RPE=10
+    // automatically when the user hasn't already entered one. Existing
+    // RPE values are preserved so we don't overwrite an intentional rating.
+    int? nextRpe = set.rpe;
+    if (picked == WorkoutSetKind.failure && set.rpe == null) {
+      nextRpe = 10;
+    }
     try {
       await ref
           .read(workoutSessionControllerProvider.notifier)
           .updateSetExtras(
             workoutSetId: set.id,
             kind: picked,
-            // Preserve the existing RPE/note — the menu only changes kind.
-            rpe: set.rpe,
+            rpe: nextRpe,
             note: set.note,
             parentSetId: parentSetId,
           );
@@ -535,6 +567,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
             onRemoveSet: _handleRemoveSet,
             onRemoveExercise: _handleRemoveExercise,
             onTapSetNumber: _handleTapSetNumber,
+            onEditExerciseNote: _handleEditExerciseNote,
             onFinish: () => _handleFinish(detail),
             onCancel: () => _handleCancel(detail),
           );
@@ -1168,6 +1201,7 @@ class _WorkoutBody extends ConsumerWidget {
     required this.onRemoveSet,
     required this.onRemoveExercise,
     required this.onTapSetNumber,
+    required this.onEditExerciseNote,
     required this.onFinish,
     required this.onCancel,
   });
@@ -1203,22 +1237,17 @@ class _WorkoutBody extends ConsumerWidget {
     required BuildContext anchorContext,
   })
   onTapSetNumber;
+  final Future<void> Function({
+    required String workoutExerciseId,
+    required String exerciseName,
+    required String? currentNote,
+  })
+  onEditExerciseNote;
   final VoidCallback onFinish;
   final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Both totals exclude warm-ups so the X/Y counter reflects working
-    // sets only — a 6-set session with one warm-up reads "0/5" rather
-    // than "0/6" before the user has done anything serious.
-    final int totalSets = detail.exercises.fold<int>(
-      0,
-      (sum, e) => sum + e.sets.where((s) => s.kind.countsAsWorkingSet).length,
-    );
-    final int completedSets = detail.exercises
-        .expand((e) => e.sets)
-        .where((s) => s.completed && s.kind.countsAsWorkingSet)
-        .length;
     final bool restActive = ref.watch(
       restTimerControllerProvider.select((s) => s.isActive),
     );
@@ -1236,9 +1265,6 @@ class _WorkoutBody extends ConsumerWidget {
               child: _Header(
                 palette: palette,
                 startedAt: detail.workout.startedAt,
-                totalSets: totalSets,
-                completedSets: completedSets,
-                exerciseCount: detail.exercises.length,
                 onCancel: onCancel,
               ),
             ),
@@ -1296,6 +1322,11 @@ class _WorkoutBody extends ConsumerWidget {
                         exerciseName: exerciseDetail.exercise.name,
                       ),
                       onTapSetNumber: onTapSetNumber,
+                      onEditExerciseNote: () => onEditExerciseNote(
+                        workoutExerciseId: exerciseDetail.workoutExercise.id,
+                        exerciseName: exerciseDetail.exercise.name,
+                        currentNote: exerciseDetail.workoutExercise.notes,
+                      ),
                     );
                   },
                 ),
@@ -1327,7 +1358,6 @@ class _WorkoutBody extends ConsumerWidget {
               sliver: SliverToBoxAdapter(
                 child: _FinishButton(
                   palette: palette,
-                  enabled: completedSets > 0,
                   onTap: onFinish,
                 ),
               ),
@@ -1349,23 +1379,26 @@ class _Header extends ConsumerWidget {
   const _Header({
     required this.palette,
     required this.startedAt,
-    required this.totalSets,
-    required this.completedSets,
-    required this.exerciseCount,
     required this.onCancel,
   });
 
   final JellyBeanPalette palette;
   final DateTime startedAt;
-  final int totalSets;
-  final int completedSets;
-  final int exerciseCount;
   final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final double topPadding = MediaQuery.paddingOf(context).top;
+    // Aggregates are value-equal across keystrokes that don't move the
+    // counters, so the gradient header avoids rebuilding on every typed
+    // character even though the underlying detail stream emits one.
+    final ActiveWorkoutAggregates aggregates = ref.watch(
+      activeWorkoutAggregatesProvider,
+    );
+    final int exerciseCount = aggregates.exerciseCount;
+    final int totalSets = aggregates.totalSets;
+    final int completedSets = aggregates.completedSets;
 
     return Container(
       decoration: BoxDecoration(
@@ -1802,6 +1835,76 @@ void _maybeClearRestTimer(WidgetRef ref, String workoutExerciseId) {
   }
 }
 
+/// Compute the rest period between two consecutive completed sets in
+/// the same exercise. Returns the gap from when [prev] was completed
+/// to when [curr] was first interacted with (or, lacking that, when
+/// [curr] was completed) so we capture true rest rather than rest +
+/// time-under-tension on the next set.
+///
+/// Returns `null` when the timestamps required for a meaningful gap
+/// aren't available, or when the computed gap isn't positive (e.g.,
+/// re-saving an already-completed set).
+int? _restGapSecondsBetween(WorkoutSet prev, WorkoutSet curr) {
+  final DateTime? prevEnd = prev.completedAt;
+  // `startedAt` is captured on the first edit; falling back to
+  // `completedAt` keeps the indicator working for legacy rows where the
+  // v9→v10 backfill set them to the same instant.
+  final DateTime? currStart = curr.startedAt ?? curr.completedAt;
+  if (prevEnd == null || currStart == null) return null;
+  final int seconds = currStart.difference(prevEnd).inSeconds;
+  if (seconds <= 0) return null;
+  return seconds;
+}
+
+/// Tiny visual gap shown between two completed sets in the same
+/// exercise: two thin rules with the rest duration centered between
+/// them. Designed to read as a passive metadata note — same line
+/// height, low contrast, tabular figures so column alignment doesn't
+/// shift between rows.
+class _RestGapIndicator extends StatelessWidget {
+  const _RestGapIndicator({
+    super.key,
+    required this.palette,
+    required this.seconds,
+  });
+
+  final JellyBeanPalette palette;
+  final int seconds;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color line = palette.shade100;
+    final Color text = palette.shade700.withValues(alpha: 0.65);
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: 2,
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(child: Container(height: 1, color: line)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+            child: Text(
+              DurationFormatter.formatSeconds(seconds),
+              style: TextStyle(
+                color: text,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4,
+                fontFeatures: const <FontFeature>[
+                  FontFeature.tabularFigures(),
+                ],
+              ),
+            ),
+          ),
+          Expanded(child: Container(height: 1, color: line)),
+        ],
+      ),
+    );
+  }
+}
+
 class _ExerciseCard extends ConsumerWidget {
   const _ExerciseCard({
     required this.detail,
@@ -1813,6 +1916,7 @@ class _ExerciseCard extends ConsumerWidget {
     required this.onRemoveSet,
     required this.onRemoveExercise,
     required this.onTapSetNumber,
+    required this.onEditExerciseNote,
   });
 
   final WorkoutExerciseDetail detail;
@@ -1837,10 +1941,13 @@ class _ExerciseCard extends ConsumerWidget {
     required BuildContext anchorContext,
   })
   onTapSetNumber;
+  final VoidCallback onEditExerciseNote;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final String? note = detail.workoutExercise.notes;
+    final bool hasNote = note != null && note.trim().isNotEmpty;
 
     return Container(
       decoration: BoxDecoration(
@@ -1888,9 +1995,32 @@ class _ExerciseCard extends ConsumerWidget {
                   ],
                 ),
               ),
+              _ExerciseNoteAffordance(
+                palette: palette,
+                hasNote: hasNote,
+                onTap: onEditExerciseNote,
+              ),
+              const SizedBox(width: 4),
               _RemoveExerciseButton(palette: palette, onTap: onRemoveExercise),
             ],
           ),
+          if (hasNote)
+            Padding(
+              padding: const EdgeInsets.only(top: 6, left: 50, right: 4),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onEditExerciseNote,
+                child: Text(
+                  note.trim(),
+                  style: TextStyle(
+                    color: palette.shade800.withValues(alpha: 0.85),
+                    fontSize: 12.5,
+                    fontStyle: FontStyle.italic,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ),
           const SizedBox(height: AppSpacing.sm),
           _SetTableHeader(type: detail.exercise.type, palette: palette),
           const SizedBox(height: 2),
@@ -1922,6 +2052,45 @@ class _ExerciseCard extends ConsumerWidget {
   List<Widget> _buildSetRows(BuildContext context, WidgetRef ref) {
     final List<WorkoutSet> ordered = orderedSetsForDisplay(detail.sets);
     final List<Widget> widgets = <Widget>[];
+
+    // Lookup for the PREVIOUS column — built once per card instead of
+    // walking `previousSets` per row.
+    final Map<int, WorkoutSet> previousSetBySetNumber = <int, WorkoutSet>{
+      for (final WorkoutSet s in previousSets) s.setNumber: s,
+    };
+
+    // Precompute the formatted PREVIOUS-column summary for each set
+    // number once per card. Each call to `_formatPreviousSetSummary`
+    // can walk `previousSets` again to assemble a drop-chain suffix
+    // (e.g. "100×8 → 80×6 → 60×4"); doing that per row turns into
+    // O(n²). Precomputing keyed by setNumber makes the per-row lookup
+    // O(1) and the drop-chain walk happen at most once per setNumber
+    // per build.
+    final Map<int, String> previousSummaryBySetNumber = <int, String>{
+      for (final MapEntry<int, WorkoutSet> entry
+          in previousSetBySetNumber.entries)
+        entry.key: _formatPreviousSetSummary(
+          entry.value,
+          detail.exercise.type,
+          allPreviousSets: previousSets,
+        ),
+    };
+
+    // canBeDrop is "is there any earlier-numbered working set in this
+    // exercise?" — equivalent to `set.setNumber > minWorkingSetNumber`.
+    // Compute the minimum once so the per-row check is O(1) and the
+    // whole loop is O(n) instead of O(n²).
+    int? minWorkingSetNumber;
+    for (final WorkoutSet s in detail.sets) {
+      if (s.kind != WorkoutSetKind.normal &&
+          s.kind != WorkoutSetKind.failure) {
+        continue;
+      }
+      if (minWorkingSetNumber == null || s.setNumber < minWorkingSetNumber) {
+        minWorkingSetNumber = s.setNumber;
+      }
+    }
+
     for (int i = 0; i < ordered.length; i++) {
       final WorkoutSet set = ordered[i];
       final WorkoutSet? prev = i > 0 ? ordered[i - 1] : null;
@@ -1929,80 +2098,106 @@ class _ExerciseCard extends ConsumerWidget {
       final bool prevCompleted = prev != null && prev.completed;
       final bool nextCompleted = next != null && next.completed;
 
+      // Subtle inter-set rest indicator — only between two consecutive
+      // *completed* sets in the same exercise. Uses the next set's
+      // first-interaction timestamp (`startedAt`) so the gap reflects
+      // true rest rather than rest+work-on-the-next-set. Falls back to
+      // `completedAt` when `startedAt` is missing (legacy rows). Skipped
+      // when the gap can't be computed or is non-positive.
+      bool gapAbove = false;
+      if (prevCompleted && set.completed) {
+        final int? gapSeconds = _restGapSecondsBetween(prev, set);
+        if (gapSeconds != null) {
+          widgets.add(
+            _RestGapIndicator(
+              key: ValueKey<String>('rest-gap-${prev.id}-${set.id}'),
+              palette: palette,
+              seconds: gapSeconds,
+            ),
+          );
+          gapAbove = true;
+        }
+      }
+      // Mirror the look-ahead so the current row's bottom corners get
+      // rounded when a gap will slice between it and the next completed
+      // row. Without this the tint overlay would render with squared
+      // corners flush against the indicator, which looks like a clipping
+      // artefact rather than an intentional separation.
+      final bool gapBelow = nextCompleted &&
+          set.completed &&
+          _restGapSecondsBetween(set, next) != null;
+
       // Match the previous set on setNumber for the PREVIOUS column. For
       // drop sets, we still surface a useful row from the corresponding
       // setNumber in the prior workout if one exists.
-      final WorkoutSet? previousSet = previousSets
-          .where((WorkoutSet s) => s.setNumber == set.setNumber)
-          .firstOrNull;
-      final String previousSummary = _formatPreviousSetSummary(
-        previousSet,
-        detail.exercise.type,
-        allPreviousSets: previousSets,
-      );
+      final WorkoutSet? previousSet = previousSetBySetNumber[set.setNumber];
+      final String previousSummary =
+          previousSummaryBySetNumber[set.setNumber] ?? '-';
 
       // Drop sets are eligible for the bottom sheet's "drop" chip iff a
       // working set precedes them in the same exercise. Warm-ups and the
       // first working set never qualify.
-      final bool canBeDrop = detail.sets.any(
-        (WorkoutSet s) =>
-            s.id != set.id &&
-            s.setNumber < set.setNumber &&
-            (s.kind == WorkoutSetKind.normal ||
-                s.kind == WorkoutSetKind.failure),
-      );
+      final bool canBeDrop =
+          minWorkingSetNumber != null && set.setNumber > minWorkingSetNumber;
 
       widgets.add(
-        Dismissible(
-          key: ValueKey<String>('dismiss-${set.id}'),
-          direction: DismissDirection.endToStart,
-          dismissThresholds: const <DismissDirection, double>{
-            DismissDirection.endToStart: 0.32,
-          },
-          movementDuration: const Duration(milliseconds: 240),
-          resizeDuration: const Duration(milliseconds: 260),
-          background: const SizedBox.shrink(),
-          secondaryBackground: const _SwipeDeleteBackground(),
-          onDismissed: (_) => onRemoveSet(set.id),
-          child: SetRow(
-            key: ValueKey<String>(set.id),
-            set: set,
-            exerciseType: detail.exercise.type,
-            previousSummary: previousSummary,
-            // Same gate as `_formatPreviousSetSummary`: an
-            // in-progress / abandoned previous set is neither
-            // rendered nor offered as a tap target.
-            previousSet: (previousSet?.completed ?? false)
-                ? previousSet
-                : null,
-            roundTop: !prevCompleted,
-            roundBottom: !nextCompleted,
-            onTapSetNumber: (BuildContext anchorContext) => onTapSetNumber(
+        // RepaintBoundary isolates each row's paint surface — typing into
+        // one row no longer dirties the paint layer shared with its
+        // siblings. The ValueKey on SetRow lets the element tree match
+        // identity across rebuilds so unchanged rows reuse their state.
+        RepaintBoundary(
+          key: ValueKey<String>('row-paint-${set.id}'),
+          child: Dismissible(
+            key: ValueKey<String>('dismiss-${set.id}'),
+            direction: DismissDirection.endToStart,
+            dismissThresholds: const <DismissDirection, double>{
+              DismissDirection.endToStart: 0.32,
+            },
+            movementDuration: const Duration(milliseconds: 240),
+            resizeDuration: const Duration(milliseconds: 260),
+            background: const SizedBox.shrink(),
+            secondaryBackground: const _SwipeDeleteBackground(),
+            onDismissed: (_) => onRemoveSet(set.id),
+            child: SetRow(
+              key: ValueKey<String>(set.id),
               set: set,
-              canBeDrop: canBeDrop,
-              anchorContext: anchorContext,
-            ),
-            onCommit:
-                ({
-                  required bool completed,
-                  double? distanceKm,
-                  int? durationSeconds,
-                  int? reps,
-                  double? weightKg,
-                }) {
-                  return onUpdateSet(
-                    workoutSetId: set.id,
-                    weightKg: weightKg,
-                    reps: reps,
-                    distanceKm: distanceKm,
-                    durationSeconds: durationSeconds,
-                    completed: completed,
-                  );
-                },
-            onSetCompleted: () => _maybeStartRestTimer(ref, detail),
-            onSetUncompleted: () => _maybeClearRestTimer(
-              ref,
-              detail.workoutExercise.id,
+              exerciseType: detail.exercise.type,
+              previousSummary: previousSummary,
+              // Same gate as `_formatPreviousSetSummary`: an
+              // in-progress / abandoned previous set is neither
+              // rendered nor offered as a tap target.
+              previousSet: (previousSet?.completed ?? false)
+                  ? previousSet
+                  : null,
+              roundTop: !prevCompleted || gapAbove,
+              roundBottom: !nextCompleted || gapBelow,
+              onTapSetNumber: (BuildContext anchorContext) => onTapSetNumber(
+                set: set,
+                canBeDrop: canBeDrop,
+                anchorContext: anchorContext,
+              ),
+              onCommit:
+                  ({
+                    required bool completed,
+                    double? distanceKm,
+                    int? durationSeconds,
+                    int? reps,
+                    double? weightKg,
+                  }) {
+                    return onUpdateSet(
+                      workoutSetId: set.id,
+                      weightKg: weightKg,
+                      reps: reps,
+                      distanceKm: distanceKm,
+                      durationSeconds: durationSeconds,
+                      completed: completed,
+                    );
+                  },
+              onSetCompleted: () => _maybeStartRestTimer(ref, detail),
+              onSetUncompleted: () => _maybeClearRestTimer(
+                ref,
+                detail.workoutExercise.id,
+              ),
             ),
           ),
         ),
@@ -2016,11 +2211,14 @@ class _ExerciseCard extends ConsumerWidget {
       // regular set and changes its type to "Drop" via the badge tap
       // menu. Once at least one drop exists, this affordance appears.
       if (set.kind == WorkoutSetKind.drop) {
-        final bool nextIsSiblingDrop = next != null &&
-            next.kind == WorkoutSetKind.drop &&
-            next.parentSetId == set.parentSetId;
+        // Only surface the "Add drop" affordance when this drop is the
+        // last set in the exercise. If the next set is another sibling
+        // drop, the affordance moves down to that one. If the next set
+        // is anything else (a normal/warm-up/failure set added below),
+        // the chain has effectively been closed and the user shouldn't
+        // be able to extend it without re-ordering — hide the pill.
         final String? parentId = set.parentSetId;
-        if (!nextIsSiblingDrop && parentId != null) {
+        if (next == null && parentId != null) {
           widgets.add(
             _AddDropSetAffordance(
               palette: palette,
@@ -2312,19 +2510,82 @@ class _RemoveExerciseButton extends StatelessWidget {
   }
 }
 
-class _FinishButton extends StatelessWidget {
-  const _FinishButton({
+/// Quiet "Note" affordance on each exercise card header. Renders the same
+/// way regardless of whether a note exists — the rendered note line under
+/// the exercise name is the actual indicator, so the button itself stays
+/// muted and consistent. Tapping opens [showExerciseNoteSheet].
+class _ExerciseNoteAffordance extends StatelessWidget {
+  const _ExerciseNoteAffordance({
     required this.palette,
-    required this.enabled,
+    required this.hasNote,
     required this.onTap,
   });
 
   final JellyBeanPalette palette;
-  final bool enabled;
+  final bool hasNote;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final Color fg = palette.shade700.withValues(alpha: 0.75);
+    return Semantics(
+      label: hasNote ? 'Edit exercise note' : 'Add exercise note',
+      button: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 6,
+              vertical: 6,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.sticky_note_2_outlined,
+                  size: 16,
+                  color: fg,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Note',
+                  style: TextStyle(
+                    color: fg,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FinishButton extends ConsumerWidget {
+  const _FinishButton({
+    required this.palette,
+    required this.onTap,
+  });
+
+  final JellyBeanPalette palette;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Reads only the "any completed set" bit so the button doesn't
+    // rebuild when other counters move.
+    final bool enabled = ref.watch(
+      activeWorkoutAggregatesProvider.select(
+        (ActiveWorkoutAggregates a) => a.hasAnyCompletedSet,
+      ),
+    );
     return SizedBox(
       height: 56,
       width: double.infinity,

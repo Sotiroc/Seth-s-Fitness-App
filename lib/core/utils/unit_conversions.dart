@@ -6,6 +6,7 @@ abstract final class UnitConversions {
   static const double _kgPerLb = 0.45359237;
   static const double _cmPerInch = 2.54;
   static const double _inchesPerFoot = 12;
+  static const double _kmPerMile = 1.609344;
 
   // ---- Weight ----
 
@@ -48,6 +49,24 @@ abstract final class UnitConversions {
         return value;
       case UnitSystem.imperial:
         return lbToKg(value);
+    }
+  }
+
+  // ---- Distance ----
+
+  static double kmToMiles(double km) => km / _kmPerMile;
+  static double milesToKm(double miles) => miles * _kmPerMile;
+
+  /// Formats a stored kilometre value for display in the active unit
+  /// system. Returns null when the input is null. Trims trailing zeros
+  /// so "5.00" renders as "5".
+  static String? formatDistance(double? km, UnitSystem system) {
+    if (km == null) return null;
+    switch (system) {
+      case UnitSystem.metric:
+        return '${_trimZero(km, 2)} km';
+      case UnitSystem.imperial:
+        return '${_trimZero(kmToMiles(km), 2)} mi';
     }
   }
 

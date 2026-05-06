@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../data/database_bootstrap.dart';
@@ -51,11 +53,31 @@ class ExerciseListFilter {
 
 @Riverpod(keepAlive: true)
 class ExerciseFilter extends _$ExerciseFilter {
-  @override
-  ExerciseListFilter build() => const ExerciseListFilter();
+  static const Duration _queryDebounce = Duration(milliseconds: 300);
 
+  Timer? _queryDebounceTimer;
+
+  @override
+  ExerciseListFilter build() {
+    ref.onDispose(() {
+      _queryDebounceTimer?.cancel();
+      _queryDebounceTimer = null;
+    });
+    return const ExerciseListFilter();
+  }
+
+  /// Debounced — the filter state (and therefore [filteredExercises])
+  /// only updates after the user stops typing for ~300ms. The search
+  /// field's TextField holds the typed value locally so the input still
+  /// echoes every keystroke instantly; only the list filter pass is
+  /// throttled.
   void setQuery(String value) {
-    state = state.copyWith(query: value);
+    _queryDebounceTimer?.cancel();
+    _queryDebounceTimer = Timer(_queryDebounce, () {
+      _queryDebounceTimer = null;
+      if (state.query == value) return;
+      state = state.copyWith(query: value);
+    });
   }
 
   void setType(ExerciseType? value) {
@@ -65,6 +87,8 @@ class ExerciseFilter extends _$ExerciseFilter {
   }
 
   void clear() {
+    _queryDebounceTimer?.cancel();
+    _queryDebounceTimer = null;
     state = const ExerciseListFilter();
   }
 }

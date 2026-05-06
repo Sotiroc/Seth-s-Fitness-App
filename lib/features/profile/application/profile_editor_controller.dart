@@ -11,7 +11,9 @@ import '../../../data/repositories/weight_entry_repository.dart';
 
 part 'profile_editor_controller.g.dart';
 
-@Riverpod(keepAlive: true)
+/// Page-local — bound to the profile form's lifecycle. Auto-disposed
+/// so the busy/error AsyncValue starts fresh on each open.
+@riverpod
 class ProfileEditorController extends _$ProfileEditorController {
   @override
   FutureOr<void> build() {}

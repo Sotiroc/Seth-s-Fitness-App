@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../data/models/workout.dart';
 import '../../../data/models/workout_detail.dart';
+import '../../../data/models/workout_exercise.dart';
 import '../../../data/models/workout_set.dart';
 import '../../../data/models/workout_set_kind.dart';
 import '../../../data/repositories/workout_repository.dart';
@@ -86,6 +87,24 @@ class WorkoutSessionController extends _$WorkoutSessionController {
       await ref
           .read(workoutRepositoryProvider)
           .removeExerciseFromWorkout(workoutExerciseId);
+    });
+  }
+
+  /// Updates the free-text note attached to a single workout-exercise
+  /// instance (the per-workout-exercise note, not the global exercise
+  /// definition). Pass `null` or empty string to clear it.
+  Future<WorkoutExercise> updateExerciseNotes({
+    required String workoutExerciseId,
+    required String? notes,
+  }) {
+    return _runMutation(() async {
+      final WorkoutExercise updated = await ref
+          .read(workoutRepositoryProvider)
+          .updateWorkoutExerciseNotes(
+            workoutExerciseId: workoutExerciseId,
+            notes: notes,
+          );
+      return updated;
     });
   }
 

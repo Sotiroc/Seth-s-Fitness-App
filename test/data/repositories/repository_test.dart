@@ -351,13 +351,15 @@ void main() {
           ),
           throwsA(isA<WorkoutNotActiveException>()),
         );
-        expect(
-          () => workoutRepository.updateWorkoutNotes(
-            workoutId: workout.id,
-            notes: 'Late edit',
-          ),
-          throwsA(isA<WorkoutNotActiveException>()),
+        // Workout-level notes are editable on finished workouts because the
+        // summary screen — the natural reflection moment — is the primary
+        // input surface for them.
+        final Workout afterNotes =
+            await workoutRepository.updateWorkoutNotes(
+          workoutId: workout.id,
+          notes: 'Late edit',
         );
+        expect(afterNotes.notes, 'Late edit');
         expect(
           () => workoutRepository.cancelWorkout(workout.id),
           throwsA(isA<WorkoutNotActiveException>()),

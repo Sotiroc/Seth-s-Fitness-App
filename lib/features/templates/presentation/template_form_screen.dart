@@ -383,7 +383,11 @@ class _DraftRowCard extends StatelessWidget {
                 ),
               ),
             ),
-            ExerciseAvatar(exercise: row.exercise, size: 40),
+            ExerciseAvatar(
+              exercise: row.exercise,
+              size: 40,
+              letterBackgroundColor: palette.shade500,
+            ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Column(
@@ -786,7 +790,11 @@ class _ExercisePickerSheetState extends State<_ExercisePickerSheet> {
                               ),
                               child: Row(
                                 children: <Widget>[
-                                  ExerciseAvatar(exercise: exercise, size: 40),
+                                  ExerciseAvatar(
+                                    exercise: exercise,
+                                    size: 40,
+                                    letterBackgroundColor: palette.shade500,
+                                  ),
                                   const SizedBox(width: AppSpacing.sm),
                                   Expanded(
                                     child: Column(

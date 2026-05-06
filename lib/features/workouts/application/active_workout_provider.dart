@@ -40,31 +40,77 @@ String activeWorkoutSignature(Ref ref) {
 /// workout, keyed by exerciseId. Powers the "Previous" column on the
 /// active workout screen.
 ///
-/// Depends on [activeWorkoutSignatureProvider] (a stable string), not on the
-/// full workout detail, so per-set edits — which emit a new detail on every
-/// keystroke — do not trigger a refetch. The query only re-runs when the
-/// active workout itself changes, or when an exercise is added / removed.
+/// Watches [activeWorkoutSignatureProvider] (a stable string), not the full
+/// workout detail, so per-set edits — which emit a new detail on every
+/// keystroke — do not trigger a refetch. When the signature changes (an
+/// exercise added or removed), only the *new* exercise ids are fetched
+/// from the repository; previously-fetched exercises are served from a
+/// per-workout cache held on the notifier instance, so a 6-exercise
+/// workout where one exercise was just added does one lookup instead of
+/// six.
 @Riverpod(keepAlive: true)
-Future<Map<String, List<WorkoutSet>>> activeWorkoutPreviousSets(Ref ref) async {
-  final String signature = ref.watch(activeWorkoutSignatureProvider);
-  if (signature.isEmpty) return const <String, List<WorkoutSet>>{};
+class ActiveWorkoutPreviousSets extends _$ActiveWorkoutPreviousSets {
+  final Map<String, List<WorkoutSet>> _cache = <String, List<WorkoutSet>>{};
+  final Set<String> _queriedIds = <String>{};
+  String _scopedToWorkoutId = '';
 
-  final WorkoutDetail? detail = ref
-      .read(activeWorkoutDetailProvider)
-      .asData
-      ?.value;
-  if (detail == null || detail.exercises.isEmpty) {
-    return const <String, List<WorkoutSet>>{};
+  @override
+  Future<Map<String, List<WorkoutSet>>> build() async {
+    final String signature = ref.watch(activeWorkoutSignatureProvider);
+    if (signature.isEmpty) {
+      _resetCache();
+      return const <String, List<WorkoutSet>>{};
+    }
+
+    final WorkoutDetail? detail = ref
+        .read(activeWorkoutDetailProvider)
+        .asData
+        ?.value;
+    if (detail == null || detail.exercises.isEmpty) {
+      _resetCache();
+      return const <String, List<WorkoutSet>>{};
+    }
+
+    // Different workout entirely — drop everything we cached for the
+    // previous one. Cache is scoped to a single workout's lifetime.
+    if (_scopedToWorkoutId != detail.workout.id) {
+      _resetCache();
+      _scopedToWorkoutId = detail.workout.id;
+    }
+
+    final List<String> currentIds = detail.exercises
+        .map((e) => e.exercise.id)
+        .toList(growable: false);
+    final List<String> missingIds = <String>[
+      for (final String id in currentIds)
+        if (!_queriedIds.contains(id)) id,
+    ];
+
+    if (missingIds.isNotEmpty) {
+      final Map<String, List<WorkoutSet>> fetched = await ref
+          .read(workoutRepositoryProvider)
+          .getLastCompletedSetsForExercises(
+            exerciseIds: missingIds,
+            excludeWorkoutId: detail.workout.id,
+          );
+      // Mark every requested id as queried, even those without a hit, so
+      // re-emissions don't re-walk history for exercises with no prior
+      // sessions.
+      _queriedIds.addAll(missingIds);
+      _cache.addAll(fetched);
+    }
+
+    return <String, List<WorkoutSet>>{
+      for (final String id in currentIds)
+        if (_cache.containsKey(id)) id: _cache[id]!,
+    };
   }
-  final List<String> exerciseIds = detail.exercises
-      .map((e) => e.exercise.id)
-      .toList(growable: false);
-  return ref
-      .read(workoutRepositoryProvider)
-      .getLastCompletedSetsForExercises(
-        exerciseIds: exerciseIds,
-        excludeWorkoutId: detail.workout.id,
-      );
+
+  void _resetCache() {
+    _cache.clear();
+    _queriedIds.clear();
+    _scopedToWorkoutId = '';
+  }
 }
 
 /// One-shot loader for a finished workout (summary screen).

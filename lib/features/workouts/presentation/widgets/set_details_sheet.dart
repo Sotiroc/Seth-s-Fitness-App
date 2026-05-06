@@ -80,26 +80,27 @@ class _SetDetailsSheetState extends State<_SetDetailsSheet> {
     final JellyBeanPalette palette = context.jellyBeanPalette;
     final ThemeData theme = Theme.of(context);
 
-    // Account for the keyboard so the sticky Save button stays visible
-    // while the note field is focused.
-    final double keyboardInset = MediaQuery.of(context).viewInsets.bottom;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: keyboardInset),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.55,
-        minChildSize: 0.4,
-        maxChildSize: 0.92,
-        expand: false,
-        builder: (BuildContext _, ScrollController scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: palette.shade50,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
-              ),
+    // Wrapping the DraggableScrollableSheet in a keyboard-aware Padding
+    // shrinks its parent height when the keyboard opens, which causes the
+    // sheet to recompute initialChildSize against a smaller viewport and
+    // visually "jump" upward. Instead, leave the sheet anchored to the
+    // screen and shift only the inner content above the keyboard via
+    // viewInsets padding on the bottom Save bar.
+    return DraggableScrollableSheet(
+      initialChildSize: 0.55,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (BuildContext sheetCtx, ScrollController scrollController) {
+        final double keyboardInset = MediaQuery.viewInsetsOf(sheetCtx).bottom;
+        return Container(
+          decoration: BoxDecoration(
+            color: palette.shade50,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(28),
             ),
-            child: Column(
+          ),
+          child: Column(
               children: <Widget>[
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -187,7 +188,13 @@ class _SetDetailsSheetState extends State<_SetDetailsSheet> {
                     AppSpacing.lg,
                     AppSpacing.sm,
                     AppSpacing.lg,
-                    MediaQuery.paddingOf(context).bottom + AppSpacing.md,
+                    // When the keyboard is open, push the Save button up
+                    // so it sits above it (keyboardInset already covers
+                    // safe-area inset). Otherwise, respect the home bar.
+                    keyboardInset > 0
+                        ? keyboardInset + AppSpacing.sm
+                        : MediaQuery.paddingOf(sheetCtx).bottom +
+                            AppSpacing.md,
                   ),
                   child: SizedBox(
                     height: 50,
@@ -215,7 +222,6 @@ class _SetDetailsSheetState extends State<_SetDetailsSheet> {
             ),
           );
         },
-      ),
     );
   }
 }
@@ -317,27 +323,39 @@ class _RpeChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Selected: filled with brand-dark accent (shade900) — clearly the
+    // chosen value, white numeral.
+    // Unselected: solid white tile against the sheet's tinted background
+    // with a stronger shade300 border, so the chips read as distinct
+    // tappable controls instead of blending into the shade50 sheet.
+    final Color background = isSelected ? palette.shade900 : Colors.white;
+    final Color borderColor = isSelected
+        ? palette.shade900
+        : palette.shade300;
+    final Color textColor = isSelected ? Colors.white : palette.shade950;
+
     return Material(
-      color: isSelected ? palette.shade700 : palette.shade50,
+      color: background,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          width: 32,
-          height: 32,
+          width: 36,
+          height: 36,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected ? palette.shade700 : palette.shade100,
+              color: borderColor,
+              width: isSelected ? 1.4 : 1.2,
             ),
           ),
           child: Text(
             '$value',
             style: TextStyle(
-              color: isSelected ? Colors.white : palette.shade800,
-              fontSize: 13,
+              color: textColor,
+              fontSize: 14,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.2,
             ),

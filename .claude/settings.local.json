@@ -26,7 +26,9 @@
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_close",
       "Bash(flutter run *)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(curl -fsS -o /dev/null http://localhost:37423/)",
+      "Bash(git stash *)"
     ]
   }
 }

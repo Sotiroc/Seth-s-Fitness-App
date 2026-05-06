@@ -8,7 +8,11 @@ import '../../../../core/widgets/illustrated_empty_state.dart';
 import '../../../../data/models/exercise.dart';
 import '../../../../data/models/exercise_history_day.dart';
 import '../../../../data/models/exercise_type.dart';
-import '../../../../data/models/strength_point.dart';
+import '../../../../data/models/pr_event.dart';
+import '../../../../data/models/unit_system.dart';
+import '../../../../data/models/user_profile.dart';
+import '../../../profile/application/user_profile_provider.dart';
+import '../../../progression/application/pr_events_provider.dart';
 import '../../../progression/application/strength_series_provider.dart';
 import '../../application/exercise_history_provider.dart';
 import 'exercise_avatar.dart';
@@ -59,12 +63,18 @@ class ExerciseHistorySheet extends ConsumerWidget {
     final AsyncValue<List<ExerciseHistoryDay>> historyAsync = ref.watch(
       exerciseHistoryByDayProvider(exerciseId),
     );
-    final AsyncValue<StrengthPoint?> prAsync = ref.watch(
-      exerciseAllTimePrProvider(exerciseId),
+    final AsyncValue<ExercisePrBests> bestsAsync = ref.watch(
+      exerciseBestsProvider(exerciseId),
     );
     final AsyncValue<Set<String>> prSetIdsAsync = ref.watch(
       exercisePrSetIdsProvider(exerciseId),
     );
+    final UnitSystem unitSystem = ref
+        .watch(userProfileProvider)
+        .maybeWhen<UnitSystem>(
+          data: (UserProfile? p) => p?.unitSystem ?? UnitSystem.metric,
+          orElse: () => UnitSystem.metric,
+        );
 
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
@@ -120,7 +130,9 @@ class ExerciseHistorySheet extends ConsumerWidget {
                       history: history,
                       palette: palette,
                       exercise: exerciseAsync.asData?.value,
-                      pr: prAsync.asData?.value,
+                      bests: bestsAsync.asData?.value ??
+                          const ExercisePrBests(),
+                      unitSystem: unitSystem,
                       prSetIds:
                           prSetIdsAsync.asData?.value ?? const <String>{},
                     );
@@ -226,13 +238,14 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _HistoryBody extends StatelessWidget {
+class _HistoryBody extends StatefulWidget {
   const _HistoryBody({
     required this.scrollController,
     required this.history,
     required this.palette,
     required this.exercise,
-    required this.pr,
+    required this.bests,
+    required this.unitSystem,
     required this.prSetIds,
   });
 
@@ -240,38 +253,79 @@ class _HistoryBody extends StatelessWidget {
   final List<ExerciseHistoryDay> history;
   final JellyBeanPalette palette;
   final Exercise? exercise;
-  final StrengthPoint? pr;
+  final ExercisePrBests bests;
+  final UnitSystem unitSystem;
   final Set<String> prSetIds;
 
   @override
+  State<_HistoryBody> createState() => _HistoryBodyState();
+}
+
+class _HistoryBodyState extends State<_HistoryBody> {
+  /// One GlobalKey per day card, keyed by the day's local-midnight
+  /// timestamp. Used by the PR card's tap handler to scroll the list to
+  /// the day card whose date matches the chosen PR's `achievedAt`.
+  final Map<DateTime, GlobalKey> _dayKeys = <DateTime, GlobalKey>{};
+
+  GlobalKey _keyForDay(DateTime date) {
+    final DateTime midnight = DateTime(date.year, date.month, date.day);
+    return _dayKeys.putIfAbsent(midnight, () => GlobalKey());
+  }
+
+  void _scrollToPrEvent(PrEvent event) {
+    final DateTime local = event.achievedAt.toLocal();
+    final DateTime target = DateTime(local.year, local.month, local.day);
+    final GlobalKey? key = _dayKeys[target];
+    final BuildContext? ctx = key?.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOutCubic,
+      alignment: 0.05,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final ExerciseType type = exercise?.type ?? ExerciseType.weighted;
-    final bool showPr = type == ExerciseType.weighted && pr != null;
+    final ExerciseType type = widget.exercise?.type ?? ExerciseType.weighted;
+    final bool showPr = !widget.bests.isEmpty;
 
     return ListView.separated(
-      controller: scrollController,
+      controller: widget.scrollController,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
         0,
         AppSpacing.lg,
         AppSpacing.xl,
       ),
-      itemCount: history.length + (showPr ? 2 : 1),
+      itemCount: widget.history.length + (showPr ? 2 : 1),
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
       itemBuilder: (context, index) {
         if (showPr && index == 0) {
-          return ExerciseHistoryPrCard(palette: palette, pr: pr);
+          return ExerciseHistoryPrCard(
+            palette: widget.palette,
+            bests: widget.bests,
+            exerciseType: type,
+            unitSystem: widget.unitSystem,
+            onTapEvent: _scrollToPrEvent,
+          );
         }
         final int summaryIndex = showPr ? 1 : 0;
         if (index == summaryIndex) {
-          return ExerciseHistorySummary(history: history, palette: palette);
+          return ExerciseHistorySummary(
+            history: widget.history,
+            palette: widget.palette,
+          );
         }
-        final ExerciseHistoryDay day = history[index - summaryIndex - 1];
+        final ExerciseHistoryDay day =
+            widget.history[index - summaryIndex - 1];
         return ExerciseHistoryDayCard(
+          key: _keyForDay(day.date),
           day: day,
-          palette: palette,
+          palette: widget.palette,
           exerciseType: type,
-          prSetIds: prSetIds,
+          prSetIds: widget.prSetIds,
         );
       },
     );

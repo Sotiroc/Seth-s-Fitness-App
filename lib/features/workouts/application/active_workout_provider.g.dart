@@ -149,41 +149,48 @@ String _$activeWorkoutSignatureHash() =>
 /// workout, keyed by exerciseId. Powers the "Previous" column on the
 /// active workout screen.
 ///
-/// Depends on [activeWorkoutSignatureProvider] (a stable string), not on the
-/// full workout detail, so per-set edits — which emit a new detail on every
-/// keystroke — do not trigger a refetch. The query only re-runs when the
-/// active workout itself changes, or when an exercise is added / removed.
+/// Watches [activeWorkoutSignatureProvider] (a stable string), not the full
+/// workout detail, so per-set edits — which emit a new detail on every
+/// keystroke — do not trigger a refetch. When the signature changes (an
+/// exercise added or removed), only the *new* exercise ids are fetched
+/// from the repository; previously-fetched exercises are served from a
+/// per-workout cache held on the notifier instance, so a 6-exercise
+/// workout where one exercise was just added does one lookup instead of
+/// six.
 
-@ProviderFor(activeWorkoutPreviousSets)
+@ProviderFor(ActiveWorkoutPreviousSets)
 const activeWorkoutPreviousSetsProvider = ActiveWorkoutPreviousSetsProvider._();
 
 /// Most recent completed-workout sets for each exercise in the active
 /// workout, keyed by exerciseId. Powers the "Previous" column on the
 /// active workout screen.
 ///
-/// Depends on [activeWorkoutSignatureProvider] (a stable string), not on the
-/// full workout detail, so per-set edits — which emit a new detail on every
-/// keystroke — do not trigger a refetch. The query only re-runs when the
-/// active workout itself changes, or when an exercise is added / removed.
-
+/// Watches [activeWorkoutSignatureProvider] (a stable string), not the full
+/// workout detail, so per-set edits — which emit a new detail on every
+/// keystroke — do not trigger a refetch. When the signature changes (an
+/// exercise added or removed), only the *new* exercise ids are fetched
+/// from the repository; previously-fetched exercises are served from a
+/// per-workout cache held on the notifier instance, so a 6-exercise
+/// workout where one exercise was just added does one lookup instead of
+/// six.
 final class ActiveWorkoutPreviousSetsProvider
     extends
-        $FunctionalProvider<
-          AsyncValue<Map<String, List<WorkoutSet>>>,
-          Map<String, List<WorkoutSet>>,
-          FutureOr<Map<String, List<WorkoutSet>>>
-        >
-    with
-        $FutureModifier<Map<String, List<WorkoutSet>>>,
-        $FutureProvider<Map<String, List<WorkoutSet>>> {
+        $AsyncNotifierProvider<
+          ActiveWorkoutPreviousSets,
+          Map<String, List<WorkoutSet>>
+        > {
   /// Most recent completed-workout sets for each exercise in the active
   /// workout, keyed by exerciseId. Powers the "Previous" column on the
   /// active workout screen.
   ///
-  /// Depends on [activeWorkoutSignatureProvider] (a stable string), not on the
-  /// full workout detail, so per-set edits — which emit a new detail on every
-  /// keystroke — do not trigger a refetch. The query only re-runs when the
-  /// active workout itself changes, or when an exercise is added / removed.
+  /// Watches [activeWorkoutSignatureProvider] (a stable string), not the full
+  /// workout detail, so per-set edits — which emit a new detail on every
+  /// keystroke — do not trigger a refetch. When the signature changes (an
+  /// exercise added or removed), only the *new* exercise ids are fetched
+  /// from the repository; previously-fetched exercises are served from a
+  /// per-workout cache held on the notifier instance, so a 6-exercise
+  /// workout where one exercise was just added does one lookup instead of
+  /// six.
   const ActiveWorkoutPreviousSetsProvider._()
     : super(
         from: null,
@@ -200,18 +207,52 @@ final class ActiveWorkoutPreviousSetsProvider
 
   @$internal
   @override
-  $FutureProviderElement<Map<String, List<WorkoutSet>>> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<Map<String, List<WorkoutSet>>> create(Ref ref) {
-    return activeWorkoutPreviousSets(ref);
-  }
+  ActiveWorkoutPreviousSets create() => ActiveWorkoutPreviousSets();
 }
 
 String _$activeWorkoutPreviousSetsHash() =>
-    r'cfd3722a08e3006ce079fad3e7760046ecc1317d';
+    r'19bbe9c5a521acd2a2bb8ced99801fb08f90119d';
+
+/// Most recent completed-workout sets for each exercise in the active
+/// workout, keyed by exerciseId. Powers the "Previous" column on the
+/// active workout screen.
+///
+/// Watches [activeWorkoutSignatureProvider] (a stable string), not the full
+/// workout detail, so per-set edits — which emit a new detail on every
+/// keystroke — do not trigger a refetch. When the signature changes (an
+/// exercise added or removed), only the *new* exercise ids are fetched
+/// from the repository; previously-fetched exercises are served from a
+/// per-workout cache held on the notifier instance, so a 6-exercise
+/// workout where one exercise was just added does one lookup instead of
+/// six.
+
+abstract class _$ActiveWorkoutPreviousSets
+    extends $AsyncNotifier<Map<String, List<WorkoutSet>>> {
+  FutureOr<Map<String, List<WorkoutSet>>> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref =
+        this.ref
+            as $Ref<
+              AsyncValue<Map<String, List<WorkoutSet>>>,
+              Map<String, List<WorkoutSet>>
+            >;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<
+                AsyncValue<Map<String, List<WorkoutSet>>>,
+                Map<String, List<WorkoutSet>>
+              >,
+              AsyncValue<Map<String, List<WorkoutSet>>>,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
 
 /// One-shot loader for a finished workout (summary screen).
 

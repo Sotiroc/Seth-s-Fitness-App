@@ -1,0 +1,13 @@
+- generic [active] [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic "Dialog":
+          - generic [ref=e52]:
+            - generic: FILTER BY DATE
+          - button "This week" [ref=e53]
+          - button "This month" [ref=e54]
+          - button "Last 3 months" [ref=e55]
+          - button "This year" [ref=e56]
+          - button "All time" [ref=e57]
+          - button "Custom range" [ref=e58]

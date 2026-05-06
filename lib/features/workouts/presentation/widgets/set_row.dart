@@ -385,7 +385,10 @@ class _SetRowState extends State<SetRow> {
               ),
             ),
           Container(
-            padding: EdgeInsets.fromLTRB(leftPad, 6, 4, 6),
+            // Tightened from 6 to 4 vertical so a column of sets is more
+            // compact without sacrificing tap-target on the complete
+            // button (38pt) which stays the row's height anchor.
+            padding: EdgeInsets.fromLTRB(leftPad, 4, 4, 4),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
@@ -704,7 +707,7 @@ class _NumberField extends StatelessWidget {
       ),
       decoration: InputDecoration(
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
         hintText: hint,
         hintStyle: TextStyle(
           color: palette.shade700.withValues(alpha: 0.45),
@@ -755,7 +758,11 @@ class _DurationField extends StatelessWidget {
       focusNode: focusNode,
       enabled: enabled,
       textAlign: TextAlign.center,
-      keyboardType: const TextInputType.numberWithOptions(decimal: false),
+      // datetime keyboard exposes `:` on iOS so users can actually type
+      // mm:ss / hh:mm:ss. The numeric keyboard hides the colon, which
+      // forced users to enter raw minutes (and DurationFormatter then
+      // misread the value).
+      keyboardType: TextInputType.datetime,
       inputFormatters: <TextInputFormatter>[
         FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
       ],
@@ -768,7 +775,7 @@ class _DurationField extends StatelessWidget {
       ),
       decoration: InputDecoration(
         isDense: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
         hintText: 'mm:ss',
         hintStyle: TextStyle(
           color: palette.shade700.withValues(alpha: 0.45),

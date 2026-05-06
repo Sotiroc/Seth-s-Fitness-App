@@ -1,0 +1,24 @@
+- generic [active] [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic "Dialog":
+          - generic [ref=e78]:
+            - generic: FILTER BY EXERCISE
+          - textbox "Search exercises" [ref=e80]
+          - generic:
+            - group:
+              - button "Barbell Row Back" [ref=e81]
+              - button "Bench Press Chest" [ref=e82]
+              - button "Bicep Curl Biceps" [ref=e83]
+              - button "Deadlift Legs" [ref=e84]
+              - button "Incline Dumbbell Press Chest" [ref=e85]
+              - button "Lat Pulldown Back" [ref=e86]
+              - button "Leg Press Legs" [ref=e87]
+              - button "Overhead Press Shoulders" [ref=e88]
+              - button "Plank Abs" [ref=e89]
+              - button "Pull-Up Back" [ref=e90]
+              - button "Push-Up Chest" [ref=e91]
+              - button "Romanian Deadlift Legs" [ref=e92]
+          - button "Clear" [disabled] [ref=e93]
+          - button "Apply" [ref=e94]

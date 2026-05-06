@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../data/models/user_profile.dart';
@@ -107,6 +108,21 @@ ProfileStats computeProfileStats(UserProfile? profile) {
 
 @Riverpod(keepAlive: true)
 ProfileStats profileStats(Ref ref) {
-  final UserProfile? profile = ref.watch(userProfileProvider).asData?.value;
+  // Subscribe only to the three numeric inputs that affect the stats.
+  // Records compare structurally in Dart 3, so unrelated profile edits
+  // (name, unit system, muscle goals, etc.) don't trigger a recompute.
+  ref.watch(
+    userProfileProvider.select((AsyncValue<UserProfile?> async) {
+      final UserProfile? p = async.asData?.value;
+      return (
+        heightCm: p?.heightCm,
+        weightKg: p?.weightKg,
+        goalWeightKg: p?.goalWeightKg,
+      );
+    }),
+  );
+
+  // Read the live profile non-reactively to compute the stats.
+  final UserProfile? profile = ref.read(userProfileProvider).asData?.value;
   return computeProfileStats(profile);
 }

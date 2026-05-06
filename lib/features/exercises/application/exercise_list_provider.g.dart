@@ -150,7 +150,7 @@ final class ExerciseFilterProvider
   }
 }
 
-String _$exerciseFilterHash() => r'42eb81bcd0001403ea3258e38736c64d991ef372';
+String _$exerciseFilterHash() => r'abd07dcddcc831cce1831d7231e2d76da5ca98e9';
 
 abstract class _$ExerciseFilter extends $Notifier<ExerciseListFilter> {
   ExerciseListFilter build();

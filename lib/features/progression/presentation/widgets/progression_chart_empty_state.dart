@@ -29,45 +29,48 @@ class ProgressionChartEmptyState extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final bool hasCta = ctaLabel != null && onCta != null;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 56, color: palette.shade300),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: palette.shade950,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: palette.shade700,
-              height: 1.35,
-            ),
-          ),
-          if (hasCta) ...<Widget>[
-            const SizedBox(height: AppSpacing.md),
-            FilledButton(
-              onPressed: onCta,
-              style: FilledButton.styleFrom(
-                backgroundColor: palette.shade900,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+    return SizedBox(
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(icon, size: 56, color: palette.shade300),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: palette.shade950,
+                fontWeight: FontWeight.w800,
               ),
-              child: Text(ctaLabel!),
             ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: palette.shade700,
+                height: 1.35,
+              ),
+            ),
+            if (hasCta) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              FilledButton(
+                onPressed: onCta,
+                style: FilledButton.styleFrom(
+                  backgroundColor: palette.shade900,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(ctaLabel!),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

@@ -8,19 +8,25 @@ part of 'profile_editor_controller.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Page-local — bound to the profile form's lifecycle. Auto-disposed
+/// so the busy/error AsyncValue starts fresh on each open.
 
 @ProviderFor(ProfileEditorController)
 const profileEditorControllerProvider = ProfileEditorControllerProvider._();
 
+/// Page-local — bound to the profile form's lifecycle. Auto-disposed
+/// so the busy/error AsyncValue starts fresh on each open.
 final class ProfileEditorControllerProvider
     extends $AsyncNotifierProvider<ProfileEditorController, void> {
+  /// Page-local — bound to the profile form's lifecycle. Auto-disposed
+  /// so the busy/error AsyncValue starts fresh on each open.
   const ProfileEditorControllerProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
         name: r'profileEditorControllerProvider',
-        isAutoDispose: false,
+        isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -34,7 +40,10 @@ final class ProfileEditorControllerProvider
 }
 
 String _$profileEditorControllerHash() =>
-    r'bf8c653757100c32821784aedbe4108420fd3faf';
+    r'8006350d13917115079f2f9df8bcbcd70703083b';
+
+/// Page-local — bound to the profile form's lifecycle. Auto-disposed
+/// so the busy/error AsyncValue starts fresh on each open.
 
 abstract class _$ProfileEditorController extends $AsyncNotifier<void> {
   FutureOr<void> build();

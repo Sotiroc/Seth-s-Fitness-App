@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/utils/unit_conversions.dart';
 import '../../../../data/models/pr_event.dart';
 import '../../../../data/models/unit_system.dart';
+import 'pr_event_formatting.dart';
 
-/// One PR entry: exercise name (top), source set + relative date (bottom),
-/// and the estimated 1RM right-aligned. Tapping invokes [onTap] — the
-/// home-page card uses it to drill into the strength chart, the full PR
-/// list screen uses it the same way.
+/// One PR entry in a vertical feed: trophy + exercise name + PR value
+/// + type label + relative date. Tapping invokes [onTap] — the
+/// home-page card uses it to drill into the strength chart, the full
+/// list and the History flat-PR mode use it for navigation.
 ///
-/// Shared between the home-page [PrFeedCard] (top 5) and [PrListScreen]
-/// (full list) so both views show identical row chrome.
+/// Shared between the home-page [PrFeedCard] (top 5), [PrListScreen]
+/// (full list), and the History flat-PR list mode so all surfaces show
+/// the same row chrome.
 class PrRow extends StatelessWidget {
   const PrRow({
     super.key,
@@ -29,14 +29,9 @@ class PrRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final JellyBeanPalette palette = context.jellyBeanPalette;
-    final String oneRm =
-        UnitConversions.formatWeight(event.oneRepMaxKg, unitSystem) ?? '';
-    final String setLabel = UnitConversions.formatWeight(
-          event.weightKg,
-          unitSystem,
-        ) ??
-        '';
-    final String relative = _relativeDate(event.achievedAt);
+    final String value = PrEventFormatting.value(event, unitSystem);
+    final String typeLabel = PrEventFormatting.typeLabel(event);
+    final String relative = PrEventFormatting.relativeDate(event.achievedAt);
 
     return InkWell(
       onTap: onTap,
@@ -45,6 +40,21 @@ class PrRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         child: Row(
           children: <Widget>[
+            Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.emoji_events_rounded,
+                color: Color(0xFFF59E0B),
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,10 +66,12 @@ class PrRow extends StatelessWidget {
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '$setLabel × ${event.reps} · $relative',
+                    '$typeLabel · $relative',
                     style: TextStyle(
                       color: palette.shade700,
                       fontSize: 12,
@@ -70,66 +82,33 @@ class PrRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: <Widget>[
-                Text(
-                  oneRm,
-                  style: TextStyle(
-                    color: palette.shade950,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.4,
-                    fontFeatures: const <FontFeature>[
-                      FontFeature.tabularFigures(),
-                    ],
-                  ),
-                ),
-                Text(
-                  'est 1RM',
-                  style: TextStyle(
-                    color: palette.shade700,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ],
+            Text(
+              value,
+              style: TextStyle(
+                color: palette.shade950,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+                fontFeatures: const <FontFeature>[
+                  FontFeature.tabularFigures(),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
   }
-
-  /// "today", "yesterday", "3d ago", "Mar 14" — human-readable date for
-  /// the row's secondary line. Switches to absolute date for entries
-  /// older than a week so the relative phrasing doesn't get awkward.
-  static String _relativeDate(DateTime achievedAt) {
-    final DateTime now = DateTime.now();
-    final DateTime localAchieved = achievedAt.toLocal();
-    final DateTime today = DateTime(now.year, now.month, now.day);
-    final DateTime achievedDay = DateTime(
-      localAchieved.year,
-      localAchieved.month,
-      localAchieved.day,
-    );
-    final int daysAgo = today.difference(achievedDay).inDays;
-    if (daysAgo == 0) return 'today';
-    if (daysAgo == 1) return 'yesterday';
-    if (daysAgo < 7) return '${daysAgo}d ago';
-    return DateFormat.yMMMd().format(localAchieved);
-  }
 }
 
 /// Shared empty state for both the home-page card and the full list. A
-/// trophy outline + friendly nudge to log a weighted set.
+/// trophy outline + friendly nudge to log a first set.
 class PrEmptyState extends StatelessWidget {
   const PrEmptyState({super.key, this.padded = true});
 
-  /// Whether to wrap the content in vertical padding. The home card adds
-  /// its own padding; the full screen uses the padded version so the
-  /// empty state isn't flush against the AppBar.
+  /// Whether to wrap the content in vertical padding. The home card
+  /// adds its own padding; the full screen uses the padded version so
+  /// the empty state isn't flush against the AppBar.
   final bool padded;
 
   @override
@@ -153,7 +132,7 @@ class PrEmptyState extends StatelessWidget {
         ),
         const SizedBox(height: 2),
         Text(
-          'Log a weighted set with reps and we\'ll celebrate your records here.',
+          'Finish a workout and we\'ll celebrate your records here.',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: palette.shade700,

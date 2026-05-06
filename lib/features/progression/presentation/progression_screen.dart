@@ -36,18 +36,23 @@ class ProgressionScreen extends ConsumerWidget {
               120,
             ),
             sliver: SliverList.list(
+              // Each chart sits in its own compositing layer so changing
+              // the range selector on one doesn't invalidate the paint
+              // surface of the other (or of the cards above).
               children: <Widget>[
                 const HeroStatsStrip(),
                 const SizedBox(height: AppSpacing.lg),
-                const TrainingCalendarHeatmap(),
+                const RepaintBoundary(child: TrainingCalendarHeatmap()),
                 const SizedBox(height: AppSpacing.lg),
-                const PrFeedCard(),
+                const RepaintBoundary(child: PrFeedCard()),
                 const SizedBox(height: AppSpacing.lg),
-                BodyWeightChartCard(
-                  onLogWeight: () => showLogWeightSheet(context, ref),
+                RepaintBoundary(
+                  child: BodyWeightChartCard(
+                    onLogWeight: () => showLogWeightSheet(context, ref),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                const StrengthChartCard(),
+                const RepaintBoundary(child: StrengthChartCard()),
               ],
             ),
           ),

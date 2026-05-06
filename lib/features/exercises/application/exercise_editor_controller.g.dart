@@ -8,19 +8,25 @@ part of 'exercise_editor_controller.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Page-local — only the exercise form mounts this. Auto-dispose so the
+/// busy/error AsyncValue resets cleanly when the editor closes.
 
 @ProviderFor(ExerciseEditorController)
 const exerciseEditorControllerProvider = ExerciseEditorControllerProvider._();
 
+/// Page-local — only the exercise form mounts this. Auto-dispose so the
+/// busy/error AsyncValue resets cleanly when the editor closes.
 final class ExerciseEditorControllerProvider
     extends $AsyncNotifierProvider<ExerciseEditorController, void> {
+  /// Page-local — only the exercise form mounts this. Auto-dispose so the
+  /// busy/error AsyncValue resets cleanly when the editor closes.
   const ExerciseEditorControllerProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
         name: r'exerciseEditorControllerProvider',
-        isAutoDispose: false,
+        isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -34,7 +40,10 @@ final class ExerciseEditorControllerProvider
 }
 
 String _$exerciseEditorControllerHash() =>
-    r'9e5b17532a21b883b3249f30ab8a6f1c1bcf5376';
+    r'6461529ecd34ba2c098eb564d63bc2ae10f3e1b1';
+
+/// Page-local — only the exercise form mounts this. Auto-dispose so the
+/// busy/error AsyncValue resets cleanly when the editor closes.
 
 abstract class _$ExerciseEditorController extends $AsyncNotifier<void> {
   FutureOr<void> build();

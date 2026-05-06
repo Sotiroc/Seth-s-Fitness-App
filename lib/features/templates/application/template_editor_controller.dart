@@ -10,7 +10,9 @@ import 'template_providers.dart';
 
 part 'template_editor_controller.g.dart';
 
-@Riverpod(keepAlive: true)
+/// Page-local — bound to the template form's lifecycle. Auto-disposed
+/// so the busy/error AsyncValue resets cleanly when the editor closes.
+@riverpod
 class TemplateEditorController extends _$TemplateEditorController {
   @override
   FutureOr<void> build() {}

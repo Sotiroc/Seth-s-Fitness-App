@@ -97,11 +97,11 @@ class ExerciseHistoryDayCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.xs),
           for (int i = 0; i < day.sets.length; i++)
             Padding(
               padding: EdgeInsets.only(
-                bottom: i == day.sets.length - 1 ? 0 : 6,
+                bottom: i == day.sets.length - 1 ? 0 : 2,
               ),
               child: ExerciseHistorySetTile(
                 palette: palette,
@@ -163,30 +163,30 @@ class ExerciseHistorySetTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // No filled tint background — the set tiles sit directly on the day
+    // card's white surface so consecutive sets read as a tight list
+    // rather than a stack of pills. The set-number bubble carries the
+    // weight of the visual structure.
+    return Padding(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 10,
-      ),
-      decoration: BoxDecoration(
-        color: palette.shade50,
-        borderRadius: BorderRadius.circular(12),
+        horizontal: 2,
+        vertical: 4,
       ),
       child: Row(
         children: <Widget>[
           Container(
-            width: 26,
-            height: 26,
+            width: 24,
+            height: 24,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: palette.shade100,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(7),
             ),
             child: Text(
               '${set.setNumber}',
               style: TextStyle(
                 color: palette.shade900,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w800,
               ),
             ),

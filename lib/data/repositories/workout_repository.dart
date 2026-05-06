@@ -18,6 +18,7 @@ import '../models/workout_detail.dart';
 import '../models/workout_exercise.dart';
 import '../models/workout_set.dart';
 import '../models/workout_set_kind.dart';
+import '../models/workout_structure.dart';
 import 'repository_exceptions.dart';
 
 part 'workout_repository.g.dart';
@@ -152,13 +153,19 @@ class WorkoutRepository {
     return controller.stream;
   }
 
+  /// Updates the workout's optional free-text note. Works on both active
+  /// and finished workouts because the summary screen — the natural
+  /// reflection moment — is the primary input surface, and that screen
+  /// only opens after the workout has ended.
   Future<Workout> updateWorkoutNotes({
     required String workoutId,
     required String? notes,
   }) async {
-    final WorkoutRow workoutRow = await _requireActiveWorkoutRow(workoutId);
+    final WorkoutRow workoutRow = await _getWorkoutRow(workoutId);
+    final String? trimmed = _trimmed(notes);
     final Workout updated = workoutRow.toModel().copyWith(
-      notes: _trimmed(notes),
+      notes: trimmed,
+      clearNotes: trimmed == null,
     );
 
     await (_database.update(_database.workouts)
@@ -212,6 +219,30 @@ class WorkoutRepository {
         );
 
     return updated;
+  }
+
+  /// Updates the free-text note attached to a single exercise within a
+  /// workout (the per-workout-exercise instance, not the global exercise
+  /// definition). Only allowed while the parent workout is active so the
+  /// active-workout invariant matches other exercise mutations.
+  Future<WorkoutExercise> updateWorkoutExerciseNotes({
+    required String workoutExerciseId,
+    required String? notes,
+  }) async {
+    final _WorkoutExerciseContext context = await _getWorkoutExerciseContext(
+      workoutExerciseId,
+    );
+    _ensureWorkoutIsActive(context.workout);
+
+    final String? trimmed = _trimmed(notes);
+    await (_database.update(_database.workoutExercises)
+          ..where((tbl) => tbl.id.equals(workoutExerciseId)))
+        .write(WorkoutExercisesCompanion(notes: Value<String?>(trimmed)));
+
+    return context.workoutExercise.toModel().copyWith(
+      notes: trimmed,
+      clearNotes: trimmed == null,
+    );
   }
 
   Future<WorkoutExerciseDetail> addExerciseToWorkout({
@@ -878,6 +909,45 @@ class WorkoutRepository {
     };
   }
 
+  /// One row per exercise that has at least one PR-qualifying completed
+  /// set in a finished workout: maps the exercise id to the start time of
+  /// the most recent qualifying session. "Qualifying" matches the strength
+  /// chart's filter — `normal` or `failure` kind sets with weight > 0 and
+  /// reps > 0.
+  ///
+  /// Single SQL aggregate; replaces the previous "loop over every weighted
+  /// exercise and pull its full history just to find the latest date" path
+  /// that the progression tab's trackable-exercises picker used.
+  Future<Map<String, DateTime>>
+  getLatestQualifyingSessionPerExercise() async {
+    final List<QueryRow> rows = await _database.customSelect(
+      'SELECT we.exercise_id AS exercise_id, '
+      '       MAX(w.started_at) AS latest_started_at '
+      'FROM sets s '
+      'INNER JOIN workout_exercises we ON s.workout_exercise_id = we.id '
+      'INNER JOIN workouts w ON we.workout_id = w.id '
+      'WHERE w.ended_at IS NOT NULL '
+      '  AND s.completed = 1 '
+      "  AND s.kind IN ('normal', 'failure') "
+      '  AND s.weight_kg IS NOT NULL AND s.weight_kg > 0 '
+      '  AND s.reps IS NOT NULL AND s.reps > 0 '
+      'GROUP BY we.exercise_id',
+      variables: const <Variable<Object>>[],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{
+        _database.sets,
+        _database.workoutExercises,
+        _database.workouts,
+      },
+    ).get();
+
+    return <String, DateTime>{
+      for (final QueryRow row in rows)
+        row.read<String>('exercise_id'): row.read<DateTime>(
+          'latest_started_at',
+        ),
+    };
+  }
+
   /// Counts completed *working* sets (i.e. excludes warm-ups) for each of
   /// the given [workoutIds]. Used by the history list to surface a "sets"
   /// tally on each workout tile. Workouts with zero qualifying sets are
@@ -927,7 +997,11 @@ class WorkoutRepository {
       'INNER JOIN exercises e ON we.exercise_id = e.id '
       'INNER JOIN workouts w ON we.workout_id = w.id '
       'WHERE s.completed = 1 '
-      "  AND s.kind != 'warmUp' "
+      // Drop sets are continuations of a working set, not full sets
+      // themselves — exclude them from the weekly muscle-group counter
+      // so a triple-drop on bench press doesn't inflate chest volume.
+      // Warm-ups are excluded for the same reason.
+      "  AND s.kind NOT IN ('warmUp', 'drop') "
       '  AND w.started_at >= ? '
       '  AND w.started_at < ? '
       'GROUP BY e.muscle_group',
@@ -1084,10 +1158,16 @@ class WorkoutRepository {
     });
   }
 
-  /// Every PR moment across every weighted exercise, newest-first. Walks
-  /// every completed (weight, reps) set in chronological order, tracks
-  /// the running max estimated 1RM per exercise, and emits a [PrEvent]
-  /// each time a set strictly exceeds all prior sets on the same exercise.
+  /// Every PR moment across every exercise, newest-first. Walks every
+  /// completed PR-eligible set in chronological order, tracks per-
+  /// exercise running maxes for each [PrType] that applies to that
+  /// exercise's [ExerciseType], and emits a [PrEvent] each time a set
+  /// (or per-workout aggregate) strictly exceeds all prior records.
+  ///
+  /// First-workout suppression: an exercise's first-ever completed
+  /// workout only seeds the running maxes — no PRs emit. From the
+  /// second workout onwards, sets that beat the running max can fire
+  /// PRs. This avoids the "first leg day fires 30 PRs" problem.
   ///
   /// Streams from Drift so the feed re-emits the moment a new PR lands —
   /// no manual invalidation. Single SQL query + linear scan; cheap enough
@@ -1095,16 +1175,18 @@ class WorkoutRepository {
   Stream<List<PrEvent>> watchAllPrEvents() {
     final Selectable<QueryRow> query = _database.customSelect(
       'SELECT s.id AS set_id, s.weight_kg AS weight_kg, s.reps AS reps, '
-      '       w.started_at AS started_at, '
-      '       e.id AS exercise_id, e.name AS exercise_name '
+      '       s.distance_km AS distance_km, '
+      '       s.duration_seconds AS duration_seconds, '
+      '       s.set_number AS set_number, '
+      '       w.id AS workout_id, w.started_at AS started_at, '
+      '       e.id AS exercise_id, e.name AS exercise_name, '
+      '       e.type AS exercise_type '
       'FROM sets s '
       'INNER JOIN workout_exercises we ON s.workout_exercise_id = we.id '
       'INNER JOIN workouts w ON we.workout_id = w.id '
       'INNER JOIN exercises e ON we.exercise_id = e.id '
       'WHERE s.completed = 1 '
       "  AND s.kind IN ('normal', 'failure') "
-      '  AND s.weight_kg IS NOT NULL AND s.weight_kg > 0 '
-      '  AND s.reps IS NOT NULL AND s.reps > 0 '
       'ORDER BY w.started_at ASC, s.set_number ASC',
       variables: <Variable<Object>>[],
       readsFrom: <ResultSetImplementation<dynamic, dynamic>>{
@@ -1115,34 +1197,487 @@ class WorkoutRepository {
       },
     );
 
-    return query.watch().map((List<QueryRow> rows) {
-      final Map<String, double> runningMaxByExercise = <String, double>{};
-      final List<PrEvent> events = <PrEvent>[];
-      for (final QueryRow row in rows) {
-        final double weightKg = row.read<double>('weight_kg');
-        final int reps = row.read<int>('reps');
-        final double? oneRm = StrengthFormulas.epley1RMKg(
-          weightKg: weightKg,
-          reps: reps,
-        );
-        if (oneRm == null) continue;
-        final String exerciseId = row.read<String>('exercise_id');
-        final double prevMax = runningMaxByExercise[exerciseId] ?? 0.0;
-        if (oneRm <= prevMax) continue;
-        runningMaxByExercise[exerciseId] = oneRm;
-        events.add(
-          PrEvent(
-            exerciseId: exerciseId,
-            exerciseName: row.read<String>('exercise_name'),
-            setId: row.read<String>('set_id'),
-            weightKg: weightKg,
-            reps: reps,
-            oneRepMaxKg: oneRm,
-            achievedAt: row.read<DateTime>('started_at'),
-          ),
-        );
+    return query
+        .watch()
+        .map(_buildPrEventsFromRows)
+        // Each set keystroke / mutation wakes this stream, but the PR set
+        // is unchanged unless a new lift actually beat a running max.
+        // Dedupe so the PR feed and counters don't churn during typing.
+        .distinct(prEventListsStructurallyEqual);
+  }
+
+  /// Walks the chronologically-ordered query rows, grouping by workout
+  /// and emitting PR events per exercise type. Pure function — pulled
+  /// out of [watchAllPrEvents] so it can be tested without Drift.
+  List<PrEvent> _buildPrEventsFromRows(List<QueryRow> rows) {
+    if (rows.isEmpty) return const <PrEvent>[];
+
+    // Per-exercise running maxes for every PR type. Each map is keyed
+    // by exerciseId so all exercises share one walk through the data.
+    final Map<String, _BestSet> bestSetByExercise = <String, _BestSet>{};
+    final Map<String, double> e1rmByExercise = <String, double>{};
+    final Map<String, Map<int, double>> repMaxByExercise =
+        <String, Map<int, double>>{};
+    final Map<String, int> mostRepsInSetByExercise = <String, int>{};
+    final Map<String, int> mostRepsInWorkoutByExercise = <String, int>{};
+    final Map<String, double> longestDistanceByExercise = <String, double>{};
+    final Map<String, int> longestDurationByExercise = <String, int>{};
+
+    // Tracks which exercises have appeared in at least one earlier
+    // *completed* workout. Sets in a workout only emit PRs when their
+    // exercise is in this set — i.e. has prior history.
+    final Set<String> exercisesWithPriorWorkout = <String>{};
+
+    final List<PrEvent> events = <PrEvent>[];
+
+    int i = 0;
+    while (i < rows.length) {
+      final String workoutId = rows[i].read<String>('workout_id');
+      // Slurp every row that belongs to this workout into one chunk.
+      final int workoutStart = i;
+      while (i < rows.length &&
+          rows[i].read<String>('workout_id') == workoutId) {
+        i++;
       }
-      return events.reversed.toList(growable: false);
+      final List<QueryRow> workoutRows = rows.sublist(workoutStart, i);
+
+      // Group this workout's rows by exercise.
+      final Map<String, List<QueryRow>> byExercise =
+          <String, List<QueryRow>>{};
+      for (final QueryRow row in workoutRows) {
+        final String exId = row.read<String>('exercise_id');
+        byExercise.putIfAbsent(exId, () => <QueryRow>[]).add(row);
+      }
+
+      for (final MapEntry<String, List<QueryRow>> entry in byExercise.entries) {
+        final String exerciseId = entry.key;
+        final List<QueryRow> exRows = entry.value;
+        final QueryRow first = exRows.first;
+        final ExerciseType exerciseType = ExerciseType.values.firstWhere(
+          (ExerciseType t) => t.name == first.read<String>('exercise_type'),
+          orElse: () => ExerciseType.weighted,
+        );
+        final String exerciseName = first.read<String>('exercise_name');
+        final DateTime achievedAt = first.read<DateTime>('started_at');
+        final bool canEmit = exercisesWithPriorWorkout.contains(exerciseId);
+
+        switch (exerciseType) {
+          case ExerciseType.weighted:
+            _processWeightedExercise(
+              rows: exRows,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              canEmit: canEmit,
+              bestSetByExercise: bestSetByExercise,
+              e1rmByExercise: e1rmByExercise,
+              repMaxByExercise: repMaxByExercise,
+              events: events,
+            );
+          case ExerciseType.bodyweight:
+            _processBodyweightExercise(
+              rows: exRows,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              canEmit: canEmit,
+              mostRepsInSetByExercise: mostRepsInSetByExercise,
+              mostRepsInWorkoutByExercise: mostRepsInWorkoutByExercise,
+              events: events,
+            );
+          case ExerciseType.cardio:
+            _processCardioExercise(
+              rows: exRows,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              canEmit: canEmit,
+              longestDistanceByExercise: longestDistanceByExercise,
+              longestDurationByExercise: longestDurationByExercise,
+              events: events,
+            );
+        }
+      }
+
+      // After processing this workout, mark every exercise that
+      // appeared as having prior history for the next iteration.
+      exercisesWithPriorWorkout.addAll(byExercise.keys);
+    }
+
+    return events.reversed.toList(growable: false);
+  }
+
+  void _processWeightedExercise({
+    required List<QueryRow> rows,
+    required String exerciseId,
+    required String exerciseName,
+    required String workoutId,
+    required DateTime achievedAt,
+    required bool canEmit,
+    required Map<String, _BestSet> bestSetByExercise,
+    required Map<String, double> e1rmByExercise,
+    required Map<String, Map<int, double>> repMaxByExercise,
+    required List<PrEvent> events,
+  }) {
+    // Find this workout's best-of for each PR type, then compare to
+    // running maxes once per type so we never emit two best-set PRs
+    // for the same workout.
+    QueryRow? bestSetRow;
+    QueryRow? bestE1rmRow;
+    double bestE1rmValue = 0;
+    final Map<int, ({QueryRow row, double weight})> bestPerRepCount =
+        <int, ({QueryRow row, double weight})>{};
+
+    for (final QueryRow row in rows) {
+      final double? weightKg = row.read<double?>('weight_kg');
+      final int? reps = row.read<int?>('reps');
+      if (weightKg == null || weightKg <= 0) continue;
+      if (reps == null || reps <= 0) continue;
+
+      // Best set: heavier weight wins, then more reps as tiebreak.
+      if (bestSetRow == null) {
+        bestSetRow = row;
+      } else {
+        final double bw = bestSetRow.read<double>('weight_kg');
+        final int br = bestSetRow.read<int>('reps');
+        if (weightKg > bw || (weightKg == bw && reps > br)) {
+          bestSetRow = row;
+        }
+      }
+
+      // Epley e1RM.
+      final double? oneRm = StrengthFormulas.epley1RMKg(
+        weightKg: weightKg,
+        reps: reps,
+      );
+      if (oneRm != null && oneRm > bestE1rmValue) {
+        bestE1rmValue = oneRm;
+        bestE1rmRow = row;
+      }
+
+      // Heaviest weight at this exact rep count.
+      final ({QueryRow row, double weight})? prev = bestPerRepCount[reps];
+      if (prev == null || weightKg > prev.weight) {
+        bestPerRepCount[reps] = (row: row, weight: weightKg);
+      }
+    }
+
+    // Compare against running maxes; emit only when strictly better.
+    if (bestSetRow != null) {
+      final double w = bestSetRow.read<double>('weight_kg');
+      final int r = bestSetRow.read<int>('reps');
+      final _BestSet? prev = bestSetByExercise[exerciseId];
+      final bool beats = prev == null ||
+          w > prev.weightKg ||
+          (w == prev.weightKg && r > prev.reps);
+      if (beats) {
+        bestSetByExercise[exerciseId] = _BestSet(weightKg: w, reps: r);
+        if (canEmit) {
+          events.add(
+            PrEvent(
+              type: PrType.bestSet,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              exerciseType: ExerciseType.weighted,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              setId: bestSetRow.read<String>('set_id'),
+              weightKg: w,
+              reps: r,
+              oneRepMaxKg: StrengthFormulas.epley1RMKg(
+                weightKg: w,
+                reps: r,
+              ),
+            ),
+          );
+        }
+      }
+    }
+
+    if (bestE1rmRow != null) {
+      final double prevMax = e1rmByExercise[exerciseId] ?? 0;
+      if (bestE1rmValue > prevMax) {
+        e1rmByExercise[exerciseId] = bestE1rmValue;
+        if (canEmit) {
+          events.add(
+            PrEvent(
+              type: PrType.e1rm,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              exerciseType: ExerciseType.weighted,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              setId: bestE1rmRow.read<String>('set_id'),
+              weightKg: bestE1rmRow.read<double>('weight_kg'),
+              reps: bestE1rmRow.read<int>('reps'),
+              oneRepMaxKg: bestE1rmValue,
+            ),
+          );
+        }
+      }
+    }
+
+    final Map<int, double> repMaxes =
+        repMaxByExercise.putIfAbsent(exerciseId, () => <int, double>{});
+    for (final MapEntry<int, ({QueryRow row, double weight})> e
+        in bestPerRepCount.entries) {
+      final int reps = e.key;
+      final double weight = e.value.weight;
+      final double prev = repMaxes[reps] ?? 0;
+      if (weight > prev) {
+        repMaxes[reps] = weight;
+        if (canEmit) {
+          events.add(
+            PrEvent(
+              type: PrType.repMax,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              exerciseType: ExerciseType.weighted,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              setId: e.value.row.read<String>('set_id'),
+              weightKg: weight,
+              reps: reps,
+              oneRepMaxKg: StrengthFormulas.epley1RMKg(
+                weightKg: weight,
+                reps: reps,
+              ),
+              repCountForRepMax: reps,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _processBodyweightExercise({
+    required List<QueryRow> rows,
+    required String exerciseId,
+    required String exerciseName,
+    required String workoutId,
+    required DateTime achievedAt,
+    required bool canEmit,
+    required Map<String, int> mostRepsInSetByExercise,
+    required Map<String, int> mostRepsInWorkoutByExercise,
+    required List<PrEvent> events,
+  }) {
+    QueryRow? bestSetRow;
+    int totalReps = 0;
+    for (final QueryRow row in rows) {
+      final int? reps = row.read<int?>('reps');
+      if (reps == null || reps <= 0) continue;
+      totalReps += reps;
+      if (bestSetRow == null || reps > bestSetRow.read<int>('reps')) {
+        bestSetRow = row;
+      }
+    }
+
+    if (bestSetRow != null) {
+      final int reps = bestSetRow.read<int>('reps');
+      final int prev = mostRepsInSetByExercise[exerciseId] ?? 0;
+      if (reps > prev) {
+        mostRepsInSetByExercise[exerciseId] = reps;
+        if (canEmit) {
+          events.add(
+            PrEvent(
+              type: PrType.mostRepsInSet,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              exerciseType: ExerciseType.bodyweight,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              setId: bestSetRow.read<String>('set_id'),
+              reps: reps,
+            ),
+          );
+        }
+      }
+    }
+
+    if (totalReps > 0) {
+      final int prev = mostRepsInWorkoutByExercise[exerciseId] ?? 0;
+      if (totalReps > prev) {
+        mostRepsInWorkoutByExercise[exerciseId] = totalReps;
+        if (canEmit) {
+          events.add(
+            PrEvent(
+              type: PrType.mostRepsInWorkout,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              exerciseType: ExerciseType.bodyweight,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              reps: totalReps,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _processCardioExercise({
+    required List<QueryRow> rows,
+    required String exerciseId,
+    required String exerciseName,
+    required String workoutId,
+    required DateTime achievedAt,
+    required bool canEmit,
+    required Map<String, double> longestDistanceByExercise,
+    required Map<String, int> longestDurationByExercise,
+    required List<PrEvent> events,
+  }) {
+    QueryRow? bestDistanceRow;
+    double bestDistanceValue = 0;
+    QueryRow? bestDurationRow;
+    int bestDurationValue = 0;
+
+    for (final QueryRow row in rows) {
+      final double? km = row.read<double?>('distance_km');
+      if (km != null && km > bestDistanceValue) {
+        bestDistanceValue = km;
+        bestDistanceRow = row;
+      }
+      final int? secs = row.read<int?>('duration_seconds');
+      if (secs != null && secs > bestDurationValue) {
+        bestDurationValue = secs;
+        bestDurationRow = row;
+      }
+    }
+
+    if (bestDistanceRow != null) {
+      final double prev = longestDistanceByExercise[exerciseId] ?? 0;
+      if (bestDistanceValue > prev) {
+        longestDistanceByExercise[exerciseId] = bestDistanceValue;
+        if (canEmit) {
+          events.add(
+            PrEvent(
+              type: PrType.longestDistance,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              exerciseType: ExerciseType.cardio,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              setId: bestDistanceRow.read<String>('set_id'),
+              distanceKm: bestDistanceValue,
+            ),
+          );
+        }
+      }
+    }
+
+    if (bestDurationRow != null) {
+      final int prev = longestDurationByExercise[exerciseId] ?? 0;
+      if (bestDurationValue > prev) {
+        longestDurationByExercise[exerciseId] = bestDurationValue;
+        if (canEmit) {
+          events.add(
+            PrEvent(
+              type: PrType.longestDuration,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              exerciseType: ExerciseType.cardio,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              setId: bestDurationRow.read<String>('set_id'),
+              durationSeconds: bestDurationValue,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  /// Set of finished workout ids that have at least one non-empty note —
+  /// at the workout, workout-exercise, or set level. Backs the History
+  /// "Notes" filter chip ("show me sessions where I wrote something
+  /// down"). Streams from Drift across all three tables so the set
+  /// updates the moment the user types into a notes sheet.
+  Stream<Set<String>> watchWorkoutsWithAnyNote() {
+    final Selectable<QueryRow> query = _database.customSelect(
+      'SELECT DISTINCT w.id AS workout_id '
+      'FROM workouts w '
+      'WHERE w.ended_at IS NOT NULL '
+      "  AND (w.notes IS NOT NULL AND TRIM(w.notes) != '' "
+      '       OR EXISTS ( '
+      '         SELECT 1 FROM workout_exercises we '
+      '         WHERE we.workout_id = w.id '
+      "           AND we.notes IS NOT NULL AND TRIM(we.notes) != '' "
+      '       ) '
+      '       OR EXISTS ( '
+      '         SELECT 1 FROM workout_exercises we '
+      '         INNER JOIN sets s ON s.workout_exercise_id = we.id '
+      '         WHERE we.workout_id = w.id '
+      "           AND s.note IS NOT NULL AND TRIM(s.note) != '' "
+      '       ) '
+      '  )',
+      variables: <Variable<Object>>[],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{
+        _database.workouts,
+        _database.workoutExercises,
+        _database.sets,
+      },
+    );
+
+    return query.watch().map((List<QueryRow> rows) {
+      return Set<String>.unmodifiable(<String>{
+        for (final QueryRow row in rows) row.read<String>('workout_id'),
+      });
+    });
+  }
+
+  /// Per-workout view of which exercises were performed: each finished
+  /// workout maps to the ordered list of (exerciseId, exerciseName) entries
+  /// for every exercise added to it. Powers the History search/filter — the
+  /// Exercise filter ANDs against the id set, and the search text ANDs
+  /// against names.
+  ///
+  /// Streams from Drift across workouts, workout_exercises, and exercises
+  /// so the result map updates immediately when an exercise is added,
+  /// removed, or renamed during the active workout (which then gets
+  /// finished and shows up here).
+  Stream<Map<String, List<({String id, String name})>>>
+  watchExercisesByFinishedWorkout() {
+    final Selectable<QueryRow> query = _database.customSelect(
+      'SELECT we.workout_id AS workout_id, '
+      '       we.order_index AS order_index, '
+      '       e.id AS exercise_id, e.name AS exercise_name '
+      'FROM workout_exercises we '
+      'INNER JOIN workouts w ON we.workout_id = w.id '
+      'INNER JOIN exercises e ON we.exercise_id = e.id '
+      'WHERE w.ended_at IS NOT NULL '
+      'ORDER BY we.workout_id ASC, we.order_index ASC',
+      variables: <Variable<Object>>[],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{
+        _database.workouts,
+        _database.workoutExercises,
+        _database.exercises,
+      },
+    );
+
+    return query.watch().map((List<QueryRow> rows) {
+      final Map<String, List<({String id, String name})>> byWorkout =
+          <String, List<({String id, String name})>>{};
+      for (final QueryRow row in rows) {
+        final String workoutId = row.read<String>('workout_id');
+        byWorkout
+            .putIfAbsent(workoutId, () => <({String id, String name})>[])
+            .add((
+              id: row.read<String>('exercise_id'),
+              name: row.read<String>('exercise_name'),
+            ));
+      }
+      return Map<String, List<({String id, String name})>>.unmodifiable(
+        byWorkout.map(
+          (String key, List<({String id, String name})> value) =>
+              MapEntry<String, List<({String id, String name})>>(
+                key,
+                List<({String id, String name})>.unmodifiable(value),
+              ),
+        ),
+      );
     });
   }
 
@@ -1254,6 +1789,19 @@ class WorkoutRepository {
   Stream<List<ExerciseHistoryDay>> watchExerciseHistoryByDay(
     String exerciseId,
   ) {
+    // Dedupe: every keystroke on any set wakes this stream, but
+    // unfinished workouts are excluded from the result, so during an
+    // active workout the per-exercise history list is unchanged across
+    // emissions. Structural equality drops those redundant emissions
+    // before they reach the strength chart, history sheet, etc.
+    return _watchExerciseHistoryByDayRaw(
+      exerciseId,
+    ).distinct(exerciseHistoryDayListsStructurallyEqual);
+  }
+
+  Stream<List<ExerciseHistoryDay>> _watchExerciseHistoryByDayRaw(
+    String exerciseId,
+  ) {
     late final StreamController<List<ExerciseHistoryDay>> controller;
     final List<StreamSubscription<Object?>> subscriptions =
         <StreamSubscription<Object?>>[];
@@ -1323,7 +1871,138 @@ class WorkoutRepository {
     return _buildWorkoutDetail(workoutRow);
   }
 
+  /// Structural shell of a workout — the workout row plus its ordered
+  /// exercises (workout-exercise rows + exercise definitions) without
+  /// any per-set data. Used by the history detail screen so per-set
+  /// edits don't rebuild the surrounding hero, exercise titles, and
+  /// section labels.
+  Future<WorkoutStructure> getWorkoutStructure(String workoutId) async {
+    final WorkoutRow? workoutRow = await (_database.select(
+      _database.workouts,
+    )..where((tbl) => tbl.id.equals(workoutId))).getSingleOrNull();
+    if (workoutRow == null) {
+      throw WorkoutNotFoundException(workoutId);
+    }
+    final List<WorkoutExerciseRow> workoutExerciseRows =
+        await _loadWorkoutExerciseRows(workoutId);
+    final Map<String, ExerciseRow> exerciseMap = await _loadExerciseMap(
+      workoutExerciseRows.map((row) => row.exerciseId).toList(growable: false),
+    );
+    return WorkoutStructure(
+      workout: workoutRow.toModel(),
+      exercises: List<WorkoutExerciseStructure>.unmodifiable(
+        workoutExerciseRows.map(
+          (WorkoutExerciseRow row) => WorkoutExerciseStructure(
+            workoutExercise: row.toModel(),
+            exercise: exerciseMap[row.exerciseId]!.toModel(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Streams the structural shell — listens only to the workouts,
+  /// workout_exercises, and exercises tables. Set edits never wake this
+  /// stream, so the screen's hero/section frames stay stable while the
+  /// user tweaks RPE, set kind, or notes on individual sets.
+  Stream<WorkoutStructure> watchWorkoutStructure(String workoutId) {
+    late final StreamController<WorkoutStructure> controller;
+    final List<StreamSubscription<Object?>> subscriptions =
+        <StreamSubscription<Object?>>[];
+    bool closed = false;
+    bool loading = false;
+    bool queued = false;
+
+    Future<void> emit() async {
+      if (closed) return;
+      if (loading) {
+        queued = true;
+        return;
+      }
+      loading = true;
+      try {
+        controller.add(await getWorkoutStructure(workoutId));
+      } catch (error, stackTrace) {
+        controller.addError(error, stackTrace);
+      } finally {
+        loading = false;
+      }
+      if (queued && !closed) {
+        queued = false;
+        unawaited(emit());
+      }
+    }
+
+    void scheduleEmit() => unawaited(emit());
+
+    controller = StreamController<WorkoutStructure>.broadcast(
+      onListen: () {
+        subscriptions.addAll(<StreamSubscription<Object?>>[
+          _database
+              .tableUpdates(TableUpdateQuery.onTable(_database.workouts))
+              .listen((_) => scheduleEmit()),
+          _database
+              .tableUpdates(
+                TableUpdateQuery.onTable(_database.workoutExercises),
+              )
+              .listen((_) => scheduleEmit()),
+          _database
+              .tableUpdates(TableUpdateQuery.onTable(_database.exercises))
+              .listen((_) => scheduleEmit()),
+        ]);
+        scheduleEmit();
+      },
+      onCancel: () async {
+        closed = true;
+        for (final StreamSubscription<Object?> sub in subscriptions) {
+          await sub.cancel();
+        }
+      },
+    );
+
+    return controller.stream.distinct(workoutStructuresStructurallyEqual);
+  }
+
+  /// Streams the completed-or-otherwise sets for a single workout-
+  /// exercise, ordered by set number. Filtered Drift query — only emits
+  /// when this exercise's sets actually change. Composed with the
+  /// structure stream by the detail screen so a kind/RPE/note change on
+  /// one exercise rebuilds only that card.
+  Stream<List<WorkoutSet>> watchSetsForWorkoutExercise(
+    String workoutExerciseId,
+  ) {
+    final Stream<List<WorkoutSet>> source =
+        (_database.select(_database.sets)
+              ..where(
+                (tbl) => tbl.workoutExerciseId.equals(workoutExerciseId),
+              )
+              ..orderBy(<OrderingTerm Function(Sets)>[
+                (tbl) => OrderingTerm(expression: tbl.setNumber),
+              ]))
+            .watch()
+            .map(
+              (List<WorkoutSetRow> rows) => List<WorkoutSet>.unmodifiable(
+                rows.map((WorkoutSetRow row) => row.toModel()),
+              ),
+            );
+    return source.distinct(
+      (List<WorkoutSet> a, List<WorkoutSet> b) =>
+          workoutSetListsStructurallyEqual(a, b),
+    );
+  }
+
   Stream<WorkoutDetail> watchWorkoutDetail(String workoutId) {
+    // Dedupe: this stream listens to all four workout/exercise/set tables,
+    // so a keystroke in any unrelated set wakes it up. Drop emissions where
+    // the rebuilt detail is structurally identical to the previous one so
+    // history-detail screens don't repaint while another workout is being
+    // edited.
+    return _watchWorkoutDetailRaw(
+      workoutId,
+    ).distinct(workoutDetailsStructurallyEqual);
+  }
+
+  Stream<WorkoutDetail> _watchWorkoutDetailRaw(String workoutId) {
     late final StreamController<WorkoutDetail> controller;
     final List<StreamSubscription<Object?>> subscriptions =
         <StreamSubscription<Object?>>[];
@@ -1650,4 +2329,163 @@ class _WorkoutExerciseContext {
   final WorkoutExerciseRow workoutExercise;
   final Workout workout;
   final Exercise exercise;
+}
+
+/// Structural equality for `List<ExerciseHistoryDay>`. Models in this app
+/// don't override `==`, so we compare the fields that actually drive
+/// downstream rendering. Used as the predicate for `Stream.distinct` so
+/// unrelated table updates don't wake history-driven UI on every keystroke.
+bool exerciseHistoryDayListsStructurallyEqual(
+  List<ExerciseHistoryDay> a,
+  List<ExerciseHistoryDay> b,
+) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    final ExerciseHistoryDay x = a[i];
+    final ExerciseHistoryDay y = b[i];
+    if (x.workoutId != y.workoutId) return false;
+    if (x.workoutName != y.workoutName) return false;
+    if (x.workoutStartedAt != y.workoutStartedAt) return false;
+    if (x.date != y.date) return false;
+    if (!_workoutSetListsEqual(x.sets, y.sets)) return false;
+  }
+  return true;
+}
+
+/// Structural equality for `List<PrEvent>`.
+bool prEventListsStructurallyEqual(List<PrEvent> a, List<PrEvent> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    final PrEvent x = a[i];
+    final PrEvent y = b[i];
+    if (x.type != y.type) return false;
+    if (x.exerciseId != y.exerciseId) return false;
+    if (x.exerciseName != y.exerciseName) return false;
+    if (x.exerciseType != y.exerciseType) return false;
+    if (x.setId != y.setId) return false;
+    if (x.workoutId != y.workoutId) return false;
+    if (x.weightKg != y.weightKg) return false;
+    if (x.reps != y.reps) return false;
+    if (x.distanceKm != y.distanceKm) return false;
+    if (x.durationSeconds != y.durationSeconds) return false;
+    if (x.oneRepMaxKg != y.oneRepMaxKg) return false;
+    if (x.repCountForRepMax != y.repCountForRepMax) return false;
+    if (x.achievedAt != y.achievedAt) return false;
+  }
+  return true;
+}
+
+/// Internal: tracks the per-exercise running best set (heaviest weight,
+/// tiebreak more reps) for [WorkoutRepository._buildPrEventsFromRows].
+class _BestSet {
+  const _BestSet({required this.weightKg, required this.reps});
+  final double weightKg;
+  final int reps;
+}
+
+/// Structural equality for `WorkoutStructure` — workout fields plus the
+/// per-exercise pair (workout-exercise + exercise definition). Ignores
+/// per-set data; the sets stream is responsible for its own dedupe.
+bool workoutStructuresStructurallyEqual(
+  WorkoutStructure a,
+  WorkoutStructure b,
+) {
+  if (identical(a, b)) return true;
+  if (!_workoutsEqual(a.workout, b.workout)) return false;
+  if (a.exercises.length != b.exercises.length) return false;
+  for (int i = 0; i < a.exercises.length; i++) {
+    final WorkoutExerciseStructure x = a.exercises[i];
+    final WorkoutExerciseStructure y = b.exercises[i];
+    if (!_workoutExercisesEqual(x.workoutExercise, y.workoutExercise)) {
+      return false;
+    }
+    if (!_exercisesEqual(x.exercise, y.exercise)) return false;
+  }
+  return true;
+}
+
+/// Structural equality for `List<WorkoutSet>` — public wrapper around
+/// the private list helper so callers (and `Stream.distinct` predicates)
+/// can use it without reaching for internals.
+bool workoutSetListsStructurallyEqual(List<WorkoutSet> a, List<WorkoutSet> b) {
+  return _workoutSetListsEqual(a, b);
+}
+
+/// Structural equality for `WorkoutDetail`.
+bool workoutDetailsStructurallyEqual(WorkoutDetail a, WorkoutDetail b) {
+  if (identical(a, b)) return true;
+  if (!_workoutsEqual(a.workout, b.workout)) return false;
+  if (a.exercises.length != b.exercises.length) return false;
+  for (int i = 0; i < a.exercises.length; i++) {
+    final WorkoutExerciseDetail x = a.exercises[i];
+    final WorkoutExerciseDetail y = b.exercises[i];
+    if (!_workoutExercisesEqual(x.workoutExercise, y.workoutExercise)) {
+      return false;
+    }
+    if (!_exercisesEqual(x.exercise, y.exercise)) return false;
+    if (!_workoutSetListsEqual(x.sets, y.sets)) return false;
+  }
+  return true;
+}
+
+bool _workoutSetListsEqual(List<WorkoutSet> a, List<WorkoutSet> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    if (!_workoutSetsEqual(a[i], b[i])) return false;
+  }
+  return true;
+}
+
+bool _workoutSetsEqual(WorkoutSet a, WorkoutSet b) {
+  return a.id == b.id &&
+      a.workoutExerciseId == b.workoutExerciseId &&
+      a.setNumber == b.setNumber &&
+      a.weightKg == b.weightKg &&
+      a.reps == b.reps &&
+      a.distanceKm == b.distanceKm &&
+      a.durationSeconds == b.durationSeconds &&
+      a.completed == b.completed &&
+      a.completedAt == b.completedAt &&
+      a.updatedAt == b.updatedAt &&
+      a.startedAt == b.startedAt &&
+      a.kind == b.kind &&
+      a.parentSetId == b.parentSetId &&
+      a.rpe == b.rpe &&
+      a.note == b.note;
+}
+
+bool _workoutsEqual(Workout a, Workout b) {
+  return a.id == b.id &&
+      a.startedAt == b.startedAt &&
+      a.endedAt == b.endedAt &&
+      a.templateId == b.templateId &&
+      a.notes == b.notes &&
+      a.name == b.name &&
+      a.intensityScore == b.intensityScore;
+}
+
+bool _workoutExercisesEqual(WorkoutExercise a, WorkoutExercise b) {
+  return a.id == b.id &&
+      a.workoutId == b.workoutId &&
+      a.exerciseId == b.exerciseId &&
+      a.orderIndex == b.orderIndex &&
+      a.createdAt == b.createdAt &&
+      a.notes == b.notes;
+}
+
+bool _exercisesEqual(Exercise a, Exercise b) {
+  // Skip thumbnailBytes — bytes equality is expensive and a thumbnail
+  // change always produces a fresh row that bumps updatedAt anyway.
+  return a.id == b.id &&
+      a.name == b.name &&
+      a.type == b.type &&
+      a.muscleGroup == b.muscleGroup &&
+      a.thumbnailPath == b.thumbnailPath &&
+      a.isDefault == b.isDefault &&
+      a.createdAt == b.createdAt &&
+      a.updatedAt == b.updatedAt &&
+      a.defaultRestSeconds == b.defaultRestSeconds;
 }

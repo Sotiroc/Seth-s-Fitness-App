@@ -1,0 +1,33 @@
+- generic [active] [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - group:
+              - button [ref=e35]
+              - generic [ref=e36]:
+                - generic: LOGBOOK
+              - generic [ref=e37]:
+                - generic: "0"
+              - generic [ref=e38]:
+                - generic: History
+              - textbox "Search workouts" [ref=e40]
+              - button "Exercise" [ref=e41]
+              - button "Date" [ref=e42]
+              - button "PRs" [ref=e43]
+              - generic [ref=e44]:
+                - generic: Mar 30
+              - generic [ref=e45]:
+                - generic: Apr 6
+              - generic [ref=e46]:
+                - generic: Apr 13
+              - generic [ref=e47]:
+                - generic: Apr 20
+              - generic [ref=e48]:
+                - generic: Apr 27
+              - img [ref=e49]
+              - generic [ref=e50]:
+                - generic: Your training journal starts here
+              - generic [ref=e51]:
+                - generic: Finish your first workout and it will land here, with duration, exercises, and your set-by-set log.

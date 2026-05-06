@@ -8,6 +8,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/duration_formatter.dart';
 import '../../../data/models/exercise_type.dart';
+import '../../../data/models/pr_event.dart';
+import '../../../data/models/unit_system.dart';
+import '../../../data/models/user_profile.dart';
 import '../../../data/models/workout_detail.dart';
 import '../../../data/models/workout_set.dart';
 import '../../../data/models/workout_set_kind.dart';
@@ -15,6 +18,9 @@ import '../../exercises/presentation/widgets/exercise_avatar.dart';
 import '../../exercises/presentation/widgets/exercise_muscle_group_badge.dart';
 import '../../exercises/presentation/widgets/exercise_type_badge.dart';
 import '../../history/application/history_providers.dart';
+import '../../profile/application/user_profile_provider.dart';
+import '../../progression/application/pr_events_provider.dart';
+import '../../progression/presentation/widgets/pr_event_formatting.dart';
 import '../application/workout_session_controller.dart';
 
 /// Shown after a workout is finished. Streams the workout via
@@ -33,24 +39,39 @@ class WorkoutSummaryScreen extends ConsumerStatefulWidget {
 class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
   final TextEditingController _nameController = TextEditingController();
   final FocusNode _nameFocus = FocusNode();
+  final TextEditingController _notesController = TextEditingController();
+  final FocusNode _notesFocus = FocusNode();
   Timer? _saveDebounce;
+  Timer? _notesSaveDebounce;
   String? _lastSavedName;
+  String? _lastSavedNotes;
   int? _selectedIntensity;
   int? _lastSavedIntensity;
   bool _seeded = false;
+
+  /// Whether the celebration popup has been shown for this entry into
+  /// the screen. Guards against re-showing on every rebuild — the
+  /// popup fires exactly once when the workout's PR list first
+  /// resolves with at least one entry.
+  bool _celebrationShown = false;
 
   @override
   void initState() {
     super.initState();
     _nameFocus.addListener(_onFocusChange);
+    _notesFocus.addListener(_onNotesFocusChange);
   }
 
   @override
   void dispose() {
     _saveDebounce?.cancel();
+    _notesSaveDebounce?.cancel();
     _nameFocus.removeListener(_onFocusChange);
     _nameFocus.dispose();
     _nameController.dispose();
+    _notesFocus.removeListener(_onNotesFocusChange);
+    _notesFocus.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -60,8 +81,15 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
     }
   }
 
+  void _onNotesFocusChange() {
+    if (!_notesFocus.hasFocus) {
+      _flushNotesSave();
+    }
+  }
+
   void _seedIfNeeded(
     String? serverName,
+    String? serverNotes,
     int? serverIntensity, {
     int? suggestedIntensity,
   }) {
@@ -69,6 +97,8 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
     _seeded = true;
     _nameController.text = serverName ?? '';
     _lastSavedName = serverName;
+    _notesController.text = serverNotes ?? '';
+    _lastSavedNotes = serverNotes;
     // Prefer the value the user actually saved. When they haven't picked
     // one yet, fall back to the max per-set RPE so the chip already
     // reflects the heaviest set's effort. The fallback is "suggested"
@@ -83,6 +113,12 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
   void _onNameChanged(String _) {
     _saveDebounce?.cancel();
     _saveDebounce = Timer(const Duration(milliseconds: 700), _flushSave);
+  }
+
+  void _onNotesChanged(String _) {
+    _notesSaveDebounce?.cancel();
+    _notesSaveDebounce =
+        Timer(const Duration(milliseconds: 700), _flushNotesSave);
   }
 
   Future<void> _flushSave() async {
@@ -101,6 +137,32 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
         SnackBar(
           content: Text(
             'Could not save name: ${error.toString().replaceFirst('Exception: ', '')}',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _flushNotesSave() async {
+    _notesSaveDebounce?.cancel();
+    final String trimmed = _notesController.text.trim();
+    final String? normalized = trimmed.isEmpty ? null : trimmed;
+    if (normalized == _lastSavedNotes) return;
+    _lastSavedNotes = normalized;
+    try {
+      await ref
+          .read(workoutSessionControllerProvider.notifier)
+          .updateWorkoutNotes(
+            workoutId: widget.workoutId,
+            notes: normalized,
+          );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not save note: ${error.toString().replaceFirst('Exception: ', '')}',
           ),
           duration: const Duration(seconds: 2),
         ),
@@ -146,6 +208,32 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
     final AsyncValue<WorkoutDetail> detailAsync = ref.watch(
       workoutDetailProvider(widget.workoutId),
     );
+    final AsyncValue<List<PrEvent>> prsAsync = ref.watch(
+      prsForWorkoutProvider(widget.workoutId),
+    );
+    final UnitSystem unitSystem = ref
+        .watch(userProfileProvider)
+        .maybeWhen<UnitSystem>(
+          data: (UserProfile? p) => p?.unitSystem ?? UnitSystem.metric,
+          orElse: () => UnitSystem.metric,
+        );
+
+    // Trigger the celebration popup the first time PRs resolve with
+    // at least one entry. We do it from build() with a post-frame
+    // callback so the dialog opens after the screen is in the tree.
+    final List<PrEvent> prs = prsAsync.asData?.value ?? const <PrEvent>[];
+    if (!_celebrationShown && prs.isNotEmpty) {
+      _celebrationShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _PrCelebrationDialog.show(
+          context: context,
+          palette: palette,
+          prs: prs,
+          unitSystem: unitSystem,
+        );
+      });
+    }
 
     return Scaffold(
       backgroundColor: palette.shade50,
@@ -153,6 +241,7 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
         data: (detail) {
           _seedIfNeeded(
             detail.workout.name,
+            detail.workout.notes,
             detail.workout.intensityScore,
             suggestedIntensity: _maxPerSetRpe(detail),
           );
@@ -163,11 +252,17 @@ class _WorkoutSummaryScreenState extends ConsumerState<WorkoutSummaryScreen> {
             nameFocus: _nameFocus,
             onNameChanged: _onNameChanged,
             onSubmitted: _flushSave,
+            notesController: _notesController,
+            notesFocus: _notesFocus,
+            onNotesChanged: _onNotesChanged,
+            onNotesSubmitted: _flushNotesSave,
             selectedIntensity: _selectedIntensity,
             onIntensityChanged: _setIntensity,
             isIntensitySuggested:
                 detail.workout.intensityScore == null &&
                 _selectedIntensity != null,
+            prs: prs,
+            unitSystem: unitSystem,
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -206,9 +301,15 @@ class _SummaryBody extends StatelessWidget {
     required this.nameFocus,
     required this.onNameChanged,
     required this.onSubmitted,
+    required this.notesController,
+    required this.notesFocus,
+    required this.onNotesChanged,
+    required this.onNotesSubmitted,
     required this.selectedIntensity,
     required this.onIntensityChanged,
     required this.isIntensitySuggested,
+    required this.prs,
+    required this.unitSystem,
   });
 
   final WorkoutDetail detail;
@@ -217,9 +318,15 @@ class _SummaryBody extends StatelessWidget {
   final FocusNode nameFocus;
   final ValueChanged<String> onNameChanged;
   final VoidCallback onSubmitted;
+  final TextEditingController notesController;
+  final FocusNode notesFocus;
+  final ValueChanged<String> onNotesChanged;
+  final VoidCallback onNotesSubmitted;
   final int? selectedIntensity;
   final ValueChanged<int?> onIntensityChanged;
   final bool isIntensitySuggested;
+  final List<PrEvent> prs;
+  final UnitSystem unitSystem;
 
   Duration get _duration {
     final DateTime end = detail.workout.endedAt ?? DateTime.now();
@@ -318,6 +425,54 @@ class _SummaryBody extends StatelessWidget {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            0,
+          ),
+          sliver: SliverToBoxAdapter(
+            child: _NotesInputCard(
+              palette: palette,
+              controller: notesController,
+              focusNode: notesFocus,
+              onChanged: onNotesChanged,
+              onSubmitted: onNotesSubmitted,
+            ),
+          ),
+        ),
+        if (prs.isNotEmpty) ...<Widget>[
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.xs,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: _SectionLabel(
+                text: 'Records this session',
+                palette: palette,
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              0,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: _RecordsBlock(
+                prs: prs,
+                palette: palette,
+                unitSystem: unitSystem,
+              ),
+            ),
+          ),
+        ],
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
             AppSpacing.lg,
             AppSpacing.lg,
             AppSpacing.xs,
@@ -372,6 +527,7 @@ class _SummaryBody extends StatelessWidget {
               palette: palette,
               onTap: () {
                 onSubmitted();
+                onNotesSubmitted();
                 context.go('/workouts');
               },
             ),
@@ -872,6 +1028,111 @@ class _NameInputCard extends StatelessWidget {
   }
 }
 
+class _NotesInputCard extends StatelessWidget {
+  const _NotesInputCard({
+    required this.palette,
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+    required this.onSubmitted,
+  });
+
+  final JellyBeanPalette palette;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => focusNode.requestFocus(),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.sm,
+          AppSpacing.md,
+          AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: palette.shade100),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: palette.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.sticky_note_2_outlined,
+                color: palette.shade800,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'NOTES',
+                      style: TextStyle(
+                        color: palette.shade700,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    maxLines: null,
+                    minLines: 2,
+                    maxLength: 500,
+                    keyboardType: TextInputType.multiline,
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: onChanged,
+                    onEditingComplete: onSubmitted,
+                    style: TextStyle(
+                      color: palette.shade950,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      height: 1.4,
+                    ),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                      counterText: '',
+                      hintText:
+                          'How did this workout feel? Anything to remember?',
+                      hintStyle: TextStyle(
+                        color: palette.shade700.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _IntensityInputCard extends StatelessWidget {
   const _IntensityInputCard({
     required this.palette,
@@ -1086,6 +1347,390 @@ class _DoneButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// "Records this session" block on the workout summary. One row per
+/// PR: trophy icon, exercise name, value, type label. Hidden when the
+/// workout had no PRs (the parent only renders us when [prs] is
+/// non-empty).
+class _RecordsBlock extends StatelessWidget {
+  const _RecordsBlock({
+    required this.prs,
+    required this.palette,
+    required this.unitSystem,
+  });
+
+  final List<PrEvent> prs;
+  final JellyBeanPalette palette;
+  final UnitSystem unitSystem;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: palette.shade100),
+      ),
+      child: Column(
+        children: <Widget>[
+          for (int i = 0; i < prs.length; i++) ...<Widget>[
+            if (i > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Container(height: 1, color: palette.shade100),
+              ),
+            _RecordRow(
+              event: prs[i],
+              palette: palette,
+              unitSystem: unitSystem,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RecordRow extends StatelessWidget {
+  const _RecordRow({
+    required this.event,
+    required this.palette,
+    required this.unitSystem,
+  });
+
+  final PrEvent event;
+  final JellyBeanPalette palette;
+  final UnitSystem unitSystem;
+
+  @override
+  Widget build(BuildContext context) {
+    final String value = PrEventFormatting.value(event, unitSystem);
+    final String typeLabel = PrEventFormatting.typeLabel(event);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.emoji_events_rounded,
+              color: Color(0xFFF59E0B),
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  event.exerciseName,
+                  style: TextStyle(
+                    color: palette.shade950,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  typeLabel,
+                  style: TextStyle(
+                    color: palette.shade700,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            value,
+            style: TextStyle(
+              color: palette.shade950,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+              fontFeatures: const <FontFeature>[
+                FontFeature.tabularFigures(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Celebratory dialog that fires once when the summary screen first
+/// resolves PRs. Shows a big trophy, the count, the records list, and
+/// a single dismiss button. Quiet by design — fade-in, no haptics, no
+/// confetti.
+class _PrCelebrationDialog extends StatelessWidget {
+  const _PrCelebrationDialog({
+    required this.palette,
+    required this.prs,
+    required this.unitSystem,
+  });
+
+  final JellyBeanPalette palette;
+  final List<PrEvent> prs;
+  final UnitSystem unitSystem;
+
+  static Future<void> show({
+    required BuildContext context,
+    required JellyBeanPalette palette,
+    required List<PrEvent> prs,
+    required UnitSystem unitSystem,
+  }) {
+    return showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss personal records',
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (BuildContext _, Animation<double> _, Animation<double> _) {
+        return _PrCelebrationDialog(
+          palette: palette,
+          prs: prs,
+          unitSystem: unitSystem,
+        );
+      },
+      transitionBuilder: (BuildContext _, Animation<double> anim,
+          Animation<double> _, Widget child) {
+        final CurvedAnimation curved =
+            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.92, end: 1).animate(curved),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String title = prs.length == 1
+        ? 'New personal record!'
+        : 'New personal records!';
+    final String subtitle = prs.length == 1
+        ? 'You set a new best this session.'
+        : 'You set ${prs.length} new bests this session.';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: <Color>[palette.shade900, palette.shade700],
+                ),
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Center(
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFFF59E0B)
+                              .withValues(alpha: 0.55),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.emoji_events_rounded,
+                        color: Color(0xFFF59E0B),
+                        size: 36,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Center(
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Center(
+                    child: Text(
+                      subtitle,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: palette.shade100.withValues(alpha: 0.9),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.12),
+                      ),
+                    ),
+                    child: Column(
+                      children: <Widget>[
+                        for (int i = 0; i < prs.length && i < 6; i++)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: _DialogPrLine(
+                              event: prs[i],
+                              unitSystem: unitSystem,
+                              palette: palette,
+                            ),
+                          ),
+                        if (prs.length > 6)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              '+${prs.length - 6} more',
+                              style: TextStyle(
+                                color: palette.shade100
+                                    .withValues(alpha: 0.85),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: FilledButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: palette.shade950,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Nice',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DialogPrLine extends StatelessWidget {
+  const _DialogPrLine({
+    required this.event,
+    required this.unitSystem,
+    required this.palette,
+  });
+
+  final PrEvent event;
+  final UnitSystem unitSystem;
+  final JellyBeanPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    final String value = PrEventFormatting.value(event, unitSystem);
+    final String typeLabel = PrEventFormatting.typeLabel(event);
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                event.exerciseName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 1),
+              Text(
+                typeLabel,
+                style: TextStyle(
+                  color: palette.shade100.withValues(alpha: 0.85),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
+            fontFeatures: <FontFeature>[FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
     );
   }
 }

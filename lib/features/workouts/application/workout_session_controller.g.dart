@@ -34,7 +34,7 @@ final class WorkoutSessionControllerProvider
 }
 
 String _$workoutSessionControllerHash() =>
-    r'61440b87b93449b21fa704b4da07cc4588db77ed';
+    r'5e728588529d817c00f30220ae31779b435f9fd3';
 
 abstract class _$WorkoutSessionController extends $AsyncNotifier<void> {
   FutureOr<void> build();
