@@ -320,6 +320,67 @@ class UserProfiles extends Table {
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
 }
 
+/// One persisted weekly summary. Generated automatically once per week
+/// (app-open check) for any completed week the user logged at least one
+/// workout in. Past recaps are immutable snapshots — later edits to the
+/// underlying workouts do NOT mutate already-generated recaps so the
+/// shareable card stays consistent over time.
+@DataClassName('WeeklyRecapRow')
+class WeeklyRecaps extends Table {
+  TextColumn get id => text()();
+
+  /// UTC timestamp of the start of the local week the recap covers
+  /// (Monday 00:00 local, converted to UTC at write time). Unique with
+  /// `weekEnd` — both stored so reads don't have to recompute the range.
+  DateTimeColumn get weekStart => dateTime()();
+
+  /// UTC timestamp marking the exclusive end of the recap window (the
+  /// following Monday 00:00 local, in UTC).
+  DateTimeColumn get weekEnd => dateTime()();
+
+  /// Number of workouts whose `startedAt` fell inside the window.
+  IntColumn get workoutCount => integer()();
+
+  /// Total kg moved across every completed, non-warmup, weighted set in
+  /// the window. Stored canonical (kg) — UI converts to user units.
+  RealColumn get totalVolumeKg => real()();
+
+  /// Sum of (endedAt − startedAt) across the workouts in the window, in
+  /// seconds. Active or unfinished workouts contribute 0.
+  IntColumn get totalDurationSeconds => integer()();
+
+  /// Mean of the 1–10 session intensity scores recorded on the workouts
+  /// in this window. Null when no workout had an intensityScore set.
+  RealColumn get averageRpe => real().nullable()();
+
+  /// Quick scalar so the home card can show "1 PR" without decoding json.
+  IntColumn get prCount => integer()();
+
+  /// JSON-encoded list of `{exerciseName, type, weightKg?, reps?,
+  /// distanceKm?, durationSeconds?, oneRepMaxKg?, repCountForRepMax?}`.
+  /// Captured at generation time so later set/exercise edits don't
+  /// silently mutate the recap card.
+  TextColumn get prsJson => text().nullable()();
+
+  /// JSON-encoded `List<double>` of length 7 — daily kg volume Mon→Sun
+  /// for the small line chart. Stored to keep historic recaps reproducible.
+  TextColumn get dailyVolumeKgJson => text()();
+
+  /// Workout count for the immediately-preceding week. Null means the
+  /// previous week was outside the user's logged history (no comparison
+  /// shown). Stored at generation time so the comparison stays stable.
+  IntColumn get prevWorkoutCount => integer().nullable()();
+
+  /// Total kg volume for the immediately-preceding week. Null when no
+  /// previous-week data was available.
+  RealColumn get prevTotalVolumeKg => real().nullable()();
+
+  DateTimeColumn get generatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
 @DriftDatabase(
   tables: <Type>[
     Exercises,
@@ -331,6 +392,7 @@ class UserProfiles extends Table {
     AppSettings,
     UserProfiles,
     WeightEntries,
+    WeeklyRecaps,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -339,7 +401,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -348,42 +410,91 @@ class AppDatabase extends _$AppDatabase {
       await _createHotPathIndexes();
     },
     onUpgrade: (Migrator m, int from, int to) async {
+      // Web (Drift + IndexedDbFileSystem) can end up with a database whose
+      // user_version PRAGMA is behind the actual schema — e.g. a partially
+      // applied migration or a deploy where the table definition added a
+      // column before the matching migration step landed. Re-running the
+      // raw addColumn / createTable would then throw "duplicate column" /
+      // "table already exists" and brick boot. Guarding every step with
+      // a pragma check makes onUpgrade safely re-runnable.
+      Future<void> addColumnIfMissing(
+        String tableName,
+        String columnName,
+        TableInfo<Table, dynamic> table,
+        GeneratedColumn<Object> column,
+      ) async {
+        if (await _columnExists(tableName, columnName)) return;
+        await m.addColumn(table, column);
+      }
+
+      Future<void> createTableIfMissing(
+        String tableName,
+        TableInfo<Table, dynamic> table,
+      ) async {
+        if (await _tableExists(tableName)) return;
+        await m.createTable(table);
+      }
+
       if (from < 2) {
-        await m.addColumn(workouts, workouts.name);
+        await addColumnIfMissing('workouts', 'name', workouts, workouts.name);
       }
       if (from < 3) {
-        await m.addColumn(exercises, exercises.muscleGroup);
-        await customStatement('''
-          UPDATE exercises
-          SET muscle_group = CASE
-            WHEN type = 'cardio' THEN 'cardio'
-            ELSE 'chest'
-          END
-          ''');
-        for (final DefaultExerciseSeed seed in defaultExerciseSeeds) {
-          await (update(
-            exercises,
-          )..where((tbl) => tbl.id.equals(seed.id))).write(
-            ExercisesCompanion(
-              muscleGroup: Value<ExerciseMuscleGroup>(seed.muscleGroup),
-            ),
-          );
+        final bool addedMuscleGroup =
+            !await _columnExists('exercises', 'muscle_group');
+        await addColumnIfMissing(
+          'exercises',
+          'muscle_group',
+          exercises,
+          exercises.muscleGroup,
+        );
+        if (addedMuscleGroup) {
+          await customStatement('''
+            UPDATE exercises
+            SET muscle_group = CASE
+              WHEN type = 'cardio' THEN 'cardio'
+              ELSE 'chest'
+            END
+            ''');
+          for (final DefaultExerciseSeed seed in defaultExerciseSeeds) {
+            await (update(
+              exercises,
+            )..where((tbl) => tbl.id.equals(seed.id))).write(
+              ExercisesCompanion(
+                muscleGroup: Value<ExerciseMuscleGroup>(seed.muscleGroup),
+              ),
+            );
+          }
         }
       }
       if (from < 4) {
-        await m.addColumn(exercises, exercises.thumbnailBytes);
+        await addColumnIfMissing(
+          'exercises',
+          'thumbnail_bytes',
+          exercises,
+          exercises.thumbnailBytes,
+        );
       }
       if (from < 5) {
-        await m.createTable(userProfiles);
+        await createTableIfMissing('user_profiles', userProfiles);
       }
       if (from < 6) {
-        await m.addColumn(workouts, workouts.intensityScore);
+        await addColumnIfMissing(
+          'workouts',
+          'intensity_score',
+          workouts,
+          workouts.intensityScore,
+        );
       }
       if (from < 7) {
-        await m.addColumn(userProfiles, userProfiles.muscleGoalsJson);
+        await addColumnIfMissing(
+          'user_profiles',
+          'muscle_goals_json',
+          userProfiles,
+          userProfiles.muscleGoalsJson,
+        );
       }
       if (from < 8) {
-        await m.createTable(weightEntries);
+        await createTableIfMissing('weight_entries', weightEntries);
         await customStatement(
           'CREATE INDEX IF NOT EXISTS idx_weight_entries_measured_at '
           'ON weight_entries (measured_at)',
@@ -410,9 +521,24 @@ class AppDatabase extends _$AppDatabase {
         }
       }
       if (from < 9) {
-        await m.addColumn(sets, sets.completedAt);
-        await m.addColumn(sets, sets.updatedAt);
-        await m.addColumn(workoutExercises, workoutExercises.createdAt);
+        await addColumnIfMissing(
+          'sets',
+          'completed_at',
+          sets,
+          sets.completedAt,
+        );
+        await addColumnIfMissing(
+          'sets',
+          'updated_at',
+          sets,
+          sets.updatedAt,
+        );
+        await addColumnIfMissing(
+          'workout_exercises',
+          'created_at',
+          workoutExercises,
+          workoutExercises.createdAt,
+        );
         // Backfill so the auto-close-stale-workout flow has sensible
         // "last activity" timestamps for pre-upgrade rows. Completed sets
         // get the parent workout's endedAt as their completion time
@@ -447,8 +573,18 @@ class AppDatabase extends _$AppDatabase {
         ''');
       }
       if (from < 10) {
-        await m.addColumn(exercises, exercises.defaultRestSeconds);
-        await m.addColumn(sets, sets.startedAt);
+        await addColumnIfMissing(
+          'exercises',
+          'default_rest_seconds',
+          exercises,
+          exercises.defaultRestSeconds,
+        );
+        await addColumnIfMissing(
+          'sets',
+          'started_at',
+          sets,
+          sets.startedAt,
+        );
         // Best-proxy backfill for existing rows: prefer completedAt (a clear
         // interaction signal) and fall back to updatedAt (most recent edit).
         // defaultRestSeconds is intentionally left null on existing exercises
@@ -463,16 +599,26 @@ class AppDatabase extends _$AppDatabase {
         // Per-set kind (warm-up / drop / failure / normal), parent link
         // for drop sets, optional 1–10 RPE, and optional note. All
         // existing rows inherit kind = 'normal' via the column default.
-        await m.addColumn(sets, sets.kind);
-        await m.addColumn(sets, sets.parentSetId);
-        await m.addColumn(sets, sets.rpe);
-        await m.addColumn(sets, sets.note);
+        await addColumnIfMissing('sets', 'kind', sets, sets.kind);
+        await addColumnIfMissing(
+          'sets',
+          'parent_set_id',
+          sets,
+          sets.parentSetId,
+        );
+        await addColumnIfMissing('sets', 'rpe', sets, sets.rpe);
+        await addColumnIfMissing('sets', 'note', sets, sets.note);
       }
       if (from < 12) {
         // Per-exercise (per workout-exercise instance) free-text note.
         // Existing rows leave notes NULL; users add them via the active
         // workout screen "+ Note" affordance.
-        await m.addColumn(workoutExercises, workoutExercises.notes);
+        await addColumnIfMissing(
+          'workout_exercises',
+          'notes',
+          workoutExercises,
+          workoutExercises.notes,
+        );
       }
       if (from < 13) {
         // Indexes on hot-path foreign-key and date columns. Without these
@@ -481,8 +627,39 @@ class AppDatabase extends _$AppDatabase {
         // databases that already have idx_weight_entries_measured_at.
         await _createHotPathIndexes();
       }
+      if (from < 14) {
+        // Persisted weekly recap snapshots. Generation runs on app open;
+        // existing users get an empty table and the first generation pass
+        // backfills any complete week they have workouts in.
+        await createTableIfMissing('weekly_recaps', weeklyRecaps);
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_weekly_recaps_week_start '
+          'ON weekly_recaps (week_start)',
+        );
+      }
     },
   );
+
+  Future<bool> _columnExists(String tableName, String columnName) async {
+    final List<QueryRow> rows = await customSelect(
+      'PRAGMA table_info(${_quoteIdent(tableName)})',
+    ).get();
+    for (final QueryRow row in rows) {
+      if (row.read<String>('name') == columnName) return true;
+    }
+    return false;
+  }
+
+  Future<bool> _tableExists(String tableName) async {
+    final List<QueryRow> rows = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+      variables: <Variable<Object>>[Variable<String>(tableName)],
+    ).get();
+    return rows.isNotEmpty;
+  }
+
+  String _quoteIdent(String identifier) =>
+      '"${identifier.replaceAll('"', '""')}"';
 
   Future<void> _createHotPathIndexes() async {
     await customStatement(
@@ -508,6 +685,10 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_weight_entries_measured_at '
       'ON weight_entries (measured_at)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_weekly_recaps_week_start '
+      'ON weekly_recaps (week_start)',
     );
   }
 }
