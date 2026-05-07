@@ -426,7 +426,7 @@ final class ExerciseBestsProvider
   }
 }
 
-String _$exerciseBestsHash() => r'0965275a6e8435f54b5fd82d9ee036a0b91fb74e';
+String _$exerciseBestsHash() => r'c6705be55318d127d68bb392355156027ec34497';
 
 /// Latest PR per [PrType] for a single exercise. Walks the all-PRs
 /// stream once and keeps the newest (and therefore highest, by the

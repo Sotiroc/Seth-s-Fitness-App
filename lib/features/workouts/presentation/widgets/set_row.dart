@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/duration_formatter.dart';
+import '../../../../data/models/cardio_metric.dart';
+import '../../../../data/models/exercise.dart';
 import '../../../../data/models/exercise_type.dart';
 import '../../../../data/models/workout_set.dart';
 import '../../../../data/models/workout_set_kind.dart';
@@ -17,7 +19,7 @@ class SetRow extends StatefulWidget {
   const SetRow({
     super.key,
     required this.set,
-    required this.exerciseType,
+    required this.exercise,
     required this.previousSummary,
     required this.onCommit,
     this.previousSet,
@@ -29,7 +31,12 @@ class SetRow extends StatefulWidget {
   });
 
   final WorkoutSet set;
-  final ExerciseType exerciseType;
+
+  /// The full exercise definition. Drives both the high-level type
+  /// branch (weighted / bodyweight / cardio) and, for cardio, the
+  /// per-exercise metric list (distance / duration / laps / floors /
+  /// calories) that determines which input fields are rendered.
+  final Exercise exercise;
 
   /// Pre-formatted string for the "Previous" column, or `-` if unavailable.
   final String previousSummary;
@@ -47,6 +54,9 @@ class SetRow extends StatefulWidget {
     int? reps,
     double? distanceKm,
     int? durationSeconds,
+    int? laps,
+    int? floors,
+    int? calories,
     required bool completed,
   })
   onCommit;
@@ -76,6 +86,8 @@ class SetRow extends StatefulWidget {
   /// to the tapped widget.
   final void Function(BuildContext anchorContext)? onTapSetNumber;
 
+  ExerciseType get exerciseType => exercise.type;
+
   @override
   State<SetRow> createState() => _SetRowState();
 }
@@ -85,11 +97,17 @@ class _SetRowState extends State<SetRow> {
   late final TextEditingController _repsController;
   late final TextEditingController _distanceController;
   late final TextEditingController _durationController;
+  late final TextEditingController _lapsController;
+  late final TextEditingController _floorsController;
+  late final TextEditingController _caloriesController;
 
   final FocusNode _weightFocus = FocusNode();
   final FocusNode _repsFocus = FocusNode();
   final FocusNode _distanceFocus = FocusNode();
   final FocusNode _durationFocus = FocusNode();
+  final FocusNode _lapsFocus = FocusNode();
+  final FocusNode _floorsFocus = FocusNode();
+  final FocusNode _caloriesFocus = FocusNode();
 
   bool _saving = false;
   bool _completing = false;
@@ -116,11 +134,23 @@ class _SetRowState extends State<SetRow> {
           ? ''
           : DurationFormatter.formatSeconds(widget.set.durationSeconds!),
     );
+    _lapsController = TextEditingController(
+      text: widget.set.laps?.toString() ?? '',
+    );
+    _floorsController = TextEditingController(
+      text: widget.set.floors?.toString() ?? '',
+    );
+    _caloriesController = TextEditingController(
+      text: widget.set.calories?.toString() ?? '',
+    );
 
     _weightFocus.addListener(() => _commitOnBlur(_weightFocus));
     _repsFocus.addListener(() => _commitOnBlur(_repsFocus));
     _distanceFocus.addListener(() => _commitOnBlur(_distanceFocus));
     _durationFocus.addListener(() => _commitOnBlur(_durationFocus));
+    _lapsFocus.addListener(() => _commitOnBlur(_lapsFocus));
+    _floorsFocus.addListener(() => _commitOnBlur(_floorsFocus));
+    _caloriesFocus.addListener(() => _commitOnBlur(_caloriesFocus));
   }
 
   @override
@@ -152,6 +182,18 @@ class _SetRowState extends State<SetRow> {
           : DurationFormatter.formatSeconds(widget.set.durationSeconds!);
       if (_durationController.text != next) _durationController.text = next;
     }
+    if (!_lapsFocus.hasFocus) {
+      final String next = widget.set.laps?.toString() ?? '';
+      if (_lapsController.text != next) _lapsController.text = next;
+    }
+    if (!_floorsFocus.hasFocus) {
+      final String next = widget.set.floors?.toString() ?? '';
+      if (_floorsController.text != next) _floorsController.text = next;
+    }
+    if (!_caloriesFocus.hasFocus) {
+      final String next = widget.set.calories?.toString() ?? '';
+      if (_caloriesController.text != next) _caloriesController.text = next;
+    }
   }
 
   @override
@@ -160,10 +202,16 @@ class _SetRowState extends State<SetRow> {
     _repsController.dispose();
     _distanceController.dispose();
     _durationController.dispose();
+    _lapsController.dispose();
+    _floorsController.dispose();
+    _caloriesController.dispose();
     _weightFocus.dispose();
     _repsFocus.dispose();
     _distanceFocus.dispose();
     _durationFocus.dispose();
+    _lapsFocus.dispose();
+    _floorsFocus.dispose();
+    _caloriesFocus.dispose();
     super.dispose();
   }
 
@@ -201,6 +249,12 @@ class _SetRowState extends State<SetRow> {
     return DurationFormatter.parseSeconds(text);
   }
 
+  int? _parseInt(TextEditingController c) {
+    final String text = c.text.trim();
+    if (text.isEmpty) return null;
+    return int.tryParse(text);
+  }
+
   /// Returns `true` when the commit reached the server successfully so
   /// callers can distinguish a real completion from a swallowed error.
   Future<bool> _commit({
@@ -219,24 +273,32 @@ class _SetRowState extends State<SetRow> {
           await widget.onCommit(
             weightKg: _parseWeight(),
             reps: _parseReps(),
-            distanceKm: null,
-            durationSeconds: null,
             completed: completed,
           );
         case ExerciseType.bodyweight:
           await widget.onCommit(
-            weightKg: null,
             reps: _parseReps(),
-            distanceKm: null,
-            durationSeconds: null,
             completed: completed,
           );
         case ExerciseType.cardio:
+          final List<CardioMetric> tracked =
+              widget.exercise.resolveCardioMetrics();
           await widget.onCommit(
-            weightKg: null,
-            reps: null,
-            distanceKm: _parseDistance(),
-            durationSeconds: _parseDuration(),
+            distanceKm: tracked.contains(CardioMetric.distance)
+                ? _parseDistance()
+                : null,
+            durationSeconds: tracked.contains(CardioMetric.duration)
+                ? _parseDuration()
+                : null,
+            laps: tracked.contains(CardioMetric.laps)
+                ? _parseInt(_lapsController)
+                : null,
+            floors: tracked.contains(CardioMetric.floors)
+                ? _parseInt(_floorsController)
+                : null,
+            calories: tracked.contains(CardioMetric.calories)
+                ? _parseInt(_caloriesController)
+                : null,
             completed: completed,
           );
       }
@@ -301,12 +363,27 @@ class _SetRowState extends State<SetRow> {
       case ExerciseType.bodyweight:
         _repsController.text = prev.reps?.toString() ?? '';
       case ExerciseType.cardio:
-        _distanceController.text = prev.distanceKm == null
-            ? ''
-            : _formatNumber(prev.distanceKm!);
-        _durationController.text = prev.durationSeconds == null
-            ? ''
-            : DurationFormatter.formatSeconds(prev.durationSeconds!);
+        final List<CardioMetric> tracked =
+            widget.exercise.resolveCardioMetrics();
+        if (tracked.contains(CardioMetric.distance)) {
+          _distanceController.text = prev.distanceKm == null
+              ? ''
+              : _formatNumber(prev.distanceKm!);
+        }
+        if (tracked.contains(CardioMetric.duration)) {
+          _durationController.text = prev.durationSeconds == null
+              ? ''
+              : DurationFormatter.formatSeconds(prev.durationSeconds!);
+        }
+        if (tracked.contains(CardioMetric.laps)) {
+          _lapsController.text = prev.laps?.toString() ?? '';
+        }
+        if (tracked.contains(CardioMetric.floors)) {
+          _floorsController.text = prev.floors?.toString() ?? '';
+        }
+        if (tracked.contains(CardioMetric.calories)) {
+          _caloriesController.text = prev.calories?.toString() ?? '';
+        }
     }
 
     await _commit(completed: false);
@@ -320,8 +397,28 @@ class _SetRowState extends State<SetRow> {
       case ExerciseType.bodyweight:
         if (_parseReps() == null) return 'Enter reps first.';
       case ExerciseType.cardio:
-        if (_parseDistance() == null) return 'Enter distance first.';
-        if (_parseDuration() == null) return 'Enter time first.';
+        final List<CardioMetric> tracked =
+            widget.exercise.resolveCardioMetrics();
+        for (final CardioMetric metric in tracked) {
+          switch (metric) {
+            case CardioMetric.distance:
+              if (_parseDistance() == null) return 'Enter distance first.';
+            case CardioMetric.duration:
+              if (_parseDuration() == null) return 'Enter time first.';
+            case CardioMetric.laps:
+              if (_parseInt(_lapsController) == null) {
+                return 'Enter laps first.';
+              }
+            case CardioMetric.floors:
+              if (_parseInt(_floorsController) == null) {
+                return 'Enter floors first.';
+              }
+            case CardioMetric.calories:
+              if (_parseInt(_caloriesController) == null) {
+                return 'Enter calories first.';
+              }
+          }
+        }
     }
     return null;
   }
@@ -515,31 +612,75 @@ class _SetRowState extends State<SetRow> {
           ),
         ];
       case ExerciseType.cardio:
-        return <Widget>[
-          Expanded(
-            flex: 2,
-            child: _NumberField(
-              controller: _distanceController,
-              focusNode: _distanceFocus,
-              palette: palette,
-              hint: 'km',
-              decimal: true,
-              enabled: !widget.set.completed,
-              onSubmitted: () => _commit(completed: false),
+        final List<CardioMetric> tracked =
+            widget.exercise.resolveCardioMetrics();
+        // One field per tracked metric, separated by 6pt spacers. The
+        // total Expanded flex stays at 4 so the row width stays balanced
+        // regardless of how many metrics are configured.
+        final List<Widget> fields = <Widget>[];
+        for (int i = 0; i < tracked.length; i++) {
+          if (i > 0) fields.add(const SizedBox(width: 6));
+          fields.add(
+            Expanded(
+              flex: tracked.length == 1 ? 4 : 2,
+              child: _fieldForMetric(tracked[i], palette),
             ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            flex: 2,
-            child: _DurationField(
-              controller: _durationController,
-              focusNode: _durationFocus,
-              palette: palette,
-              enabled: !widget.set.completed,
-              onSubmitted: () => _commit(completed: false),
-            ),
-          ),
-        ];
+          );
+        }
+        return fields;
+    }
+  }
+
+  Widget _fieldForMetric(CardioMetric metric, JellyBeanPalette palette) {
+    switch (metric) {
+      case CardioMetric.distance:
+        return _NumberField(
+          controller: _distanceController,
+          focusNode: _distanceFocus,
+          palette: palette,
+          hint: metric.inputHint,
+          decimal: true,
+          enabled: !widget.set.completed,
+          onSubmitted: () => _commit(completed: false),
+        );
+      case CardioMetric.duration:
+        return _DurationField(
+          controller: _durationController,
+          focusNode: _durationFocus,
+          palette: palette,
+          enabled: !widget.set.completed,
+          onSubmitted: () => _commit(completed: false),
+        );
+      case CardioMetric.laps:
+        return _NumberField(
+          controller: _lapsController,
+          focusNode: _lapsFocus,
+          palette: palette,
+          hint: metric.inputHint,
+          decimal: false,
+          enabled: !widget.set.completed,
+          onSubmitted: () => _commit(completed: false),
+        );
+      case CardioMetric.floors:
+        return _NumberField(
+          controller: _floorsController,
+          focusNode: _floorsFocus,
+          palette: palette,
+          hint: metric.inputHint,
+          decimal: false,
+          enabled: !widget.set.completed,
+          onSubmitted: () => _commit(completed: false),
+        );
+      case CardioMetric.calories:
+        return _NumberField(
+          controller: _caloriesController,
+          focusNode: _caloriesFocus,
+          palette: palette,
+          hint: metric.inputHint,
+          decimal: false,
+          enabled: !widget.set.completed,
+          onSubmitted: () => _commit(completed: false),
+        );
     }
   }
 }

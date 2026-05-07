@@ -1,0 +1,33 @@
+- generic [ref=e7] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - group:
+                  - button [ref=e55]
+                  - generic [ref=e56]:
+                    - generic: READY TO MOVE
+                  - generic [ref=e57]:
+                    - generic: Stronger than last time.
+                  - generic [ref=e58]:
+                    - generic: Your training, written down.
+                  - button "LEGS 0/14 BIS 0/8 TRIS 0/8 CHEST 0/12 BACK 0/14 DELTS 0/10 ABS 0/6 CARDIO 0 min" [ref=e59]
+                  - button "Quick start" [ref=e60]
+                  - button "Start from template" [ref=e61]
+                  - generic [ref=e62]:
+                    - generic: This Month · May
+                  - generic [ref=e63]:
+                    - generic: WORKOUTS
+                  - generic [ref=e64]:
+                    - generic: DURATION
+                  - generic [ref=e65]:
+                    - generic: "0"
+                  - generic [ref=e66]:
+                    - generic: 0m
+          - button "Workouts" [active] [ref=e44]
+          - button "Progression" [ref=e45]
+          - button "Templates" [ref=e46]
+          - button "Exercises" [ref=e47]

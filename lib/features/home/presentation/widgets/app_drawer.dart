@@ -7,6 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../data/models/unit_system.dart';
 import '../../../../data/models/user_profile.dart';
 import '../../../../data/repositories/user_profile_repository.dart';
+import '../../../../data/repositories/weekly_recap_repository.dart';
 import '../../../profile/application/user_profile_provider.dart';
 import '../../../progression/presentation/widgets/log_weight_sheet.dart';
 
@@ -94,6 +95,38 @@ class AppDrawer extends ConsumerWidget {
               },
             ),
             const Spacer(),
+            const Divider(height: 1, indent: 16, endIndent: 16),
+            _DrawerTile(
+              icon: Icons.science_outlined,
+              label: 'Force weekly recap (debug)',
+              palette: palette,
+              onTap: () async {
+                final NavigatorState navigator = Navigator.of(context);
+                final ScaffoldMessengerState messenger =
+                    ScaffoldMessenger.of(context);
+                navigator.pop();
+                try {
+                  final result = await ref
+                      .read(weeklyRecapRepositoryProvider)
+                      .debugForceGenerateLatest();
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        result == null
+                            ? 'No workouts in the last two weeks — '
+                                  'log a set first, then try again.'
+                            : 'Generated recap for week of '
+                                  '${result.weekStart.toLocal()}.',
+                      ),
+                    ),
+                  );
+                } catch (e) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('Could not generate recap: $e')),
+                  );
+                }
+              },
+            ),
           ],
         ),
       ),

@@ -1,0 +1,52 @@
+- generic [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - button "LEGS 0/14 BIS 0/8 TRIS 0/8 CHEST 0/12 BACK 0/14 DELTS 0/10 ABS 0/6 CARDIO 32 min" [ref=e176]
+                - group:
+                  - button [ref=e144]
+                  - generic [ref=e145]:
+                    - generic: WORKOUT IN PROGRESS
+                  - button "Cancel" [ref=e146]
+                  - generic [ref=e147]:
+                    - generic: 04:11
+                  - button "Rest timer on" [ref=e148]
+                  - generic [ref=e149]:
+                    - generic: Elapsed time
+                  - generic [ref=e150]:
+                    - generic: "2"
+                  - generic [ref=e151]:
+                    - generic: 1 / 2
+                  - generic [ref=e152]:
+                    - generic: Exercises
+                  - generic [ref=e153]:
+                    - generic: Sets done
+                  - group "# PREVIOUS TIME -":
+                    - button "B" [ref=e154]
+                    - button "Boxing" [ref=e155]
+                    - button "Add exercise note Note" [ref=e156]
+                    - button "Remove exercise" [ref=e157]
+                    - button "Set 1 details 1" [ref=e158]
+                    - textbox "mm:ss" [ref=e160]
+                    - button "Mark set complete" [ref=e161]
+                    - button "Add set" [ref=e162]
+                  - group "# PREVIOUS LAPS TIME -":
+                    - button "S" [ref=e163]
+                    - button "Swimming" [ref=e164]
+                    - button "Add exercise note Note" [ref=e165]
+                    - button "Remove exercise" [ref=e166]
+                    - button "Set 1 details 1" [ref=e167]
+                    - textbox "laps" [disabled] [ref=e169]: "40"
+                    - textbox "mm:ss" [disabled] [ref=e171]: 32:15
+                    - button "Mark set incomplete" [ref=e177]
+                    - button "Add set" [ref=e173]
+                  - button "Add exercise" [active] [ref=e174]
+                  - button "Finish workout" [ref=e178]
+          - button "Workouts" [ref=e44]
+          - button "Progression" [ref=e45]
+          - button "Templates" [ref=e46]
+          - button "Exercises" [ref=e47]

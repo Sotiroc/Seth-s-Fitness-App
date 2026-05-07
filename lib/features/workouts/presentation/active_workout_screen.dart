@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/duration_formatter.dart';
 import 'widgets/weekly_volume_strip_bar.dart';
+import '../../../data/models/cardio_metric.dart';
 import '../../../data/models/exercise.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/models/workout.dart';
@@ -22,6 +23,7 @@ import '../../exercises/presentation/widgets/exercise_avatar.dart';
 import '../../exercises/presentation/widgets/exercise_history_sheet.dart';
 import '../../exercises/presentation/widgets/exercise_thumbnail_editor.dart';
 import '../../home/presentation/widgets/menu_icon_button.dart';
+import '../../recap/presentation/widgets/weekly_recap_card.dart';
 import '../../templates/application/template_editor_controller.dart';
 import '../../templates/application/template_providers.dart';
 import '../application/active_workout_aggregates_provider.dart';
@@ -327,6 +329,9 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
     required int? reps,
     required double? distanceKm,
     required int? durationSeconds,
+    int? laps,
+    int? floors,
+    int? calories,
     required bool completed,
   }) async {
     try {
@@ -338,6 +343,9 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen> {
             reps: reps,
             distanceKm: distanceKm,
             durationSeconds: durationSeconds,
+            laps: laps,
+            floors: floors,
+            calories: calories,
             completed: completed,
           );
     } catch (error) {
@@ -643,6 +651,15 @@ class _NoActiveWorkout extends ConsumerWidget {
               ],
             ),
           ),
+        ),
+        const SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.lg,
+            AppSpacing.lg,
+            0,
+          ),
+          sliver: SliverToBoxAdapter(child: WeeklyRecapCard()),
         ),
         SliverPadding(
           padding: EdgeInsets.fromLTRB(
@@ -1222,6 +1239,9 @@ class _WorkoutBody extends ConsumerWidget {
     required int? reps,
     required double? distanceKm,
     required int? durationSeconds,
+    int? laps,
+    int? floors,
+    int? calories,
     required bool completed,
   })
   onUpdateSet;
@@ -1767,13 +1787,13 @@ class _EmptyExercises extends StatelessWidget {
 
 String _formatPreviousSetSummary(
   WorkoutSet? set,
-  ExerciseType type, {
+  Exercise exercise, {
   List<WorkoutSet> allPreviousSets = const <WorkoutSet>[],
 }) {
   // Only completed sets contribute to "previous"; in-progress / abandoned
   // sets shouldn't surface as a target the user is trying to match.
   if (set == null || !set.completed) return '-';
-  switch (type) {
+  switch (exercise.type) {
     case ExerciseType.weighted:
       // Compact `weight × reps` notation (e.g. `18kg × 10`). The cross is
       // universal in lifting contexts, so dropping the "reps" suffix keeps
@@ -1790,11 +1810,46 @@ String _formatPreviousSetSummary(
     case ExerciseType.bodyweight:
       return '${set.reps ?? 0} reps';
     case ExerciseType.cardio:
-      final String time = DurationFormatter.formatSeconds(
-        set.durationSeconds ?? 0,
-      );
-      return '${_formatNum(set.distanceKm ?? 0)}km · $time';
+      return _formatCardioSummary(set, exercise.resolveCardioMetrics());
   }
+}
+
+String _cardioHeaderLabel(CardioMetric metric) {
+  switch (metric) {
+    case CardioMetric.distance:
+      return 'KM';
+    case CardioMetric.duration:
+      return 'TIME';
+    case CardioMetric.laps:
+      return 'LAPS';
+    case CardioMetric.floors:
+      return 'FLOORS';
+    case CardioMetric.calories:
+      return 'CAL';
+  }
+}
+
+String _formatCardioSummary(WorkoutSet set, List<CardioMetric> metrics) {
+  final List<String> parts = <String>[];
+  for (final CardioMetric metric in metrics) {
+    switch (metric) {
+      case CardioMetric.distance:
+        if (set.distanceKm != null) {
+          parts.add('${_formatNum(set.distanceKm!)}km');
+        }
+      case CardioMetric.duration:
+        if (set.durationSeconds != null) {
+          parts.add(DurationFormatter.formatSeconds(set.durationSeconds!));
+        }
+      case CardioMetric.laps:
+        if (set.laps != null) parts.add('${set.laps} laps');
+      case CardioMetric.floors:
+        if (set.floors != null) parts.add('${set.floors} floors');
+      case CardioMetric.calories:
+        if (set.calories != null) parts.add('${set.calories} cal');
+    }
+  }
+  return parts.isEmpty ? '-' : parts.join(' · ');
 }
 
 String _formatNum(double value) {
@@ -1930,6 +1985,9 @@ class _ExerciseCard extends ConsumerWidget {
     required int? reps,
     required double? distanceKm,
     required int? durationSeconds,
+    int? laps,
+    int? floors,
+    int? calories,
     required bool completed,
   })
   onUpdateSet;
@@ -2022,7 +2080,7 @@ class _ExerciseCard extends ConsumerWidget {
               ),
             ),
           const SizedBox(height: AppSpacing.sm),
-          _SetTableHeader(type: detail.exercise.type, palette: palette),
+          _SetTableHeader(exercise: detail.exercise, palette: palette),
           const SizedBox(height: 2),
           if (detail.sets.isEmpty)
             Padding(
@@ -2071,7 +2129,7 @@ class _ExerciseCard extends ConsumerWidget {
           in previousSetBySetNumber.entries)
         entry.key: _formatPreviousSetSummary(
           entry.value,
-          detail.exercise.type,
+          detail.exercise,
           allPreviousSets: previousSets,
         ),
     };
@@ -2161,7 +2219,7 @@ class _ExerciseCard extends ConsumerWidget {
             child: SetRow(
               key: ValueKey<String>(set.id),
               set: set,
-              exerciseType: detail.exercise.type,
+              exercise: detail.exercise,
               previousSummary: previousSummary,
               // Same gate as `_formatPreviousSetSummary`: an
               // in-progress / abandoned previous set is neither
@@ -2183,6 +2241,9 @@ class _ExerciseCard extends ConsumerWidget {
                     int? durationSeconds,
                     int? reps,
                     double? weightKg,
+                    int? laps,
+                    int? floors,
+                    int? calories,
                   }) {
                     return onUpdateSet(
                       workoutSetId: set.id,
@@ -2190,6 +2251,9 @@ class _ExerciseCard extends ConsumerWidget {
                       reps: reps,
                       distanceKm: distanceKm,
                       durationSeconds: durationSeconds,
+                      laps: laps,
+                      floors: floors,
+                      calories: calories,
                       completed: completed,
                     );
                   },
@@ -2297,9 +2361,9 @@ class _AddDropSetAffordance extends StatelessWidget {
 }
 
 class _SetTableHeader extends StatelessWidget {
-  const _SetTableHeader({required this.type, required this.palette});
+  const _SetTableHeader({required this.exercise, required this.palette});
 
-  final ExerciseType type;
+  final Exercise exercise;
   final JellyBeanPalette palette;
 
   @override
@@ -2311,36 +2375,45 @@ class _SetTableHeader extends StatelessWidget {
       letterSpacing: 1.0,
     );
 
-    final List<Widget> valueHeaders = switch (type) {
-      ExerciseType.weighted => <Widget>[
-        Expanded(
-          flex: 2,
-          child: Text('KG', textAlign: TextAlign.center, style: headerStyle),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          flex: 2,
-          child: Text('REPS', textAlign: TextAlign.center, style: headerStyle),
-        ),
-      ],
-      ExerciseType.bodyweight => <Widget>[
-        Expanded(
-          flex: 4,
-          child: Text('REPS', textAlign: TextAlign.center, style: headerStyle),
-        ),
-      ],
-      ExerciseType.cardio => <Widget>[
-        Expanded(
-          flex: 2,
-          child: Text('KM', textAlign: TextAlign.center, style: headerStyle),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          flex: 2,
-          child: Text('TIME', textAlign: TextAlign.center, style: headerStyle),
-        ),
-      ],
-    };
+    final List<Widget> valueHeaders;
+    switch (exercise.type) {
+      case ExerciseType.weighted:
+        valueHeaders = <Widget>[
+          Expanded(
+            flex: 2,
+            child: Text('KG', textAlign: TextAlign.center, style: headerStyle),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            flex: 2,
+            child:
+                Text('REPS', textAlign: TextAlign.center, style: headerStyle),
+          ),
+        ];
+      case ExerciseType.bodyweight:
+        valueHeaders = <Widget>[
+          Expanded(
+            flex: 4,
+            child:
+                Text('REPS', textAlign: TextAlign.center, style: headerStyle),
+          ),
+        ];
+      case ExerciseType.cardio:
+        final List<CardioMetric> tracked = exercise.resolveCardioMetrics();
+        valueHeaders = <Widget>[
+          for (int i = 0; i < tracked.length; i++) ...<Widget>[
+            if (i > 0) const SizedBox(width: 6),
+            Expanded(
+              flex: tracked.length == 1 ? 4 : 2,
+              child: Text(
+                _cardioHeaderLabel(tracked[i]),
+                textAlign: TextAlign.center,
+                style: headerStyle,
+              ),
+            ),
+          ],
+        ];
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),

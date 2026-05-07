@@ -28,6 +28,12 @@ abstract final class PrEventFormatting {
         return 'Longest distance';
       case PrType.longestDuration:
         return 'Longest duration';
+      case PrType.mostLaps:
+        return 'Most laps';
+      case PrType.mostFloors:
+        return 'Most floors';
+      case PrType.mostCalories:
+        return 'Most calories';
     }
   }
 
@@ -51,6 +57,12 @@ abstract final class PrEventFormatting {
         return UnitConversions.formatDistance(e.distanceKm, system) ?? '';
       case PrType.longestDuration:
         return DurationFormatter.formatSeconds(e.durationSeconds ?? 0);
+      case PrType.mostLaps:
+        return '${e.laps ?? 0} laps';
+      case PrType.mostFloors:
+        return '${e.floors ?? 0} floors';
+      case PrType.mostCalories:
+        return '${e.calories ?? 0} cal';
     }
   }
 
@@ -72,6 +84,9 @@ abstract final class PrEventFormatting {
       case PrType.mostRepsInWorkout:
       case PrType.longestDistance:
       case PrType.longestDuration:
+      case PrType.mostLaps:
+      case PrType.mostFloors:
+      case PrType.mostCalories:
         return null;
     }
   }

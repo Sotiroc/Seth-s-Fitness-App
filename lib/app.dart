@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +7,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/app_splash.dart';
 import 'data/database_bootstrap.dart';
+import 'data/repositories/weekly_recap_repository.dart';
 import 'features/workouts/application/active_workout_provider.dart';
 import 'features/workouts/application/workout_recovery_controller.dart';
 
@@ -48,6 +51,7 @@ class _FitnessAppState extends ConsumerState<FitnessApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _runStaleCheck();
+      _runWeeklyRecapGeneration();
     }
   }
 
@@ -55,6 +59,17 @@ class _FitnessAppState extends ConsumerState<FitnessApp>
     // The controller is idempotent (inFlight + recoveredWorkout guards),
     // so it's safe to fire from both lifecycle and stream listeners.
     ref.read(workoutRecoveryControllerProvider.notifier).checkForStaleWorkout();
+  }
+
+  /// Re-run weekly-recap generation on resume so a session left open
+  /// across a Sunday boundary picks up the fresh recap without the user
+  /// having to cold-start. The provider already runs the same call on
+  /// first read; this just covers the long-resume case. Idempotent —
+  /// `generateRecapsIfNeeded` skips weeks that already have a row.
+  void _runWeeklyRecapGeneration() {
+    unawaited(
+      ref.read(weeklyRecapRepositoryProvider).generateRecapsIfNeeded(),
+    );
   }
 
   @override

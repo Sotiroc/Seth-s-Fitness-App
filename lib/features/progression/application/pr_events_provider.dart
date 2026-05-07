@@ -82,6 +82,9 @@ class ExercisePrBests {
     this.mostRepsInWorkout,
     this.longestDistance,
     this.longestDuration,
+    this.mostLaps,
+    this.mostFloors,
+    this.mostCalories,
     this.repMaxes = const <int, PrEvent>{},
   });
 
@@ -91,6 +94,9 @@ class ExercisePrBests {
   final PrEvent? mostRepsInWorkout;
   final PrEvent? longestDistance;
   final PrEvent? longestDuration;
+  final PrEvent? mostLaps;
+  final PrEvent? mostFloors;
+  final PrEvent? mostCalories;
 
   /// Heaviest weight the user has ever lifted at each rep count, keyed
   /// by reps. Empty for non-weighted exercises.
@@ -103,6 +109,9 @@ class ExercisePrBests {
       mostRepsInWorkout == null &&
       longestDistance == null &&
       longestDuration == null &&
+      mostLaps == null &&
+      mostFloors == null &&
+      mostCalories == null &&
       repMaxes.isEmpty;
 }
 
@@ -120,6 +129,9 @@ AsyncValue<ExercisePrBests> exerciseBests(Ref ref, String exerciseId) {
     PrEvent? mostRepsInWorkout;
     PrEvent? longestDistance;
     PrEvent? longestDuration;
+    PrEvent? mostLaps;
+    PrEvent? mostFloors;
+    PrEvent? mostCalories;
     final Map<int, PrEvent> repMaxes = <int, PrEvent>{};
 
     // events are newest-first; walk from oldest to newest so the latest
@@ -140,6 +152,12 @@ AsyncValue<ExercisePrBests> exerciseBests(Ref ref, String exerciseId) {
           longestDistance = e;
         case PrType.longestDuration:
           longestDuration = e;
+        case PrType.mostLaps:
+          mostLaps = e;
+        case PrType.mostFloors:
+          mostFloors = e;
+        case PrType.mostCalories:
+          mostCalories = e;
         case PrType.repMax:
           final int? rc = e.repCountForRepMax;
           if (rc != null) repMaxes[rc] = e;
@@ -153,6 +171,9 @@ AsyncValue<ExercisePrBests> exerciseBests(Ref ref, String exerciseId) {
       mostRepsInWorkout: mostRepsInWorkout,
       longestDistance: longestDistance,
       longestDuration: longestDuration,
+      mostLaps: mostLaps,
+      mostFloors: mostFloors,
+      mostCalories: mostCalories,
       repMaxes: Map<int, PrEvent>.unmodifiable(repMaxes),
     );
   });

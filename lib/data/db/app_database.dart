@@ -83,6 +83,25 @@ class Exercises extends Table {
   /// disabled). 0 explicitly disables the rest timer for this exercise.
   IntColumn get defaultRestSeconds => integer().nullable()();
 
+  /// Comma-separated list of `CardioMetric` enum names. Only meaningful
+  /// for cardio exercises — drives which input fields the set row
+  /// renders (e.g. `duration` for boxing, `laps,duration` for swimming).
+  /// Null on cardio rows means "use the legacy default" (distance +
+  /// duration). Always null for non-cardio rows.
+  TextColumn get trackedMetrics => text().nullable()();
+
+  /// Equipment classification (`barbell`, `dumbbell`, `machine`, …). Used
+  /// by the equipment filter chip on the library screen and shown in the
+  /// editor as a small dropdown. Null on legacy rows until the user
+  /// edits the exercise.
+  TextColumn get equipment => text().nullable()();
+
+  /// Optional one-line form cue (~80 chars, e.g. "Drive feet, retract
+  /// shoulders, bar to lower chest"). Renders as quiet text under the
+  /// exercise name on the library card and inside the active-workout
+  /// exercise picker.
+  TextColumn get formCue => text().nullable()();
+
   DateTimeColumn get createdAt => dateTime()();
 
   DateTimeColumn get updatedAt => dateTime()();
@@ -195,6 +214,19 @@ class Sets extends Table {
   RealColumn get distanceKm => real().nullable()();
 
   IntColumn get durationSeconds => integer().nullable()();
+
+  /// Pool laps for swimming sets. Cardio-only; populated when the
+  /// parent exercise's `trackedMetrics` includes `laps`.
+  IntColumn get laps => integer().nullable()();
+
+  /// Floors / flights climbed for stair-master sets. Cardio-only;
+  /// populated when the parent exercise's `trackedMetrics` includes
+  /// `floors`.
+  IntColumn get floors => integer().nullable()();
+
+  /// Manually-entered calorie count. Optional add-on for any cardio
+  /// exercise that opts into the `calories` metric.
+  IntColumn get calories => integer().nullable()();
 
   BoolColumn get completed => boolean().withDefault(const Constant(false))();
 
@@ -401,7 +433,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -636,6 +668,34 @@ class AppDatabase extends _$AppDatabase {
           'CREATE INDEX IF NOT EXISTS idx_weekly_recaps_week_start '
           'ON weekly_recaps (week_start)',
         );
+      }
+      if (from < 15) {
+        // Per-exercise cardio metrics + equipment + form cue on Exercises;
+        // laps / floors / calories on Sets to back the new metrics. Every
+        // existing exercise leaves the new columns null — the resolver in
+        // Exercise.resolveCardioMetrics() falls back to distance+duration
+        // for cardio rows so the legacy behaviour is unchanged.
+        await addColumnIfMissing(
+          'exercises',
+          'tracked_metrics',
+          exercises,
+          exercises.trackedMetrics,
+        );
+        await addColumnIfMissing(
+          'exercises',
+          'equipment',
+          exercises,
+          exercises.equipment,
+        );
+        await addColumnIfMissing(
+          'exercises',
+          'form_cue',
+          exercises,
+          exercises.formCue,
+        );
+        await addColumnIfMissing('sets', 'laps', sets, sets.laps);
+        await addColumnIfMissing('sets', 'floors', sets, sets.floors);
+        await addColumnIfMissing('sets', 'calories', sets, sets.calories);
       }
     },
   );

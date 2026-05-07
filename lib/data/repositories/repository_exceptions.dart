@@ -69,3 +69,8 @@ class InvalidExerciseRestException extends RepositoryException {
   InvalidExerciseRestException()
     : super('Exercise rest must be null or between 0 and 3600 seconds.');
 }
+
+class InvalidExerciseMetricsException extends RepositoryException {
+  InvalidExerciseMetricsException()
+    : super('A cardio exercise must track at least one metric.');
+}

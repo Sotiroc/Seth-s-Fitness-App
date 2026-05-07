@@ -7,7 +7,10 @@ import 'exercise_type.dart';
 ///
 /// - **Weighted**: [bestSet], [e1rm], [repMax].
 /// - **Bodyweight**: [mostRepsInSet], [mostRepsInWorkout].
-/// - **Cardio**: [longestDistance], [longestDuration].
+/// - **Cardio**: [longestDistance], [longestDuration], [mostLaps],
+///   [mostFloors], [mostCalories]. Each cardio PR type only fires for
+///   exercises whose tracked-metric list includes the corresponding
+///   metric.
 enum PrType {
   /// Heaviest single set ever for the exercise (weight × reps).
   /// Weighted exercises only.
@@ -33,6 +36,17 @@ enum PrType {
 
   /// Longest duration in a single cardio set. Cardio only.
   longestDuration,
+
+  /// Most pool laps in a single set. Cardio with `laps` enabled.
+  mostLaps,
+
+  /// Most floors / flights climbed in a single set. Cardio with
+  /// `floors` enabled.
+  mostFloors,
+
+  /// Highest manually-entered calorie count for a single set. Cardio
+  /// with `calories` enabled.
+  mostCalories,
 }
 
 /// One personal-record moment. Surfaced on the workout summary screen,
@@ -62,6 +76,9 @@ class PrEvent {
     this.reps,
     this.distanceKm,
     this.durationSeconds,
+    this.laps,
+    this.floors,
+    this.calories,
     this.oneRepMaxKg,
     this.repCountForRepMax,
   });
@@ -102,6 +119,15 @@ class PrEvent {
 
   /// Cardio ([longestDuration]) — duration in seconds.
   final int? durationSeconds;
+
+  /// Cardio ([mostLaps]) — pool-lap count.
+  final int? laps;
+
+  /// Cardio ([mostFloors]) — floors / flights climbed.
+  final int? floors;
+
+  /// Cardio ([mostCalories]) — manually-entered calorie count.
+  final int? calories;
 
   /// Weighted ([e1rm], also informational on [bestSet] / [repMax]) —
   /// Epley-estimated 1RM in kg.

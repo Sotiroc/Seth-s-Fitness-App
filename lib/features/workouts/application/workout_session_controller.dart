@@ -161,6 +161,9 @@ class WorkoutSessionController extends _$WorkoutSessionController {
     required int? reps,
     required double? distanceKm,
     required int? durationSeconds,
+    int? laps,
+    int? floors,
+    int? calories,
     required bool completed,
   }) {
     return _runMutation(() async {
@@ -172,6 +175,9 @@ class WorkoutSessionController extends _$WorkoutSessionController {
             reps: reps,
             distanceKm: distanceKm,
             durationSeconds: durationSeconds,
+            laps: laps,
+            floors: floors,
+            calories: calories,
             completed: completed,
           );
       return workoutSet;

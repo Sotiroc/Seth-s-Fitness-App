@@ -1,0 +1,25 @@
+- generic [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic "Dialog":
+              - generic [ref=e82]:
+                - generic: Add exercise
+              - button [ref=e83]
+              - textbox "Search exercises" [active] [ref=e85]: Boxing
+              - group:
+                - button "All" [ref=e86]
+                - button "Weighted" [ref=e87]
+                - button "Bodyweight" [ref=e88]
+                - button "Cardio" [ref=e89]
+              - generic:
+                - group:
+                  - button "Create new exercise Add it to your library and this workout." [ref=e90]
+                  - button "B Boxing Stay light, hands up, exhale on each punch. Round structure with breaks. CARDIO CARDIO" [ref=e100]
+                  - button "K Kickboxing Mix punches and kicks. Stay light on feet, breathe rhythmically. CARDIO CARDIO" [ref=e101]
+          - button "Workouts" [ref=e44]
+          - button "Progression" [ref=e45]
+          - button "Templates" [ref=e46]
+          - button "Exercises" [ref=e47]

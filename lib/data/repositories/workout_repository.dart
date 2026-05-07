@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/utils/strength_formulas.dart';
 import '../db/app_database.dart';
 import '../db/database_providers.dart';
+import '../models/cardio_metric.dart';
 import '../models/database_mappers.dart';
 import '../models/exercise.dart';
 import '../models/exercise_history_day.dart';
@@ -322,6 +323,9 @@ class WorkoutRepository {
             reps: const Value<int?>(null),
             distanceKm: const Value<double?>(null),
             durationSeconds: const Value<int?>(null),
+            laps: const Value<int?>(null),
+            floors: const Value<int?>(null),
+            calories: const Value<int?>(null),
             completed: Value<bool>(workoutSet.completed),
             completedAt: const Value<DateTime?>(null),
             updatedAt: Value<DateTime?>(now),
@@ -343,6 +347,9 @@ class WorkoutRepository {
     required double? distanceKm,
     required int? durationSeconds,
     required bool completed,
+    int? laps,
+    int? floors,
+    int? calories,
   }) async {
     final WorkoutSetRow setRow = await _getWorkoutSetRow(workoutSetId);
     final _WorkoutExerciseContext context = await _getWorkoutExerciseContext(
@@ -350,11 +357,14 @@ class WorkoutRepository {
     );
     _ensureWorkoutIsActive(context.workout);
     _validateSetValues(
-      exerciseType: context.exercise.type,
+      exercise: context.exercise,
       weightKg: weightKg,
       reps: reps,
       distanceKm: distanceKm,
       durationSeconds: durationSeconds,
+      laps: laps,
+      floors: floors,
+      calories: calories,
       completed: completed,
     );
 
@@ -376,6 +386,9 @@ class WorkoutRepository {
       reps: reps,
       distanceKm: distanceKm,
       durationSeconds: durationSeconds,
+      laps: laps,
+      floors: floors,
+      calories: calories,
       completed: completed,
       completedAt: newCompletedAt,
       updatedAt: now,
@@ -384,6 +397,9 @@ class WorkoutRepository {
       clearReps: reps == null,
       clearDistanceKm: distanceKm == null,
       clearDurationSeconds: durationSeconds == null,
+      clearLaps: laps == null,
+      clearFloors: floors == null,
+      clearCalories: calories == null,
       clearCompletedAt: newCompletedAt == null,
     );
 
@@ -395,6 +411,9 @@ class WorkoutRepository {
         reps: Value<int?>(updated.reps),
         distanceKm: Value<double?>(updated.distanceKm),
         durationSeconds: Value<int?>(updated.durationSeconds),
+        laps: Value<int?>(updated.laps),
+        floors: Value<int?>(updated.floors),
+        calories: Value<int?>(updated.calories),
         completed: Value<bool>(updated.completed),
         completedAt: Value<DateTime?>(updated.completedAt),
         updatedAt: Value<DateTime?>(updated.updatedAt),
@@ -1177,10 +1196,14 @@ class WorkoutRepository {
       'SELECT s.id AS set_id, s.weight_kg AS weight_kg, s.reps AS reps, '
       '       s.distance_km AS distance_km, '
       '       s.duration_seconds AS duration_seconds, '
+      '       s.laps AS laps, '
+      '       s.floors AS floors, '
+      '       s.calories AS calories, '
       '       s.set_number AS set_number, '
       '       w.id AS workout_id, w.started_at AS started_at, '
       '       e.id AS exercise_id, e.name AS exercise_name, '
-      '       e.type AS exercise_type '
+      '       e.type AS exercise_type, '
+      '       e.tracked_metrics AS tracked_metrics '
       'FROM sets s '
       'INNER JOIN workout_exercises we ON s.workout_exercise_id = we.id '
       'INNER JOIN workouts w ON we.workout_id = w.id '
@@ -1222,6 +1245,9 @@ class WorkoutRepository {
     final Map<String, int> mostRepsInWorkoutByExercise = <String, int>{};
     final Map<String, double> longestDistanceByExercise = <String, double>{};
     final Map<String, int> longestDurationByExercise = <String, int>{};
+    final Map<String, int> mostLapsByExercise = <String, int>{};
+    final Map<String, int> mostFloorsByExercise = <String, int>{};
+    final Map<String, int> mostCaloriesByExercise = <String, int>{};
 
     // Tracks which exercises have appeared in at least one earlier
     // *completed* workout. Sets in a workout only emit PRs when their
@@ -1297,6 +1323,9 @@ class WorkoutRepository {
               canEmit: canEmit,
               longestDistanceByExercise: longestDistanceByExercise,
               longestDurationByExercise: longestDurationByExercise,
+              mostLapsByExercise: mostLapsByExercise,
+              mostFloorsByExercise: mostFloorsByExercise,
+              mostCaloriesByExercise: mostCaloriesByExercise,
               events: events,
             );
         }
@@ -1527,12 +1556,31 @@ class WorkoutRepository {
     required bool canEmit,
     required Map<String, double> longestDistanceByExercise,
     required Map<String, int> longestDurationByExercise,
+    required Map<String, int> mostLapsByExercise,
+    required Map<String, int> mostFloorsByExercise,
+    required Map<String, int> mostCaloriesByExercise,
     required List<PrEvent> events,
   }) {
+    // Resolve which metrics this exercise actually tracks, so we don't
+    // emit (e.g.) longestDistance for boxing or mostLaps for treadmill.
+    // null/empty falls back to the legacy default (distance + duration).
+    final String? metricsRaw = rows.first.read<String?>('tracked_metrics');
+    final List<CardioMetric>? configured = decodeCardioMetrics(metricsRaw);
+    final List<CardioMetric> tracked =
+        (configured == null || configured.isEmpty)
+            ? defaultCardioMetrics
+            : configured;
+
     QueryRow? bestDistanceRow;
     double bestDistanceValue = 0;
     QueryRow? bestDurationRow;
     int bestDurationValue = 0;
+    QueryRow? bestLapsRow;
+    int bestLapsValue = 0;
+    QueryRow? bestFloorsRow;
+    int bestFloorsValue = 0;
+    QueryRow? bestCaloriesRow;
+    int bestCaloriesValue = 0;
 
     for (final QueryRow row in rows) {
       final double? km = row.read<double?>('distance_km');
@@ -1545,9 +1593,24 @@ class WorkoutRepository {
         bestDurationValue = secs;
         bestDurationRow = row;
       }
+      final int? laps = row.read<int?>('laps');
+      if (laps != null && laps > bestLapsValue) {
+        bestLapsValue = laps;
+        bestLapsRow = row;
+      }
+      final int? floors = row.read<int?>('floors');
+      if (floors != null && floors > bestFloorsValue) {
+        bestFloorsValue = floors;
+        bestFloorsRow = row;
+      }
+      final int? cals = row.read<int?>('calories');
+      if (cals != null && cals > bestCaloriesValue) {
+        bestCaloriesValue = cals;
+        bestCaloriesRow = row;
+      }
     }
 
-    if (bestDistanceRow != null) {
+    if (tracked.contains(CardioMetric.distance) && bestDistanceRow != null) {
       final double prev = longestDistanceByExercise[exerciseId] ?? 0;
       if (bestDistanceValue > prev) {
         longestDistanceByExercise[exerciseId] = bestDistanceValue;
@@ -1568,7 +1631,7 @@ class WorkoutRepository {
       }
     }
 
-    if (bestDurationRow != null) {
+    if (tracked.contains(CardioMetric.duration) && bestDurationRow != null) {
       final int prev = longestDurationByExercise[exerciseId] ?? 0;
       if (bestDurationValue > prev) {
         longestDurationByExercise[exerciseId] = bestDurationValue;
@@ -1583,6 +1646,69 @@ class WorkoutRepository {
               achievedAt: achievedAt,
               setId: bestDurationRow.read<String>('set_id'),
               durationSeconds: bestDurationValue,
+            ),
+          );
+        }
+      }
+    }
+
+    if (tracked.contains(CardioMetric.laps) && bestLapsRow != null) {
+      final int prev = mostLapsByExercise[exerciseId] ?? 0;
+      if (bestLapsValue > prev) {
+        mostLapsByExercise[exerciseId] = bestLapsValue;
+        if (canEmit) {
+          events.add(
+            PrEvent(
+              type: PrType.mostLaps,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              exerciseType: ExerciseType.cardio,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              setId: bestLapsRow.read<String>('set_id'),
+              laps: bestLapsValue,
+            ),
+          );
+        }
+      }
+    }
+
+    if (tracked.contains(CardioMetric.floors) && bestFloorsRow != null) {
+      final int prev = mostFloorsByExercise[exerciseId] ?? 0;
+      if (bestFloorsValue > prev) {
+        mostFloorsByExercise[exerciseId] = bestFloorsValue;
+        if (canEmit) {
+          events.add(
+            PrEvent(
+              type: PrType.mostFloors,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              exerciseType: ExerciseType.cardio,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              setId: bestFloorsRow.read<String>('set_id'),
+              floors: bestFloorsValue,
+            ),
+          );
+        }
+      }
+    }
+
+    if (tracked.contains(CardioMetric.calories) && bestCaloriesRow != null) {
+      final int prev = mostCaloriesByExercise[exerciseId] ?? 0;
+      if (bestCaloriesValue > prev) {
+        mostCaloriesByExercise[exerciseId] = bestCaloriesValue;
+        if (canEmit) {
+          events.add(
+            PrEvent(
+              type: PrType.mostCalories,
+              exerciseId: exerciseId,
+              exerciseName: exerciseName,
+              exerciseType: ExerciseType.cardio,
+              workoutId: workoutId,
+              achievedAt: achievedAt,
+              setId: bestCaloriesRow.read<String>('set_id'),
+              calories: bestCaloriesValue,
             ),
           );
         }
@@ -2248,11 +2374,14 @@ class WorkoutRepository {
   }
 
   void _validateSetValues({
-    required ExerciseType exerciseType,
+    required Exercise exercise,
     required double? weightKg,
     required int? reps,
     required double? distanceKm,
     required int? durationSeconds,
+    required int? laps,
+    required int? floors,
+    required int? calories,
     required bool completed,
   }) {
     if (weightKg != null && weightKg < 0) {
@@ -2267,10 +2396,23 @@ class WorkoutRepository {
     if (durationSeconds != null && durationSeconds <= 0) {
       throw InvalidWorkoutSetException('Duration must be greater than 0.');
     }
+    if (laps != null && laps <= 0) {
+      throw InvalidWorkoutSetException('Laps must be greater than 0.');
+    }
+    if (floors != null && floors <= 0) {
+      throw InvalidWorkoutSetException('Floors must be greater than 0.');
+    }
+    if (calories != null && calories <= 0) {
+      throw InvalidWorkoutSetException('Calories must be greater than 0.');
+    }
 
-    switch (exerciseType) {
+    switch (exercise.type) {
       case ExerciseType.weighted:
-        if (distanceKm != null || durationSeconds != null) {
+        if (distanceKm != null ||
+            durationSeconds != null ||
+            laps != null ||
+            floors != null ||
+            calories != null) {
           throw InvalidWorkoutSetException(
             'Weighted exercises only support kg and reps.',
           );
@@ -2282,7 +2424,12 @@ class WorkoutRepository {
         }
         return;
       case ExerciseType.bodyweight:
-        if (weightKg != null || distanceKm != null || durationSeconds != null) {
+        if (weightKg != null ||
+            distanceKm != null ||
+            durationSeconds != null ||
+            laps != null ||
+            floors != null ||
+            calories != null) {
           throw InvalidWorkoutSetException(
             'Bodyweight exercises only support reps.',
           );
@@ -2296,13 +2443,57 @@ class WorkoutRepository {
       case ExerciseType.cardio:
         if (weightKg != null || reps != null) {
           throw InvalidWorkoutSetException(
-            'Cardio exercises only support distance and time.',
+            'Cardio exercises only support cardio metrics.',
           );
         }
-        if (completed && (distanceKm == null || durationSeconds == null)) {
+        final List<CardioMetric> tracked = exercise.resolveCardioMetrics();
+        // Reject metrics that aren't enabled for this exercise (e.g.
+        // laps on a treadmill). Keeps stored data consistent with the
+        // exercise's configured shape.
+        if (distanceKm != null && !tracked.contains(CardioMetric.distance)) {
           throw InvalidWorkoutSetException(
-            'Completed cardio sets require distance and time.',
+            'Distance is not tracked for this exercise.',
           );
+        }
+        if (durationSeconds != null &&
+            !tracked.contains(CardioMetric.duration)) {
+          throw InvalidWorkoutSetException(
+            'Duration is not tracked for this exercise.',
+          );
+        }
+        if (laps != null && !tracked.contains(CardioMetric.laps)) {
+          throw InvalidWorkoutSetException(
+            'Laps are not tracked for this exercise.',
+          );
+        }
+        if (floors != null && !tracked.contains(CardioMetric.floors)) {
+          throw InvalidWorkoutSetException(
+            'Floors are not tracked for this exercise.',
+          );
+        }
+        if (calories != null && !tracked.contains(CardioMetric.calories)) {
+          throw InvalidWorkoutSetException(
+            'Calories are not tracked for this exercise.',
+          );
+        }
+        if (completed) {
+          // Every tracked metric must have a value before the set can
+          // be marked complete — the same shape as the legacy validation
+          // (distance + duration), but generalised over the metric list.
+          final Map<CardioMetric, Object?> values = <CardioMetric, Object?>{
+            CardioMetric.distance: distanceKm,
+            CardioMetric.duration: durationSeconds,
+            CardioMetric.laps: laps,
+            CardioMetric.floors: floors,
+            CardioMetric.calories: calories,
+          };
+          for (final CardioMetric metric in tracked) {
+            if (values[metric] == null) {
+              throw InvalidWorkoutSetException(
+                'Completed cardio sets require all tracked metrics.',
+              );
+            }
+          }
         }
         return;
     }
@@ -2370,6 +2561,9 @@ bool prEventListsStructurallyEqual(List<PrEvent> a, List<PrEvent> b) {
     if (x.reps != y.reps) return false;
     if (x.distanceKm != y.distanceKm) return false;
     if (x.durationSeconds != y.durationSeconds) return false;
+    if (x.laps != y.laps) return false;
+    if (x.floors != y.floors) return false;
+    if (x.calories != y.calories) return false;
     if (x.oneRepMaxKg != y.oneRepMaxKg) return false;
     if (x.repCountForRepMax != y.repCountForRepMax) return false;
     if (x.achievedAt != y.achievedAt) return false;

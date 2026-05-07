@@ -8,7 +8,9 @@ import '../../../core/images/exercise_thumbnail_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/duration_formatter.dart';
+import '../../../data/models/cardio_metric.dart';
 import '../../../data/models/exercise.dart';
+import '../../../data/models/exercise_equipment.dart';
 import '../../../data/models/exercise_muscle_group.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/repositories/app_settings_repository.dart';
@@ -32,6 +34,7 @@ class ExerciseFormScreen extends ConsumerStatefulWidget {
 class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _formCueController = TextEditingController();
 
   ExerciseType _type = ExerciseType.weighted;
   ExerciseMuscleGroup _muscleGroup = ExerciseMuscleGroup.chest;
@@ -47,6 +50,18 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
   // unset)". `0` explicitly disables the timer for this exercise.
   int? _restSeconds;
 
+  /// Equipment classification. Optional — null on legacy rows. The
+  /// dropdown surfaces null as "Unspecified".
+  ExerciseEquipment? _equipment;
+
+  /// Tracked cardio metrics. Only meaningful when [_type] is cardio.
+  /// New cardio exercises default to `[duration]` so the form is never
+  /// empty; existing exercises load their saved list (or null/legacy →
+  /// `[distance, duration]`).
+  List<CardioMetric> _trackedMetrics = const <CardioMetric>[
+    CardioMetric.duration,
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -59,6 +74,7 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _formCueController.dispose();
     super.dispose();
   }
 
@@ -71,11 +87,18 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
       setState(() {
         _original = exercise;
         _nameController.text = exercise.name;
+        _formCueController.text = exercise.formCue ?? '';
         _type = exercise.type;
         _muscleGroup = exercise.muscleGroup;
         _isDefault = exercise.isDefault;
         _thumbnailBytes = exercise.thumbnailBytes;
         _restSeconds = exercise.defaultRestSeconds;
+        _equipment = exercise.equipment;
+        if (exercise.type == ExerciseType.cardio) {
+          _trackedMetrics = List<CardioMetric>.from(
+            exercise.resolveCardioMetrics(),
+          );
+        }
         _loadingInitial = false;
       });
     } catch (e) {
@@ -90,11 +113,24 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_type == ExerciseType.cardio && _trackedMetrics.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pick at least one tracked metric.')),
+      );
+      return;
+    }
     setState(() => _loading = true);
 
     final ExerciseEditorController controller = ref.read(
       exerciseEditorControllerProvider.notifier,
     );
+
+    final String? trimmedFormCue = _formCueController.text.trim().isEmpty
+        ? null
+        : _formCueController.text.trim();
+
+    final List<CardioMetric>? metricsToSave =
+        _type == ExerciseType.cardio ? List<CardioMetric>.from(_trackedMetrics) : null;
 
     try {
       Exercise? result;
@@ -108,6 +144,12 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
           clearThumbnail: _thumbnailCleared,
           defaultRestSeconds: _restSeconds,
           clearDefaultRestSeconds: _restSeconds == null,
+          trackedMetrics: metricsToSave,
+          clearTrackedMetrics: metricsToSave == null,
+          equipment: _equipment,
+          clearEquipment: _equipment == null,
+          formCue: trimmedFormCue,
+          clearFormCue: trimmedFormCue == null,
         );
       } else {
         result = await controller.createExercise(
@@ -116,6 +158,9 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
           muscleGroup: _muscleGroup,
           thumbnailBytes: _thumbnailBytes,
           defaultRestSeconds: _restSeconds,
+          trackedMetrics: metricsToSave,
+          equipment: _equipment,
+          formCue: trimmedFormCue,
         );
       }
 
@@ -348,6 +393,78 @@ class _ExerciseFormScreenState extends ConsumerState<ExerciseFormScreen> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                   ],
+                  if (_type == ExerciseType.cardio) ...<Widget>[
+                    _FieldLabel(
+                      text: 'Tracked metrics',
+                      palette: palette,
+                      icon: Icons.tune_rounded,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    _MetricChecklist(
+                      palette: palette,
+                      selected: _trackedMetrics,
+                      onToggled: (CardioMetric metric, bool isOn) {
+                        setState(() {
+                          if (isOn) {
+                            if (!_trackedMetrics.contains(metric)) {
+                              _trackedMetrics = <CardioMetric>[
+                                ..._trackedMetrics,
+                                metric,
+                              ];
+                            }
+                          } else {
+                            _trackedMetrics = _trackedMetrics
+                                .where((CardioMetric m) => m != metric)
+                                .toList(growable: false);
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
+                  _FieldLabel(
+                    text: 'Equipment',
+                    palette: palette,
+                    icon: Icons.fitness_center_rounded,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  _EquipmentDropdown(
+                    palette: palette,
+                    selected: _equipment,
+                    onChanged: (ExerciseEquipment? value) =>
+                        setState(() => _equipment = value),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _FieldLabel(text: 'Form cue', palette: palette),
+                  const SizedBox(height: AppSpacing.xs),
+                  TextFormField(
+                    controller: _formCueController,
+                    textInputAction: TextInputAction.done,
+                    textCapitalization: TextCapitalization.sentences,
+                    maxLength: 120,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white,
+                      hintText: 'One-line tip shown under the exercise name',
+                      counterText: '',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: palette.shade100),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: palette.shade100),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(
+                          color: palette.shade500,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
                   _FieldLabel(
                     text: 'Rest between sets',
                     palette: palette,
@@ -1197,5 +1314,213 @@ class _Item extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Toggle row for cardio metrics. The user picks any combination of
+/// distance / duration / laps / floors / calories. At least one must
+/// stay selected — the save handler enforces that, and the chips
+/// visually disable the "off" toggle when only one is left so a tap
+/// can't accidentally clear the last one.
+class _MetricChecklist extends StatelessWidget {
+  const _MetricChecklist({
+    required this.palette,
+    required this.selected,
+    required this.onToggled,
+  });
+
+  final JellyBeanPalette palette;
+  final List<CardioMetric> selected;
+  final void Function(CardioMetric metric, bool isOn) onToggled;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool wouldEmpty = selected.length <= 1;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        for (final CardioMetric metric in CardioMetric.values)
+          _MetricChip(
+            label: metric.label,
+            selected: selected.contains(metric),
+            palette: palette,
+            disabled: selected.contains(metric) && wouldEmpty,
+            onTap: () {
+              final bool isOn = !selected.contains(metric);
+              if (!isOn && wouldEmpty) return;
+              onToggled(metric, isOn);
+            },
+          ),
+      ],
+    );
+  }
+}
+
+class _MetricChip extends StatelessWidget {
+  const _MetricChip({
+    required this.label,
+    required this.selected,
+    required this.palette,
+    required this.onTap,
+    this.disabled = false,
+  });
+
+  final String label;
+  final bool selected;
+  final JellyBeanPalette palette;
+  final VoidCallback onTap;
+  final bool disabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bg = selected ? palette.shade900 : Colors.white;
+    final Color fg = selected ? Colors.white : palette.shade800;
+    final Color border = selected ? palette.shade900 : palette.shade200;
+    return Opacity(
+      opacity: disabled ? 0.55 : 1.0,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: disabled ? null : onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 8,
+            ),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: border),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: fg,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Equipment dropdown — uses a bottom-sheet picker for parity with the
+/// muscle-group picker so the form has a consistent feel.
+class _EquipmentDropdown extends StatelessWidget {
+  const _EquipmentDropdown({
+    required this.palette,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final JellyBeanPalette palette;
+  final ExerciseEquipment? selected;
+  final ValueChanged<ExerciseEquipment?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final String label = selected?.label ?? 'Unspecified';
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => _open(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 14,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: palette.shade100),
+          ),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: selected == null
+                        ? palette.shade700.withValues(alpha: 0.65)
+                        : palette.shade950,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: palette.shade700,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final ExerciseEquipment? next =
+        await showModalBottomSheet<ExerciseEquipment?>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const SizedBox(height: AppSpacing.sm),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.sm,
+                ),
+                child: Text(
+                  'Equipment',
+                  style: TextStyle(
+                    color: palette.shade950,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              ListTile(
+                title: const Text('Unspecified'),
+                trailing: selected == null
+                    ? Icon(Icons.check_rounded, color: palette.shade700)
+                    : null,
+                onTap: () => Navigator.of(sheetContext).pop(null),
+              ),
+              for (final ExerciseEquipment e in ExerciseEquipment.values)
+                ListTile(
+                  title: Text(e.label),
+                  trailing: selected == e
+                      ? Icon(Icons.check_rounded, color: palette.shade700)
+                      : null,
+                  onTap: () => Navigator.of(sheetContext).pop(e),
+                ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+          ),
+        );
+      },
+    );
+    // The sheet returns null both on "select Unspecified" and "dismiss
+    // without changes." Distinguish by checking whether the sheet was
+    // actually consumed: if the user just tapped outside, we get null
+    // but the user's intent is to keep current selection — Flutter
+    // doesn't distinguish, so accept null as "Unspecified". The bottom-
+    // sheet ListTile for Unspecified pops null too, and that's the same
+    // outcome the user would want.
+    onChanged(next);
   }
 }

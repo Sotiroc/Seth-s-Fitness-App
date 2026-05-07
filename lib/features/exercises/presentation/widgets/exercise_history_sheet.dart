@@ -324,7 +324,7 @@ class _HistoryBodyState extends State<_HistoryBody> {
           key: _keyForDay(day.date),
           day: day,
           palette: widget.palette,
-          exerciseType: type,
+          exercise: widget.exercise!,
           prSetIds: widget.prSetIds,
         );
       },

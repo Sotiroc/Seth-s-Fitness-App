@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/illustrated_empty_state.dart';
 import '../../../data/models/exercise.dart';
+import '../../../data/models/exercise_equipment.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/repositories/repository_exceptions.dart';
 import '../../home/presentation/widgets/menu_icon_button.dart';
@@ -60,7 +61,9 @@ class ExerciseListScreen extends ConsumerWidget {
                       hasScrollBody: false,
                       child: _EmptyState(
                         hasFilter:
-                            filter.query.isNotEmpty || filter.type != null,
+                            filter.query.isNotEmpty ||
+                            filter.type != null ||
+                            filter.equipment != null,
                         onClear: () =>
                             ref.read(exerciseFilterProvider.notifier).clear(),
                       ),
@@ -302,6 +305,8 @@ class _FilterBar extends StatelessWidget {
           // _TypeChips watches only the selected-type slice itself, so
           // the chip row doesn't rebuild when the search query changes.
           _TypeChips(palette: palette),
+          const SizedBox(height: AppSpacing.sm),
+          _EquipmentChips(palette: palette),
         ],
       ),
     );
@@ -434,6 +439,49 @@ class _TypeChips extends ConsumerWidget {
   }
 }
 
+/// Equipment filter row — sits below the type chips. Same shape as
+/// [_TypeChips], but for the equipment dimension. Selecting an equipment
+/// chip narrows the list further (AND with type and search).
+class _EquipmentChips extends ConsumerWidget {
+  const _EquipmentChips({required this.palette});
+
+  final JellyBeanPalette palette;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ExerciseEquipment? selected = ref.watch(
+      exerciseFilterProvider.select(
+        (ExerciseListFilter f) => f.equipment,
+      ),
+    );
+    final ExerciseFilter notifier = ref.read(exerciseFilterProvider.notifier);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const ClampingScrollPhysics(),
+      child: Row(
+        children: <Widget>[
+          _Chip(
+            palette: palette,
+            label: 'Any equipment',
+            selected: selected == null,
+            onTap: () => notifier.setEquipment(null),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          for (final ExerciseEquipment e in ExerciseEquipment.values) ...<Widget>[
+            _Chip(
+              palette: palette,
+              label: e.label,
+              selected: selected == e,
+              onTap: () => notifier.setEquipment(e),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _Chip extends StatelessWidget {
   const _Chip({
     required this.palette,
@@ -547,6 +595,21 @@ class _ExerciseTile extends StatelessWidget {
                         ],
                       ],
                     ),
+                    if (exercise.formCue != null &&
+                        exercise.formCue!.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 2),
+                      Text(
+                        exercise.formCue!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: palette.shade700.withValues(alpha: 0.75),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Wrap(
                       spacing: AppSpacing.xs,

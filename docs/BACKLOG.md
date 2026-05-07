@@ -658,7 +658,7 @@ just the form.
 
 ---
 
-### Weekly recap card
+### Weekly recap card✅
 
 Every Sunday, generate a one-screen summary ("3 workouts, 9.2 t volume,
 1 PR on deadlift, intensity avg 7.4"). Shareable. Even if we never ship
@@ -683,7 +683,7 @@ the new one replaces it.
 
 **Where it lives:**
 
-- Home screen: as a card below the muscle-group ring.
+- Home screen: Still to be discussed.
 - History: archived recaps reachable via a "Recaps" filter chip on the
   history screen filter row (added once history filtering ships).
 
@@ -715,10 +715,9 @@ show a "rest week" card either — keep the home tidy.
 
 **Open questions:**
 
-- Include the user's name in the shared image, or keep anonymous?
-  Recommend opt-in toggle, default off.
+- Include the user's name in the shared image, or keep anonymous? - Share the name 
 - Show a one-line motivational message ("Strong week.")? Recommend no —
-  keep tone factual.
+  keep tone factual. (Yes Keep tone factual)
 
 ---
 

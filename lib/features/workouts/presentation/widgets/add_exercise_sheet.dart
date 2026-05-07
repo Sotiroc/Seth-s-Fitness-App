@@ -417,6 +417,21 @@ class _ExerciseOption extends StatelessWidget {
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (exercise.formCue != null &&
+                        exercise.formCue!.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 2),
+                      Text(
+                        exercise.formCue!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: palette.shade700.withValues(alpha: 0.75),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     Wrap(
                       spacing: AppSpacing.xs,

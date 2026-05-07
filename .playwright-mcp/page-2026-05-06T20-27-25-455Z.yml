@@ -1,0 +1,15 @@
+- generic [active] [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - menu "Popup menu":
+              - group:
+                - menuitem "View History" [ref=e215]
+                - menuitem "Edit" [ref=e216]
+                - menuitem "Delete" [ref=e217]
+          - button "Workouts" [ref=e44]
+          - button "Progression" [ref=e45]
+          - button "Templates" [ref=e46]
+          - button "Exercises" [ref=e47]

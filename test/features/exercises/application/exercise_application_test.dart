@@ -13,6 +13,7 @@ import 'package:fitnessapp/data/models/exercise_muscle_group.dart';
 import 'package:fitnessapp/data/models/exercise_type.dart';
 import 'package:fitnessapp/data/repositories/exercise_repository.dart';
 import 'package:fitnessapp/data/repositories/repository_exceptions.dart';
+import 'package:fitnessapp/data/seed/default_exercises.dart';
 import 'package:fitnessapp/features/exercises/application/exercise_editor_controller.dart';
 import 'package:fitnessapp/features/exercises/application/exercise_list_provider.dart';
 
@@ -52,7 +53,7 @@ void main() {
     final AsyncValue<List<Exercise>> initial = container.read(
       filteredExercisesProvider,
     );
-    expect(initial.requireValue, hasLength(18));
+    expect(initial.requireValue, hasLength(defaultExerciseSeeds.length));
 
     container.read(exerciseFilterProvider.notifier).setQuery('press');
     // setQuery is debounced (~300ms) so the search field can stay smooth
@@ -64,12 +65,20 @@ void main() {
         .map((exercise) => exercise.name)
         .toList(growable: false);
 
-    expect(queryResults, <String>[
+    // Specific staples must appear; the library has many more "press"
+    // matches now (Decline Bench Press, Dumbbell Shoulder Press, etc.)
+    // so we assert membership rather than exact equality.
+    expect(queryResults, containsAll(<String>[
       'Bench Press',
       'Incline Dumbbell Press',
       'Leg Press',
       'Overhead Press',
-    ]);
+    ]));
+    expect(
+      queryResults.every((String name) =>
+          name.toLowerCase().contains('press')),
+      isTrue,
+    );
 
     // clear() applies immediately (no debounce); setType is also instant.
     container.read(exerciseFilterProvider.notifier).clear();
@@ -82,7 +91,10 @@ void main() {
         .map((exercise) => exercise.name)
         .toList(growable: false);
 
-    expect(typedResults, <String>['Plank', 'Pull-Up', 'Push-Up', 'Sit-Up']);
+    expect(
+      typedResults,
+      containsAll(<String>['Plank', 'Pull-Up', 'Push-Up', 'Sit-Up']),
+    );
   });
 
   test('createExercise stores a new exercise through the controller', () async {

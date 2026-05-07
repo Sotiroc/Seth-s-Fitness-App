@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../data/database_bootstrap.dart';
 import '../../../data/models/exercise.dart';
+import '../../../data/models/exercise_equipment.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/repositories/exercise_repository.dart';
 
@@ -24,24 +25,35 @@ Stream<Exercise?> exerciseById(Ref ref, String exerciseId) async* {
 }
 
 class ExerciseListFilter {
-  const ExerciseListFilter({this.query = '', this.type});
+  const ExerciseListFilter({
+    this.query = '',
+    this.type,
+    this.equipment,
+  });
 
   final String query;
   final ExerciseType? type;
+  final ExerciseEquipment? equipment;
 
   ExerciseListFilter copyWith({
     String? query,
     ExerciseType? type,
     bool clearType = false,
+    ExerciseEquipment? equipment,
+    bool clearEquipment = false,
   }) {
     return ExerciseListFilter(
       query: query ?? this.query,
       type: clearType ? null : type ?? this.type,
+      equipment: clearEquipment ? null : equipment ?? this.equipment,
     );
   }
 
   bool matches(Exercise exercise) {
     if (type != null && exercise.type != type) {
+      return false;
+    }
+    if (equipment != null && exercise.equipment != equipment) {
       return false;
     }
     if (query.trim().isEmpty) {
@@ -84,6 +96,12 @@ class ExerciseFilter extends _$ExerciseFilter {
     state = value == null
         ? state.copyWith(clearType: true)
         : state.copyWith(type: value);
+  }
+
+  void setEquipment(ExerciseEquipment? value) {
+    state = value == null
+        ? state.copyWith(clearEquipment: true)
+        : state.copyWith(equipment: value);
   }
 
   void clear() {

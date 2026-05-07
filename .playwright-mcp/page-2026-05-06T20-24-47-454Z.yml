@@ -1,0 +1,24 @@
+- generic [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic "Dialog":
+              - generic [ref=e124]:
+                - generic: Add exercise
+              - button [ref=e125]
+              - textbox "Search exercises" [active] [ref=e127]: Swim
+              - group:
+                - button "All" [ref=e128]
+                - button "Weighted" [ref=e129]
+                - button "Bodyweight" [ref=e130]
+                - button "Cardio" [ref=e131]
+              - generic:
+                - group:
+                  - button "Create new exercise Add it to your library and this workout." [ref=e132]
+                  - button "S Swimming Long strokes, breathe to the side. Streamline body, kick from the hip. CARDIO CARDIO" [ref=e142]
+          - button "Workouts" [ref=e44]
+          - button "Progression" [ref=e45]
+          - button "Templates" [ref=e46]
+          - button "Exercises" [ref=e47]

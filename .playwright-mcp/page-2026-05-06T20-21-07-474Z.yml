@@ -1,0 +1,54 @@
+- generic [active] [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - group:
+                  - button [ref=e8]
+                  - generic [ref=e9]:
+                    - generic: LIBRARY
+                  - generic [ref=e10]:
+                    - generic: "109"
+                  - generic [ref=e11]:
+                    - generic: Exercises
+                  - generic [ref=e12]:
+                    - generic: Your catalogue of lifts, bodyweight work, and cardio.
+                  - textbox "Search exercises" [ref=e14]
+                  - group:
+                    - button "All" [ref=e15]
+                    - button "Weighted" [ref=e16]
+                    - button "Bodyweight" [ref=e17]
+                    - button "Cardio" [ref=e18]
+                  - group:
+                    - button "Any equipment" [ref=e19]
+                    - button "Barbell" [ref=e20]
+                    - button "Dumbbell" [ref=e21]
+                    - button "Machine" [ref=e22]
+                    - button "Cable" [ref=e23]
+                    - button "Bodyweight" [ref=e24]
+                    - button "Kettlebell" [ref=e25]
+                    - button "Band" [ref=e26]
+                    - button "Cardio machine" [ref=e27]
+                    - button "Other" [ref=e28]
+                  - group "B Battle Ropes Soft knees, hips back. Drive waves with full body, brace your core. CARDIO CARDIO" [ref=e48]:
+                    - button "Show menu" [ref=e30]
+                  - group "B Boxing Stay light, hands up, exhale on each punch. Round structure with breaks. CARDIO CARDIO" [ref=e49]:
+                    - button "Show menu" [ref=e32]
+                  - group "C Cycling (Outdoor) Smooth cadence ~80 rpm. Stay relaxed up top, push and pull through. CARDIO CARDIO" [ref=e50]:
+                    - button "Show menu" [ref=e34]
+                  - group "E Elliptical Stand tall. Drive through heels, push and pull handles, steady cadence. CARDIO CARDIO" [ref=e51]:
+                    - button "Show menu" [ref=e36]
+                  - group "H HIIT Hard intervals, full recovery. Quality reps over volume. CARDIO CARDIO" [ref=e52]:
+                    - button "Show menu" [ref=e38]
+                  - group "H Hiking Pace yourself on grades. Short steps uphill, controlled descent. CARDIO CARDIO" [ref=e53]:
+                    - button "Show menu" [ref=e40]
+                  - group "J Jump Rope Light bounce on balls of feet, wrists do the work, not the arms. CARDIO CARDIO" [ref=e54]:
+                    - button "Show menu" [ref=e42]
+              - button "New Exercise" [ref=e43]
+          - button "Workouts" [ref=e44]
+          - button "Progression" [ref=e45]
+          - button "Templates" [ref=e46]
+          - button "Exercises" [ref=e47]

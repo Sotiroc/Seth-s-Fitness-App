@@ -3,7 +3,9 @@ import 'dart:typed_data';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../data/models/cardio_metric.dart';
 import '../../../data/models/exercise.dart';
+import '../../../data/models/exercise_equipment.dart';
 import '../../../data/models/exercise_muscle_group.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/repositories/exercise_repository.dart';
@@ -23,6 +25,9 @@ class ExerciseEditorController extends _$ExerciseEditorController {
     required ExerciseMuscleGroup muscleGroup,
     Uint8List? thumbnailBytes,
     int? defaultRestSeconds,
+    List<CardioMetric>? trackedMetrics,
+    ExerciseEquipment? equipment,
+    String? formCue,
   }) {
     // Resolve the repository synchronously before any async gap. This
     // controller is auto-disposed by Riverpod, and reading `ref` inside
@@ -36,6 +41,9 @@ class ExerciseEditorController extends _$ExerciseEditorController {
         muscleGroup: muscleGroup,
         thumbnailBytes: thumbnailBytes,
         defaultRestSeconds: defaultRestSeconds,
+        trackedMetrics: trackedMetrics,
+        equipment: equipment,
+        formCue: formCue,
       );
     });
   }
@@ -49,6 +57,12 @@ class ExerciseEditorController extends _$ExerciseEditorController {
     bool clearThumbnail = false,
     int? defaultRestSeconds,
     bool clearDefaultRestSeconds = false,
+    List<CardioMetric>? trackedMetrics,
+    bool clearTrackedMetrics = false,
+    ExerciseEquipment? equipment,
+    bool clearEquipment = false,
+    String? formCue,
+    bool clearFormCue = false,
   }) {
     final ExerciseRepository repository = ref.read(exerciseRepositoryProvider);
     return _runMutation(() {
@@ -61,6 +75,12 @@ class ExerciseEditorController extends _$ExerciseEditorController {
           clearThumbnailBytes: clearThumbnail,
           defaultRestSeconds: defaultRestSeconds,
           clearDefaultRestSeconds: clearDefaultRestSeconds,
+          trackedMetrics: trackedMetrics,
+          clearTrackedMetrics: clearTrackedMetrics,
+          equipment: equipment,
+          clearEquipment: clearEquipment,
+          formCue: formCue,
+          clearFormCue: clearFormCue,
         ),
       );
     });

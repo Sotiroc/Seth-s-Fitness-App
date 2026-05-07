@@ -1,0 +1,54 @@
+- generic [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - group [active]:
+                  - button [ref=e8]
+                  - generic [ref=e9]:
+                    - generic: LIBRARY
+                  - generic [ref=e10]:
+                    - generic: "109"
+                  - generic [ref=e11]:
+                    - generic: Exercises
+                  - generic [ref=e12]:
+                    - generic: Your catalogue of lifts, bodyweight work, and cardio.
+                  - textbox "Search exercises" [ref=e14]
+                  - group:
+                    - button "All" [ref=e15]
+                    - button "Weighted" [ref=e16]
+                    - button "Bodyweight" [ref=e17]
+                    - button "Cardio" [ref=e18]
+                  - group:
+                    - button "Any equipment" [ref=e19]
+                    - button "Barbell" [ref=e20]
+                    - button "Dumbbell" [ref=e21]
+                    - button "Machine" [ref=e22]
+                    - button "Cable" [ref=e23]
+                    - button "Bodyweight" [ref=e24]
+                    - button "Kettlebell" [ref=e25]
+                    - button "Band" [ref=e26]
+                    - button "Cardio machine" [ref=e27]
+                    - button "Other" [ref=e28]
+                  - group "A Ab Wheel Rollout Knees on pad. Roll forward as far as you can hold, pull back in. BODYWEIGHT ABS" [ref=e29]:
+                    - button "Show menu" [ref=e30]
+                  - group "A Abductor Machine Pads on outer thighs. Press legs apart, hold, controlled return. WEIGHTED LEGS" [ref=e31]:
+                    - button "Show menu" [ref=e32]
+                  - group "A Adductor Machine Pads on inner thighs. Squeeze legs together, slow controlled return. WEIGHTED LEGS" [ref=e33]:
+                    - button "Show menu" [ref=e34]
+                  - group "A Arnold Press Start palms facing you. Rotate as you press up, palms forward at top. WEIGHTED SHOULDERS" [ref=e35]:
+                    - button "Show menu" [ref=e36]
+                  - group "B Barbell Curl Stand tall, shoulder-width grip. Elbows pinned, no swinging body. WEIGHTED BICEPS" [ref=e37]:
+                    - button "Show menu" [ref=e38]
+                  - group "B Barbell Row Hinge at hips, flat back, bar to lower ribs, control the negative. WEIGHTED BACK" [ref=e39]:
+                    - button "Show menu" [ref=e40]
+                  - group "B Battle Ropes Soft knees, hips back. Drive waves with full body, brace your core. CARDIO CARDIO" [ref=e41]:
+                    - button "Show menu" [ref=e42]
+              - button "New Exercise" [ref=e43]
+          - button "Workouts" [ref=e44]
+          - button "Progression" [ref=e45]
+          - button "Templates" [ref=e46]
+          - button "Exercises" [ref=e47]

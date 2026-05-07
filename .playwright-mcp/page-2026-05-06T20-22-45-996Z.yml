@@ -1,0 +1,30 @@
+- generic [active] [ref=e7] [cursor=pointer]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic "Dialog":
+              - generic [ref=e82]:
+                - generic: Add exercise
+              - button [ref=e83]
+              - textbox "Search exercises" [ref=e85]
+              - group:
+                - button "All" [ref=e86]
+                - button "Weighted" [ref=e87]
+                - button "Bodyweight" [ref=e88]
+                - button "Cardio" [ref=e89]
+              - generic:
+                - group:
+                  - button "Create new exercise Add it to your library and this workout." [ref=e90]
+                  - button "A Ab Wheel Rollout Knees on pad. Roll forward as far as you can hold, pull back in. BODYWEIGHT ABS" [ref=e92]
+                  - button "A Abductor Machine Pads on outer thighs. Press legs apart, hold, controlled return. WEIGHTED LEGS" [ref=e93]
+                  - button "A Adductor Machine Pads on inner thighs. Squeeze legs together, slow controlled return. WEIGHTED LEGS" [ref=e94]
+                  - button "A Arnold Press Start palms facing you. Rotate as you press up, palms forward at top. WEIGHTED SHOULDERS" [ref=e95]
+                  - button "B Barbell Curl Stand tall, shoulder-width grip. Elbows pinned, no swinging body. WEIGHTED BICEPS" [ref=e96]
+                  - button "B Barbell Row Hinge at hips, flat back, bar to lower ribs, control the negative. WEIGHTED BACK" [ref=e97]
+                  - button "B Battle Ropes Soft knees, hips back. Drive waves with full body, brace your core. CARDIO CARDIO" [ref=e98]
+          - button "Workouts" [ref=e44]
+          - button "Progression" [ref=e45]
+          - button "Templates" [ref=e46]
+          - button "Exercises" [ref=e47]

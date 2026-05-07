@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/duration_formatter.dart';
+import '../../../../data/models/cardio_metric.dart';
+import '../../../../data/models/exercise.dart';
 import '../../../../data/models/exercise_history_day.dart';
 import '../../../../data/models/exercise_type.dart';
 import '../../../../data/models/workout_set.dart';
@@ -20,13 +22,13 @@ class ExerciseHistoryDayCard extends StatelessWidget {
     super.key,
     required this.day,
     required this.palette,
-    required this.exerciseType,
+    required this.exercise,
     this.prSetIds = const <String>{},
   });
 
   final ExerciseHistoryDay day;
   final JellyBeanPalette palette;
-  final ExerciseType exerciseType;
+  final Exercise exercise;
   final Set<String> prSetIds;
 
   @override
@@ -106,7 +108,7 @@ class ExerciseHistoryDayCard extends StatelessWidget {
               child: ExerciseHistorySetTile(
                 palette: palette,
                 set: day.sets[i],
-                exerciseType: exerciseType,
+                exercise: exercise,
                 isPr: prSetIds.contains(day.sets[i].id),
               ),
             ),
@@ -152,13 +154,13 @@ class ExerciseHistorySetTile extends StatelessWidget {
     super.key,
     required this.palette,
     required this.set,
-    required this.exerciseType,
+    required this.exercise,
     this.isPr = false,
   });
 
   final JellyBeanPalette palette;
   final WorkoutSet set;
-  final ExerciseType exerciseType;
+  final Exercise exercise;
   final bool isPr;
 
   @override
@@ -194,7 +196,7 @@ class ExerciseHistorySetTile extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              _formatSet(set, exerciseType),
+              _formatSet(set, exercise),
               style: TextStyle(
                 color: palette.shade950,
                 fontSize: 14,
@@ -218,8 +220,8 @@ class ExerciseHistorySetTile extends StatelessWidget {
   }
 }
 
-String _formatSet(WorkoutSet set, ExerciseType type) {
-  switch (type) {
+String _formatSet(WorkoutSet set, Exercise exercise) {
+  switch (exercise.type) {
     case ExerciseType.weighted:
       final String weight = set.weightKg != null
           ? _formatNumber(set.weightKg!)
@@ -230,13 +232,30 @@ String _formatSet(WorkoutSet set, ExerciseType type) {
       final String reps = set.reps != null ? '${set.reps}' : '—';
       return '$reps reps';
     case ExerciseType.cardio:
-      final String distance = set.distanceKm != null
-          ? '${_formatNumber(set.distanceKm!)} km'
-          : '—';
-      final String duration = set.durationSeconds != null
-          ? DurationFormatter.formatSeconds(set.durationSeconds!)
-          : '—';
-      return '$distance · $duration';
+      final List<String> parts = <String>[];
+      for (final CardioMetric metric in exercise.resolveCardioMetrics()) {
+        switch (metric) {
+          case CardioMetric.distance:
+            parts.add(
+              set.distanceKm != null
+                  ? '${_formatNumber(set.distanceKm!)} km'
+                  : '—',
+            );
+          case CardioMetric.duration:
+            parts.add(
+              set.durationSeconds != null
+                  ? DurationFormatter.formatSeconds(set.durationSeconds!)
+                  : '—',
+            );
+          case CardioMetric.laps:
+            parts.add(set.laps != null ? '${set.laps} laps' : '—');
+          case CardioMetric.floors:
+            parts.add(set.floors != null ? '${set.floors} floors' : '—');
+          case CardioMetric.calories:
+            parts.add(set.calories != null ? '${set.calories} cal' : '—');
+        }
+      }
+      return parts.isEmpty ? '—' : parts.join(' · ');
   }
 }
 

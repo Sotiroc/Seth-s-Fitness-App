@@ -142,6 +142,9 @@ class ExerciseHistoryPrCard extends StatelessWidget {
         return <PrEvent>[
           if (bests.longestDistance != null) bests.longestDistance!,
           if (bests.longestDuration != null) bests.longestDuration!,
+          if (bests.mostLaps != null) bests.mostLaps!,
+          if (bests.mostFloors != null) bests.mostFloors!,
+          if (bests.mostCalories != null) bests.mostCalories!,
         ];
     }
   }

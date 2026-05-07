@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/duration_formatter.dart';
+import '../../../data/models/cardio_metric.dart';
+import '../../../data/models/exercise.dart';
 import '../../../data/models/exercise_type.dart';
 import '../../../data/models/pr_event.dart';
 import '../../../data/models/unit_system.dart';
@@ -851,7 +853,7 @@ class _SummaryExerciseCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: _SummarySetLine(
                   set: set,
-                  type: detail.exercise.type,
+                  exercise: detail.exercise,
                   palette: palette,
                 ),
               ),
@@ -865,27 +867,44 @@ class _SummaryExerciseCard extends StatelessWidget {
 class _SummarySetLine extends StatelessWidget {
   const _SummarySetLine({
     required this.set,
-    required this.type,
+    required this.exercise,
     required this.palette,
   });
 
   final WorkoutSet set;
-  final ExerciseType type;
+  final Exercise exercise;
   final JellyBeanPalette palette;
 
   String _formatSet() {
-    switch (type) {
+    switch (exercise.type) {
       case ExerciseType.weighted:
         final String kg = _formatNumber(set.weightKg ?? 0);
         return '$kg kg  ·  ${set.reps ?? 0} reps';
       case ExerciseType.bodyweight:
         return '${set.reps ?? 0} reps';
       case ExerciseType.cardio:
-        final String km = _formatNumber(set.distanceKm ?? 0);
-        final String time = DurationFormatter.formatSeconds(
-          set.durationSeconds ?? 0,
-        );
-        return '$km km  ·  $time';
+        final List<String> parts = <String>[];
+        for (final CardioMetric metric in exercise.resolveCardioMetrics()) {
+          switch (metric) {
+            case CardioMetric.distance:
+              if (set.distanceKm != null) {
+                parts.add('${_formatNumber(set.distanceKm!)} km');
+              }
+            case CardioMetric.duration:
+              if (set.durationSeconds != null) {
+                parts.add(
+                  DurationFormatter.formatSeconds(set.durationSeconds!),
+                );
+              }
+            case CardioMetric.laps:
+              if (set.laps != null) parts.add('${set.laps} laps');
+            case CardioMetric.floors:
+              if (set.floors != null) parts.add('${set.floors} floors');
+            case CardioMetric.calories:
+              if (set.calories != null) parts.add('${set.calories} cal');
+          }
+        }
+        return parts.isEmpty ? '—' : parts.join('  ·  ');
     }
   }
 

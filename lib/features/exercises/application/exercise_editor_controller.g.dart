@@ -40,7 +40,7 @@ final class ExerciseEditorControllerProvider
 }
 
 String _$exerciseEditorControllerHash() =>
-    r'6461529ecd34ba2c098eb564d63bc2ae10f3e1b1';
+    r'118d01c90d48f2fef4dd5be587652cb4392d8b24';
 
 /// Page-local — only the exercise form mounts this. Auto-dispose so the
 /// busy/error AsyncValue resets cleanly when the editor closes.

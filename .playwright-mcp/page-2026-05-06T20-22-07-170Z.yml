@@ -1,0 +1,37 @@
+- generic [active] [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - button "LEGS 0/14 BIS 0/8 TRIS 0/8 CHEST 0/12 BACK 0/14 DELTS 0/10 ABS 0/6 CARDIO 0 min" [ref=e67]
+                - group:
+                  - button [ref=e68]
+                  - generic [ref=e69]:
+                    - generic: WORKOUT IN PROGRESS
+                  - button "Cancel" [ref=e70]
+                  - generic [ref=e71]:
+                    - generic: 00:10
+                  - button "Rest timer on" [ref=e72]
+                  - generic [ref=e73]:
+                    - generic: Elapsed time
+                  - generic [ref=e74]:
+                    - generic: "0"
+                  - generic [ref=e75]:
+                    - generic: 0 / 0
+                  - generic [ref=e76]:
+                    - generic: Exercises
+                  - generic [ref=e77]:
+                    - generic: Sets done
+                  - generic [ref=e78]:
+                    - generic: No exercises yet
+                  - generic [ref=e79]:
+                    - generic: Add one to start logging sets.
+                  - button "Add exercise" [ref=e80]
+                  - button "Complete a set to finish" [disabled] [ref=e81]
+          - button "Workouts" [ref=e44]
+          - button "Progression" [ref=e45]
+          - button "Templates" [ref=e46]
+          - button "Exercises" [ref=e47]

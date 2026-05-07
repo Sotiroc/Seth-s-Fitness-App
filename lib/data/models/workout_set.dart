@@ -10,6 +10,9 @@ class WorkoutSet {
     this.reps,
     this.distanceKm,
     this.durationSeconds,
+    this.laps,
+    this.floors,
+    this.calories,
     this.completedAt,
     this.updatedAt,
     this.startedAt,
@@ -26,6 +29,20 @@ class WorkoutSet {
   final int? reps;
   final double? distanceKm;
   final int? durationSeconds;
+
+  /// Pool laps for swimming sets. Cardio-only metric, populated when the
+  /// exercise's `trackedMetrics` includes [CardioMetric.laps].
+  final int? laps;
+
+  /// Floors / flights climbed for stair-master sets. Cardio-only metric,
+  /// populated when the exercise's `trackedMetrics` includes
+  /// [CardioMetric.floors].
+  final int? floors;
+
+  /// Manually-entered calorie count for any cardio session that opts
+  /// into the [CardioMetric.calories] metric.
+  final int? calories;
+
   final bool completed;
 
   /// When the set was last marked completed. Set when `completed` flips
@@ -74,6 +91,9 @@ class WorkoutSet {
     int? reps,
     double? distanceKm,
     int? durationSeconds,
+    int? laps,
+    int? floors,
+    int? calories,
     bool? completed,
     DateTime? completedAt,
     DateTime? updatedAt,
@@ -86,6 +106,9 @@ class WorkoutSet {
     bool clearReps = false,
     bool clearDistanceKm = false,
     bool clearDurationSeconds = false,
+    bool clearLaps = false,
+    bool clearFloors = false,
+    bool clearCalories = false,
     bool clearCompletedAt = false,
     bool clearStartedAt = false,
     bool clearParentSetId = false,
@@ -102,6 +125,9 @@ class WorkoutSet {
       durationSeconds: clearDurationSeconds
           ? null
           : durationSeconds ?? this.durationSeconds,
+      laps: clearLaps ? null : laps ?? this.laps,
+      floors: clearFloors ? null : floors ?? this.floors,
+      calories: clearCalories ? null : calories ?? this.calories,
       completed: completed ?? this.completed,
       completedAt: clearCompletedAt ? null : completedAt ?? this.completedAt,
       updatedAt: updatedAt ?? this.updatedAt,

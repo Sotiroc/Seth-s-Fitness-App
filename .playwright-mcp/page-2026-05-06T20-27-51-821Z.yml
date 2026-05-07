@@ -1,0 +1,44 @@
+- generic [ref=e7]:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - button "Back" [active] [ref=e219]
+                - heading "Edit Exercise" [level=2] [ref=e220]
+              - generic:
+                - generic:
+                  - group:
+                    - button "B Thumbnail Tap the avatar to add a photo. CARDIO CARDIO" [ref=e221]
+                    - generic [ref=e223]:
+                      - generic: NAME
+                    - textbox [ref=e226]
+                    - generic [ref=e228]:
+                      - generic: TYPE
+                    - generic:
+                      - button "Weighted kg × reps" [ref=e230]
+                      - button "Bodyweight reps only" [ref=e231]
+                      - button "Cardio km × time" [ref=e232]
+                    - generic [ref=e234]:
+                      - generic: TRACKED METRICS
+                    - group "Duration":
+                      - button "Distance" [ref=e236]
+                      - button "Laps" [ref=e237]
+                      - button "Floors" [ref=e238]
+                      - button "Calories" [ref=e239]
+                    - generic [ref=e241]:
+                      - generic: EQUIPMENT
+                    - button "Other" [ref=e243]
+                    - generic [ref=e245]:
+                      - generic: FORM CUE
+                    - textbox [ref=e248]
+                    - generic [ref=e250]:
+                      - generic: REST BETWEEN SETS
+                    - button "Default Falls back to off for this exercise type." [ref=e252]
+              - button "Save changes" [ref=e253]
+          - button "Workouts" [ref=e44]
+          - button "Progression" [ref=e45]
+          - button "Templates" [ref=e46]
+          - button "Exercises" [ref=e47]

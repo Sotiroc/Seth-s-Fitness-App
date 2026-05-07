@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'cardio_metric.dart';
+import 'exercise_equipment.dart';
 import 'exercise_muscle_group.dart';
 import 'exercise_type.dart';
 
@@ -15,6 +17,9 @@ class Exercise {
     this.thumbnailPath,
     this.thumbnailBytes,
     this.defaultRestSeconds,
+    this.trackedMetrics,
+    this.equipment,
+    this.formCue,
   });
 
   final String id;
@@ -31,6 +36,24 @@ class Exercise {
   /// the type-based default" (see [effectiveRestSeconds]). 0 explicitly
   /// disables the rest timer for this exercise.
   final int? defaultRestSeconds;
+
+  /// For cardio exercises, the configurable list of metrics this
+  /// exercise tracks (e.g. [duration] for boxing, [laps, duration]
+  /// for swimming). Null means "use the legacy cardio default" which
+  /// the resolver expands to distance + duration. Always null for
+  /// non-cardio exercises.
+  final List<CardioMetric>? trackedMetrics;
+
+  /// What kind of equipment this exercise uses. Used by the library
+  /// screen's equipment filter chip and surfaced as a small dropdown in
+  /// the editor. Nullable for pre-feature rows.
+  final ExerciseEquipment? equipment;
+
+  /// Optional one-line form cue (e.g. "Drive feet, retract shoulders,
+  /// bar to lower chest"). Renders under the exercise name on the
+  /// library card and inside the active-workout exercise picker.
+  /// Trimmed at write time; null/empty means "no cue".
+  final String? formCue;
 
   /// Effective rest-timer length using only the per-exercise override
   /// and per-type fallbacks. Provided for places that don't have a user
@@ -57,6 +80,21 @@ class Exercise {
     }
   }
 
+  /// The effective set-row inputs for this exercise.
+  ///
+  /// For weighted/bodyweight, this is empty — those types don't carry
+  /// a metric list; the set row branches on [type] directly. For cardio,
+  /// returns the configured [trackedMetrics] or the legacy default
+  /// (distance + duration) when it's null.
+  List<CardioMetric> resolveCardioMetrics() {
+    if (type != ExerciseType.cardio) return const <CardioMetric>[];
+    final List<CardioMetric>? configured = trackedMetrics;
+    if (configured == null || configured.isEmpty) {
+      return defaultCardioMetrics;
+    }
+    return configured;
+  }
+
   Exercise copyWith({
     String? id,
     String? name,
@@ -68,9 +106,15 @@ class Exercise {
     DateTime? createdAt,
     DateTime? updatedAt,
     int? defaultRestSeconds,
+    List<CardioMetric>? trackedMetrics,
+    ExerciseEquipment? equipment,
+    String? formCue,
     bool clearThumbnailPath = false,
     bool clearThumbnailBytes = false,
     bool clearDefaultRestSeconds = false,
+    bool clearTrackedMetrics = false,
+    bool clearEquipment = false,
+    bool clearFormCue = false,
   }) {
     return Exercise(
       id: id ?? this.id,
@@ -89,6 +133,11 @@ class Exercise {
       defaultRestSeconds: clearDefaultRestSeconds
           ? null
           : defaultRestSeconds ?? this.defaultRestSeconds,
+      trackedMetrics: clearTrackedMetrics
+          ? null
+          : trackedMetrics ?? this.trackedMetrics,
+      equipment: clearEquipment ? null : equipment ?? this.equipment,
+      formCue: clearFormCue ? null : formCue ?? this.formCue,
     );
   }
 }

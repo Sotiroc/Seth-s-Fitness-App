@@ -46,11 +46,40 @@ void main() {
       final List<Exercise> exercises = await exerciseRepository
           .getAllExercises();
 
-      expect(exercises, hasLength(18));
+      // The full default library is the source of truth; the seeder
+      // should insert every entry exactly once and never duplicate on
+      // re-run.
+      expect(exercises, hasLength(defaultExerciseSeeds.length));
       expect(
         exercises.where((exercise) => exercise.name == 'Bench Press'),
         hasLength(1),
       );
+    });
+
+    test('preserves user customisations across re-seeding', () async {
+      // First seed offers everything to the install.
+      await exerciseRepository.seedDefaultsIfNeeded();
+
+      // User renames a default and deletes another.
+      final List<Exercise> seeded = await exerciseRepository.getAllExercises();
+      final Exercise squat =
+          seeded.firstWhere((Exercise e) => e.name == 'Squat');
+      final Exercise treadmill =
+          seeded.firstWhere((Exercise e) => e.name == 'Treadmill');
+      await exerciseRepository.updateExercise(
+        squat.copyWith(name: 'Back Squat'),
+      );
+      await exerciseRepository.deleteExercise(treadmill.id);
+
+      // Re-seeding must NOT touch the rename and must NOT re-add the
+      // deleted row, even though both are still in the seed list.
+      await exerciseRepository.seedDefaultsIfNeeded();
+      final List<Exercise> after = await exerciseRepository.getAllExercises();
+      expect(
+        after.where((Exercise e) => e.id == squat.id).single.name,
+        'Back Squat',
+      );
+      expect(after.any((Exercise e) => e.id == treadmill.id), isFalse);
     });
 
     test('supports create, update, get, filter, and delete', () async {
@@ -943,16 +972,25 @@ void main() {
   group('TemplateRepository', () {
     test('supports CRUD and creates workouts from templates', () async {
       await exerciseRepository.seedDefaultsIfNeeded();
+      final String benchPressId = defaultExerciseSeeds
+          .firstWhere((s) => s.name == 'Bench Press')
+          .id;
+      final String inclineDumbbellPressId = defaultExerciseSeeds
+          .firstWhere((s) => s.name == 'Incline Dumbbell Press')
+          .id;
+      final String overheadPressId = defaultExerciseSeeds
+          .firstWhere((s) => s.name == 'Overhead Press')
+          .id;
       final WorkoutTemplate template = await templateRepository.createTemplate(
         name: 'Push Day',
         exercises: <TemplateExerciseDraft>[
           TemplateExerciseDraft(
-            exerciseId: defaultExerciseSeeds[0].id,
+            exerciseId: benchPressId,
             orderIndex: 0,
             defaultSets: 3,
           ),
           TemplateExerciseDraft(
-            exerciseId: defaultExerciseSeeds[1].id,
+            exerciseId: inclineDumbbellPressId,
             orderIndex: 1,
             defaultSets: 4,
           ),
@@ -963,7 +1001,7 @@ void main() {
         template: template.copyWith(name: 'Updated Push Day'),
         exercises: <TemplateExerciseDraft>[
           TemplateExerciseDraft(
-            exerciseId: defaultExerciseSeeds[2].id,
+            exerciseId: overheadPressId,
             orderIndex: 0,
             defaultSets: 5,
           ),

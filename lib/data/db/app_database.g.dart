@@ -98,6 +98,39 @@ class $ExercisesTable extends Exercises
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _trackedMetricsMeta = const VerificationMeta(
+    'trackedMetrics',
+  );
+  @override
+  late final GeneratedColumn<String> trackedMetrics = GeneratedColumn<String>(
+    'tracked_metrics',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _equipmentMeta = const VerificationMeta(
+    'equipment',
+  );
+  @override
+  late final GeneratedColumn<String> equipment = GeneratedColumn<String>(
+    'equipment',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _formCueMeta = const VerificationMeta(
+    'formCue',
+  );
+  @override
+  late final GeneratedColumn<String> formCue = GeneratedColumn<String>(
+    'form_cue',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -130,6 +163,9 @@ class $ExercisesTable extends Exercises
     thumbnailBytes,
     isDefault,
     defaultRestSeconds,
+    trackedMetrics,
+    equipment,
+    formCue,
     createdAt,
     updatedAt,
   ];
@@ -189,6 +225,27 @@ class $ExercisesTable extends Exercises
           data['default_rest_seconds']!,
           _defaultRestSecondsMeta,
         ),
+      );
+    }
+    if (data.containsKey('tracked_metrics')) {
+      context.handle(
+        _trackedMetricsMeta,
+        trackedMetrics.isAcceptableOrUnknown(
+          data['tracked_metrics']!,
+          _trackedMetricsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('equipment')) {
+      context.handle(
+        _equipmentMeta,
+        equipment.isAcceptableOrUnknown(data['equipment']!, _equipmentMeta),
+      );
+    }
+    if (data.containsKey('form_cue')) {
+      context.handle(
+        _formCueMeta,
+        formCue.isAcceptableOrUnknown(data['form_cue']!, _formCueMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -252,6 +309,18 @@ class $ExercisesTable extends Exercises
         DriftSqlType.int,
         data['${effectivePrefix}default_rest_seconds'],
       ),
+      trackedMetrics: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tracked_metrics'],
+      ),
+      equipment: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}equipment'],
+      ),
+      formCue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}form_cue'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -287,6 +356,25 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
   /// back to type-based defaults (weighted=120, bodyweight=60, cardio=0/
   /// disabled). 0 explicitly disables the rest timer for this exercise.
   final int? defaultRestSeconds;
+
+  /// Comma-separated list of `CardioMetric` enum names. Only meaningful
+  /// for cardio exercises — drives which input fields the set row
+  /// renders (e.g. `duration` for boxing, `laps,duration` for swimming).
+  /// Null on cardio rows means "use the legacy default" (distance +
+  /// duration). Always null for non-cardio rows.
+  final String? trackedMetrics;
+
+  /// Equipment classification (`barbell`, `dumbbell`, `machine`, …). Used
+  /// by the equipment filter chip on the library screen and shown in the
+  /// editor as a small dropdown. Null on legacy rows until the user
+  /// edits the exercise.
+  final String? equipment;
+
+  /// Optional one-line form cue (~80 chars, e.g. "Drive feet, retract
+  /// shoulders, bar to lower chest"). Renders as quiet text under the
+  /// exercise name on the library card and inside the active-workout
+  /// exercise picker.
+  final String? formCue;
   final DateTime createdAt;
   final DateTime updatedAt;
   const ExerciseRow({
@@ -298,6 +386,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     this.thumbnailBytes,
     required this.isDefault,
     this.defaultRestSeconds,
+    this.trackedMetrics,
+    this.equipment,
+    this.formCue,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -326,6 +417,15 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     if (!nullToAbsent || defaultRestSeconds != null) {
       map['default_rest_seconds'] = Variable<int>(defaultRestSeconds);
     }
+    if (!nullToAbsent || trackedMetrics != null) {
+      map['tracked_metrics'] = Variable<String>(trackedMetrics);
+    }
+    if (!nullToAbsent || equipment != null) {
+      map['equipment'] = Variable<String>(equipment);
+    }
+    if (!nullToAbsent || formCue != null) {
+      map['form_cue'] = Variable<String>(formCue);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -347,6 +447,15 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       defaultRestSeconds: defaultRestSeconds == null && nullToAbsent
           ? const Value.absent()
           : Value(defaultRestSeconds),
+      trackedMetrics: trackedMetrics == null && nullToAbsent
+          ? const Value.absent()
+          : Value(trackedMetrics),
+      equipment: equipment == null && nullToAbsent
+          ? const Value.absent()
+          : Value(equipment),
+      formCue: formCue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(formCue),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -368,6 +477,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       thumbnailBytes: serializer.fromJson<Uint8List?>(json['thumbnailBytes']),
       isDefault: serializer.fromJson<bool>(json['isDefault']),
       defaultRestSeconds: serializer.fromJson<int?>(json['defaultRestSeconds']),
+      trackedMetrics: serializer.fromJson<String?>(json['trackedMetrics']),
+      equipment: serializer.fromJson<String?>(json['equipment']),
+      formCue: serializer.fromJson<String?>(json['formCue']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -384,6 +496,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       'thumbnailBytes': serializer.toJson<Uint8List?>(thumbnailBytes),
       'isDefault': serializer.toJson<bool>(isDefault),
       'defaultRestSeconds': serializer.toJson<int?>(defaultRestSeconds),
+      'trackedMetrics': serializer.toJson<String?>(trackedMetrics),
+      'equipment': serializer.toJson<String?>(equipment),
+      'formCue': serializer.toJson<String?>(formCue),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -398,6 +513,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     Value<Uint8List?> thumbnailBytes = const Value.absent(),
     bool? isDefault,
     Value<int?> defaultRestSeconds = const Value.absent(),
+    Value<String?> trackedMetrics = const Value.absent(),
+    Value<String?> equipment = const Value.absent(),
+    Value<String?> formCue = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => ExerciseRow(
@@ -415,6 +533,11 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     defaultRestSeconds: defaultRestSeconds.present
         ? defaultRestSeconds.value
         : this.defaultRestSeconds,
+    trackedMetrics: trackedMetrics.present
+        ? trackedMetrics.value
+        : this.trackedMetrics,
+    equipment: equipment.present ? equipment.value : this.equipment,
+    formCue: formCue.present ? formCue.value : this.formCue,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -436,6 +559,11 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
       defaultRestSeconds: data.defaultRestSeconds.present
           ? data.defaultRestSeconds.value
           : this.defaultRestSeconds,
+      trackedMetrics: data.trackedMetrics.present
+          ? data.trackedMetrics.value
+          : this.trackedMetrics,
+      equipment: data.equipment.present ? data.equipment.value : this.equipment,
+      formCue: data.formCue.present ? data.formCue.value : this.formCue,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -452,6 +580,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
           ..write('thumbnailBytes: $thumbnailBytes, ')
           ..write('isDefault: $isDefault, ')
           ..write('defaultRestSeconds: $defaultRestSeconds, ')
+          ..write('trackedMetrics: $trackedMetrics, ')
+          ..write('equipment: $equipment, ')
+          ..write('formCue: $formCue, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -468,6 +599,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
     $driftBlobEquality.hash(thumbnailBytes),
     isDefault,
     defaultRestSeconds,
+    trackedMetrics,
+    equipment,
+    formCue,
     createdAt,
     updatedAt,
   );
@@ -486,6 +620,9 @@ class ExerciseRow extends DataClass implements Insertable<ExerciseRow> {
           ) &&
           other.isDefault == this.isDefault &&
           other.defaultRestSeconds == this.defaultRestSeconds &&
+          other.trackedMetrics == this.trackedMetrics &&
+          other.equipment == this.equipment &&
+          other.formCue == this.formCue &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -499,6 +636,9 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
   final Value<Uint8List?> thumbnailBytes;
   final Value<bool> isDefault;
   final Value<int?> defaultRestSeconds;
+  final Value<String?> trackedMetrics;
+  final Value<String?> equipment;
+  final Value<String?> formCue;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -511,6 +651,9 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     this.thumbnailBytes = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.defaultRestSeconds = const Value.absent(),
+    this.trackedMetrics = const Value.absent(),
+    this.equipment = const Value.absent(),
+    this.formCue = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -524,6 +667,9 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     this.thumbnailBytes = const Value.absent(),
     this.isDefault = const Value.absent(),
     this.defaultRestSeconds = const Value.absent(),
+    this.trackedMetrics = const Value.absent(),
+    this.equipment = const Value.absent(),
+    this.formCue = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -541,6 +687,9 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     Expression<Uint8List>? thumbnailBytes,
     Expression<bool>? isDefault,
     Expression<int>? defaultRestSeconds,
+    Expression<String>? trackedMetrics,
+    Expression<String>? equipment,
+    Expression<String>? formCue,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -555,6 +704,9 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
       if (isDefault != null) 'is_default': isDefault,
       if (defaultRestSeconds != null)
         'default_rest_seconds': defaultRestSeconds,
+      if (trackedMetrics != null) 'tracked_metrics': trackedMetrics,
+      if (equipment != null) 'equipment': equipment,
+      if (formCue != null) 'form_cue': formCue,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -570,6 +722,9 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     Value<Uint8List?>? thumbnailBytes,
     Value<bool>? isDefault,
     Value<int?>? defaultRestSeconds,
+    Value<String?>? trackedMetrics,
+    Value<String?>? equipment,
+    Value<String?>? formCue,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -583,6 +738,9 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
       thumbnailBytes: thumbnailBytes ?? this.thumbnailBytes,
       isDefault: isDefault ?? this.isDefault,
       defaultRestSeconds: defaultRestSeconds ?? this.defaultRestSeconds,
+      trackedMetrics: trackedMetrics ?? this.trackedMetrics,
+      equipment: equipment ?? this.equipment,
+      formCue: formCue ?? this.formCue,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -620,6 +778,15 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
     if (defaultRestSeconds.present) {
       map['default_rest_seconds'] = Variable<int>(defaultRestSeconds.value);
     }
+    if (trackedMetrics.present) {
+      map['tracked_metrics'] = Variable<String>(trackedMetrics.value);
+    }
+    if (equipment.present) {
+      map['equipment'] = Variable<String>(equipment.value);
+    }
+    if (formCue.present) {
+      map['form_cue'] = Variable<String>(formCue.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -643,6 +810,9 @@ class ExercisesCompanion extends UpdateCompanion<ExerciseRow> {
           ..write('thumbnailBytes: $thumbnailBytes, ')
           ..write('isDefault: $isDefault, ')
           ..write('defaultRestSeconds: $defaultRestSeconds, ')
+          ..write('trackedMetrics: $trackedMetrics, ')
+          ..write('equipment: $equipment, ')
+          ..write('formCue: $formCue, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -2341,6 +2511,35 @@ class $SetsTable extends Sets with TableInfo<$SetsTable, WorkoutSetRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _lapsMeta = const VerificationMeta('laps');
+  @override
+  late final GeneratedColumn<int> laps = GeneratedColumn<int>(
+    'laps',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _floorsMeta = const VerificationMeta('floors');
+  @override
+  late final GeneratedColumn<int> floors = GeneratedColumn<int>(
+    'floors',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _caloriesMeta = const VerificationMeta(
+    'calories',
+  );
+  @override
+  late final GeneratedColumn<int> calories = GeneratedColumn<int>(
+    'calories',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _completedMeta = const VerificationMeta(
     'completed',
   );
@@ -2437,6 +2636,9 @@ class $SetsTable extends Sets with TableInfo<$SetsTable, WorkoutSetRow> {
     reps,
     distanceKm,
     durationSeconds,
+    laps,
+    floors,
+    calories,
     completed,
     completedAt,
     updatedAt,
@@ -2507,6 +2709,24 @@ class $SetsTable extends Sets with TableInfo<$SetsTable, WorkoutSetRow> {
           data['duration_seconds']!,
           _durationSecondsMeta,
         ),
+      );
+    }
+    if (data.containsKey('laps')) {
+      context.handle(
+        _lapsMeta,
+        laps.isAcceptableOrUnknown(data['laps']!, _lapsMeta),
+      );
+    }
+    if (data.containsKey('floors')) {
+      context.handle(
+        _floorsMeta,
+        floors.isAcceptableOrUnknown(data['floors']!, _floorsMeta),
+      );
+    }
+    if (data.containsKey('calories')) {
+      context.handle(
+        _caloriesMeta,
+        calories.isAcceptableOrUnknown(data['calories']!, _caloriesMeta),
       );
     }
     if (data.containsKey('completed')) {
@@ -2600,6 +2820,18 @@ class $SetsTable extends Sets with TableInfo<$SetsTable, WorkoutSetRow> {
         DriftSqlType.int,
         data['${effectivePrefix}duration_seconds'],
       ),
+      laps: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}laps'],
+      ),
+      floors: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}floors'],
+      ),
+      calories: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}calories'],
+      ),
       completed: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}completed'],
@@ -2649,6 +2881,19 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
   final int? reps;
   final double? distanceKm;
   final int? durationSeconds;
+
+  /// Pool laps for swimming sets. Cardio-only; populated when the
+  /// parent exercise's `trackedMetrics` includes `laps`.
+  final int? laps;
+
+  /// Floors / flights climbed for stair-master sets. Cardio-only;
+  /// populated when the parent exercise's `trackedMetrics` includes
+  /// `floors`.
+  final int? floors;
+
+  /// Manually-entered calorie count. Optional add-on for any cardio
+  /// exercise that opts into the `calories` metric.
+  final int? calories;
   final bool completed;
 
   /// Wall-clock time the set was marked completed. Set when `completed`
@@ -2698,6 +2943,9 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
     this.reps,
     this.distanceKm,
     this.durationSeconds,
+    this.laps,
+    this.floors,
+    this.calories,
     required this.completed,
     this.completedAt,
     this.updatedAt,
@@ -2724,6 +2972,15 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
     }
     if (!nullToAbsent || durationSeconds != null) {
       map['duration_seconds'] = Variable<int>(durationSeconds);
+    }
+    if (!nullToAbsent || laps != null) {
+      map['laps'] = Variable<int>(laps);
+    }
+    if (!nullToAbsent || floors != null) {
+      map['floors'] = Variable<int>(floors);
+    }
+    if (!nullToAbsent || calories != null) {
+      map['calories'] = Variable<int>(calories);
     }
     map['completed'] = Variable<bool>(completed);
     if (!nullToAbsent || completedAt != null) {
@@ -2763,6 +3020,13 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
       durationSeconds: durationSeconds == null && nullToAbsent
           ? const Value.absent()
           : Value(durationSeconds),
+      laps: laps == null && nullToAbsent ? const Value.absent() : Value(laps),
+      floors: floors == null && nullToAbsent
+          ? const Value.absent()
+          : Value(floors),
+      calories: calories == null && nullToAbsent
+          ? const Value.absent()
+          : Value(calories),
       completed: Value(completed),
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
@@ -2795,6 +3059,9 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
       reps: serializer.fromJson<int?>(json['reps']),
       distanceKm: serializer.fromJson<double?>(json['distanceKm']),
       durationSeconds: serializer.fromJson<int?>(json['durationSeconds']),
+      laps: serializer.fromJson<int?>(json['laps']),
+      floors: serializer.fromJson<int?>(json['floors']),
+      calories: serializer.fromJson<int?>(json['calories']),
       completed: serializer.fromJson<bool>(json['completed']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -2816,6 +3083,9 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
       'reps': serializer.toJson<int?>(reps),
       'distanceKm': serializer.toJson<double?>(distanceKm),
       'durationSeconds': serializer.toJson<int?>(durationSeconds),
+      'laps': serializer.toJson<int?>(laps),
+      'floors': serializer.toJson<int?>(floors),
+      'calories': serializer.toJson<int?>(calories),
       'completed': serializer.toJson<bool>(completed),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -2835,6 +3105,9 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
     Value<int?> reps = const Value.absent(),
     Value<double?> distanceKm = const Value.absent(),
     Value<int?> durationSeconds = const Value.absent(),
+    Value<int?> laps = const Value.absent(),
+    Value<int?> floors = const Value.absent(),
+    Value<int?> calories = const Value.absent(),
     bool? completed,
     Value<DateTime?> completedAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -2853,6 +3126,9 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
     durationSeconds: durationSeconds.present
         ? durationSeconds.value
         : this.durationSeconds,
+    laps: laps.present ? laps.value : this.laps,
+    floors: floors.present ? floors.value : this.floors,
+    calories: calories.present ? calories.value : this.calories,
     completed: completed ?? this.completed,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -2877,6 +3153,9 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
       durationSeconds: data.durationSeconds.present
           ? data.durationSeconds.value
           : this.durationSeconds,
+      laps: data.laps.present ? data.laps.value : this.laps,
+      floors: data.floors.present ? data.floors.value : this.floors,
+      calories: data.calories.present ? data.calories.value : this.calories,
       completed: data.completed.present ? data.completed.value : this.completed,
       completedAt: data.completedAt.present
           ? data.completedAt.value
@@ -2902,6 +3181,9 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
           ..write('reps: $reps, ')
           ..write('distanceKm: $distanceKm, ')
           ..write('durationSeconds: $durationSeconds, ')
+          ..write('laps: $laps, ')
+          ..write('floors: $floors, ')
+          ..write('calories: $calories, ')
           ..write('completed: $completed, ')
           ..write('completedAt: $completedAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -2923,6 +3205,9 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
     reps,
     distanceKm,
     durationSeconds,
+    laps,
+    floors,
+    calories,
     completed,
     completedAt,
     updatedAt,
@@ -2943,6 +3228,9 @@ class WorkoutSetRow extends DataClass implements Insertable<WorkoutSetRow> {
           other.reps == this.reps &&
           other.distanceKm == this.distanceKm &&
           other.durationSeconds == this.durationSeconds &&
+          other.laps == this.laps &&
+          other.floors == this.floors &&
+          other.calories == this.calories &&
           other.completed == this.completed &&
           other.completedAt == this.completedAt &&
           other.updatedAt == this.updatedAt &&
@@ -2961,6 +3249,9 @@ class SetsCompanion extends UpdateCompanion<WorkoutSetRow> {
   final Value<int?> reps;
   final Value<double?> distanceKm;
   final Value<int?> durationSeconds;
+  final Value<int?> laps;
+  final Value<int?> floors;
+  final Value<int?> calories;
   final Value<bool> completed;
   final Value<DateTime?> completedAt;
   final Value<DateTime?> updatedAt;
@@ -2978,6 +3269,9 @@ class SetsCompanion extends UpdateCompanion<WorkoutSetRow> {
     this.reps = const Value.absent(),
     this.distanceKm = const Value.absent(),
     this.durationSeconds = const Value.absent(),
+    this.laps = const Value.absent(),
+    this.floors = const Value.absent(),
+    this.calories = const Value.absent(),
     this.completed = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2996,6 +3290,9 @@ class SetsCompanion extends UpdateCompanion<WorkoutSetRow> {
     this.reps = const Value.absent(),
     this.distanceKm = const Value.absent(),
     this.durationSeconds = const Value.absent(),
+    this.laps = const Value.absent(),
+    this.floors = const Value.absent(),
+    this.calories = const Value.absent(),
     this.completed = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -3016,6 +3313,9 @@ class SetsCompanion extends UpdateCompanion<WorkoutSetRow> {
     Expression<int>? reps,
     Expression<double>? distanceKm,
     Expression<int>? durationSeconds,
+    Expression<int>? laps,
+    Expression<int>? floors,
+    Expression<int>? calories,
     Expression<bool>? completed,
     Expression<DateTime>? completedAt,
     Expression<DateTime>? updatedAt,
@@ -3034,6 +3334,9 @@ class SetsCompanion extends UpdateCompanion<WorkoutSetRow> {
       if (reps != null) 'reps': reps,
       if (distanceKm != null) 'distance_km': distanceKm,
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
+      if (laps != null) 'laps': laps,
+      if (floors != null) 'floors': floors,
+      if (calories != null) 'calories': calories,
       if (completed != null) 'completed': completed,
       if (completedAt != null) 'completed_at': completedAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -3054,6 +3357,9 @@ class SetsCompanion extends UpdateCompanion<WorkoutSetRow> {
     Value<int?>? reps,
     Value<double?>? distanceKm,
     Value<int?>? durationSeconds,
+    Value<int?>? laps,
+    Value<int?>? floors,
+    Value<int?>? calories,
     Value<bool>? completed,
     Value<DateTime?>? completedAt,
     Value<DateTime?>? updatedAt,
@@ -3072,6 +3378,9 @@ class SetsCompanion extends UpdateCompanion<WorkoutSetRow> {
       reps: reps ?? this.reps,
       distanceKm: distanceKm ?? this.distanceKm,
       durationSeconds: durationSeconds ?? this.durationSeconds,
+      laps: laps ?? this.laps,
+      floors: floors ?? this.floors,
+      calories: calories ?? this.calories,
       completed: completed ?? this.completed,
       completedAt: completedAt ?? this.completedAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -3107,6 +3416,15 @@ class SetsCompanion extends UpdateCompanion<WorkoutSetRow> {
     }
     if (durationSeconds.present) {
       map['duration_seconds'] = Variable<int>(durationSeconds.value);
+    }
+    if (laps.present) {
+      map['laps'] = Variable<int>(laps.value);
+    }
+    if (floors.present) {
+      map['floors'] = Variable<int>(floors.value);
+    }
+    if (calories.present) {
+      map['calories'] = Variable<int>(calories.value);
     }
     if (completed.present) {
       map['completed'] = Variable<bool>(completed.value);
@@ -3148,6 +3466,9 @@ class SetsCompanion extends UpdateCompanion<WorkoutSetRow> {
           ..write('reps: $reps, ')
           ..write('distanceKm: $distanceKm, ')
           ..write('durationSeconds: $durationSeconds, ')
+          ..write('laps: $laps, ')
+          ..write('floors: $floors, ')
+          ..write('calories: $calories, ')
           ..write('completed: $completed, ')
           ..write('completedAt: $completedAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -4605,6 +4926,844 @@ class WeightEntriesCompanion extends UpdateCompanion<WeightEntryRow> {
   }
 }
 
+class $WeeklyRecapsTable extends WeeklyRecaps
+    with TableInfo<$WeeklyRecapsTable, WeeklyRecapRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WeeklyRecapsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _weekStartMeta = const VerificationMeta(
+    'weekStart',
+  );
+  @override
+  late final GeneratedColumn<DateTime> weekStart = GeneratedColumn<DateTime>(
+    'week_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _weekEndMeta = const VerificationMeta(
+    'weekEnd',
+  );
+  @override
+  late final GeneratedColumn<DateTime> weekEnd = GeneratedColumn<DateTime>(
+    'week_end',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workoutCountMeta = const VerificationMeta(
+    'workoutCount',
+  );
+  @override
+  late final GeneratedColumn<int> workoutCount = GeneratedColumn<int>(
+    'workout_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalVolumeKgMeta = const VerificationMeta(
+    'totalVolumeKg',
+  );
+  @override
+  late final GeneratedColumn<double> totalVolumeKg = GeneratedColumn<double>(
+    'total_volume_kg',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalDurationSecondsMeta =
+      const VerificationMeta('totalDurationSeconds');
+  @override
+  late final GeneratedColumn<int> totalDurationSeconds = GeneratedColumn<int>(
+    'total_duration_seconds',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _averageRpeMeta = const VerificationMeta(
+    'averageRpe',
+  );
+  @override
+  late final GeneratedColumn<double> averageRpe = GeneratedColumn<double>(
+    'average_rpe',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _prCountMeta = const VerificationMeta(
+    'prCount',
+  );
+  @override
+  late final GeneratedColumn<int> prCount = GeneratedColumn<int>(
+    'pr_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _prsJsonMeta = const VerificationMeta(
+    'prsJson',
+  );
+  @override
+  late final GeneratedColumn<String> prsJson = GeneratedColumn<String>(
+    'prs_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dailyVolumeKgJsonMeta = const VerificationMeta(
+    'dailyVolumeKgJson',
+  );
+  @override
+  late final GeneratedColumn<String> dailyVolumeKgJson =
+      GeneratedColumn<String>(
+        'daily_volume_kg_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _prevWorkoutCountMeta = const VerificationMeta(
+    'prevWorkoutCount',
+  );
+  @override
+  late final GeneratedColumn<int> prevWorkoutCount = GeneratedColumn<int>(
+    'prev_workout_count',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _prevTotalVolumeKgMeta = const VerificationMeta(
+    'prevTotalVolumeKg',
+  );
+  @override
+  late final GeneratedColumn<double> prevTotalVolumeKg =
+      GeneratedColumn<double>(
+        'prev_total_volume_kg',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _generatedAtMeta = const VerificationMeta(
+    'generatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> generatedAt = GeneratedColumn<DateTime>(
+    'generated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    weekStart,
+    weekEnd,
+    workoutCount,
+    totalVolumeKg,
+    totalDurationSeconds,
+    averageRpe,
+    prCount,
+    prsJson,
+    dailyVolumeKgJson,
+    prevWorkoutCount,
+    prevTotalVolumeKg,
+    generatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'weekly_recaps';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WeeklyRecapRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('week_start')) {
+      context.handle(
+        _weekStartMeta,
+        weekStart.isAcceptableOrUnknown(data['week_start']!, _weekStartMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_weekStartMeta);
+    }
+    if (data.containsKey('week_end')) {
+      context.handle(
+        _weekEndMeta,
+        weekEnd.isAcceptableOrUnknown(data['week_end']!, _weekEndMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_weekEndMeta);
+    }
+    if (data.containsKey('workout_count')) {
+      context.handle(
+        _workoutCountMeta,
+        workoutCount.isAcceptableOrUnknown(
+          data['workout_count']!,
+          _workoutCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workoutCountMeta);
+    }
+    if (data.containsKey('total_volume_kg')) {
+      context.handle(
+        _totalVolumeKgMeta,
+        totalVolumeKg.isAcceptableOrUnknown(
+          data['total_volume_kg']!,
+          _totalVolumeKgMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalVolumeKgMeta);
+    }
+    if (data.containsKey('total_duration_seconds')) {
+      context.handle(
+        _totalDurationSecondsMeta,
+        totalDurationSeconds.isAcceptableOrUnknown(
+          data['total_duration_seconds']!,
+          _totalDurationSecondsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalDurationSecondsMeta);
+    }
+    if (data.containsKey('average_rpe')) {
+      context.handle(
+        _averageRpeMeta,
+        averageRpe.isAcceptableOrUnknown(data['average_rpe']!, _averageRpeMeta),
+      );
+    }
+    if (data.containsKey('pr_count')) {
+      context.handle(
+        _prCountMeta,
+        prCount.isAcceptableOrUnknown(data['pr_count']!, _prCountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_prCountMeta);
+    }
+    if (data.containsKey('prs_json')) {
+      context.handle(
+        _prsJsonMeta,
+        prsJson.isAcceptableOrUnknown(data['prs_json']!, _prsJsonMeta),
+      );
+    }
+    if (data.containsKey('daily_volume_kg_json')) {
+      context.handle(
+        _dailyVolumeKgJsonMeta,
+        dailyVolumeKgJson.isAcceptableOrUnknown(
+          data['daily_volume_kg_json']!,
+          _dailyVolumeKgJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_dailyVolumeKgJsonMeta);
+    }
+    if (data.containsKey('prev_workout_count')) {
+      context.handle(
+        _prevWorkoutCountMeta,
+        prevWorkoutCount.isAcceptableOrUnknown(
+          data['prev_workout_count']!,
+          _prevWorkoutCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('prev_total_volume_kg')) {
+      context.handle(
+        _prevTotalVolumeKgMeta,
+        prevTotalVolumeKg.isAcceptableOrUnknown(
+          data['prev_total_volume_kg']!,
+          _prevTotalVolumeKgMeta,
+        ),
+      );
+    }
+    if (data.containsKey('generated_at')) {
+      context.handle(
+        _generatedAtMeta,
+        generatedAt.isAcceptableOrUnknown(
+          data['generated_at']!,
+          _generatedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_generatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WeeklyRecapRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WeeklyRecapRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      weekStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}week_start'],
+      )!,
+      weekEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}week_end'],
+      )!,
+      workoutCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}workout_count'],
+      )!,
+      totalVolumeKg: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}total_volume_kg'],
+      )!,
+      totalDurationSeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_duration_seconds'],
+      )!,
+      averageRpe: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}average_rpe'],
+      ),
+      prCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}pr_count'],
+      )!,
+      prsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prs_json'],
+      ),
+      dailyVolumeKgJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}daily_volume_kg_json'],
+      )!,
+      prevWorkoutCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}prev_workout_count'],
+      ),
+      prevTotalVolumeKg: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}prev_total_volume_kg'],
+      ),
+      generatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}generated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WeeklyRecapsTable createAlias(String alias) {
+    return $WeeklyRecapsTable(attachedDatabase, alias);
+  }
+}
+
+class WeeklyRecapRow extends DataClass implements Insertable<WeeklyRecapRow> {
+  final String id;
+
+  /// UTC timestamp of the start of the local week the recap covers
+  /// (Monday 00:00 local, converted to UTC at write time). Unique with
+  /// `weekEnd` — both stored so reads don't have to recompute the range.
+  final DateTime weekStart;
+
+  /// UTC timestamp marking the exclusive end of the recap window (the
+  /// following Monday 00:00 local, in UTC).
+  final DateTime weekEnd;
+
+  /// Number of workouts whose `startedAt` fell inside the window.
+  final int workoutCount;
+
+  /// Total kg moved across every completed, non-warmup, weighted set in
+  /// the window. Stored canonical (kg) — UI converts to user units.
+  final double totalVolumeKg;
+
+  /// Sum of (endedAt − startedAt) across the workouts in the window, in
+  /// seconds. Active or unfinished workouts contribute 0.
+  final int totalDurationSeconds;
+
+  /// Mean of the 1–10 session intensity scores recorded on the workouts
+  /// in this window. Null when no workout had an intensityScore set.
+  final double? averageRpe;
+
+  /// Quick scalar so the home card can show "1 PR" without decoding json.
+  final int prCount;
+
+  /// JSON-encoded list of `{exerciseName, type, weightKg?, reps?,
+  /// distanceKm?, durationSeconds?, oneRepMaxKg?, repCountForRepMax?}`.
+  /// Captured at generation time so later set/exercise edits don't
+  /// silently mutate the recap card.
+  final String? prsJson;
+
+  /// JSON-encoded `List<double>` of length 7 — daily kg volume Mon→Sun
+  /// for the small line chart. Stored to keep historic recaps reproducible.
+  final String dailyVolumeKgJson;
+
+  /// Workout count for the immediately-preceding week. Null means the
+  /// previous week was outside the user's logged history (no comparison
+  /// shown). Stored at generation time so the comparison stays stable.
+  final int? prevWorkoutCount;
+
+  /// Total kg volume for the immediately-preceding week. Null when no
+  /// previous-week data was available.
+  final double? prevTotalVolumeKg;
+  final DateTime generatedAt;
+  const WeeklyRecapRow({
+    required this.id,
+    required this.weekStart,
+    required this.weekEnd,
+    required this.workoutCount,
+    required this.totalVolumeKg,
+    required this.totalDurationSeconds,
+    this.averageRpe,
+    required this.prCount,
+    this.prsJson,
+    required this.dailyVolumeKgJson,
+    this.prevWorkoutCount,
+    this.prevTotalVolumeKg,
+    required this.generatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['week_start'] = Variable<DateTime>(weekStart);
+    map['week_end'] = Variable<DateTime>(weekEnd);
+    map['workout_count'] = Variable<int>(workoutCount);
+    map['total_volume_kg'] = Variable<double>(totalVolumeKg);
+    map['total_duration_seconds'] = Variable<int>(totalDurationSeconds);
+    if (!nullToAbsent || averageRpe != null) {
+      map['average_rpe'] = Variable<double>(averageRpe);
+    }
+    map['pr_count'] = Variable<int>(prCount);
+    if (!nullToAbsent || prsJson != null) {
+      map['prs_json'] = Variable<String>(prsJson);
+    }
+    map['daily_volume_kg_json'] = Variable<String>(dailyVolumeKgJson);
+    if (!nullToAbsent || prevWorkoutCount != null) {
+      map['prev_workout_count'] = Variable<int>(prevWorkoutCount);
+    }
+    if (!nullToAbsent || prevTotalVolumeKg != null) {
+      map['prev_total_volume_kg'] = Variable<double>(prevTotalVolumeKg);
+    }
+    map['generated_at'] = Variable<DateTime>(generatedAt);
+    return map;
+  }
+
+  WeeklyRecapsCompanion toCompanion(bool nullToAbsent) {
+    return WeeklyRecapsCompanion(
+      id: Value(id),
+      weekStart: Value(weekStart),
+      weekEnd: Value(weekEnd),
+      workoutCount: Value(workoutCount),
+      totalVolumeKg: Value(totalVolumeKg),
+      totalDurationSeconds: Value(totalDurationSeconds),
+      averageRpe: averageRpe == null && nullToAbsent
+          ? const Value.absent()
+          : Value(averageRpe),
+      prCount: Value(prCount),
+      prsJson: prsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(prsJson),
+      dailyVolumeKgJson: Value(dailyVolumeKgJson),
+      prevWorkoutCount: prevWorkoutCount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(prevWorkoutCount),
+      prevTotalVolumeKg: prevTotalVolumeKg == null && nullToAbsent
+          ? const Value.absent()
+          : Value(prevTotalVolumeKg),
+      generatedAt: Value(generatedAt),
+    );
+  }
+
+  factory WeeklyRecapRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WeeklyRecapRow(
+      id: serializer.fromJson<String>(json['id']),
+      weekStart: serializer.fromJson<DateTime>(json['weekStart']),
+      weekEnd: serializer.fromJson<DateTime>(json['weekEnd']),
+      workoutCount: serializer.fromJson<int>(json['workoutCount']),
+      totalVolumeKg: serializer.fromJson<double>(json['totalVolumeKg']),
+      totalDurationSeconds: serializer.fromJson<int>(
+        json['totalDurationSeconds'],
+      ),
+      averageRpe: serializer.fromJson<double?>(json['averageRpe']),
+      prCount: serializer.fromJson<int>(json['prCount']),
+      prsJson: serializer.fromJson<String?>(json['prsJson']),
+      dailyVolumeKgJson: serializer.fromJson<String>(json['dailyVolumeKgJson']),
+      prevWorkoutCount: serializer.fromJson<int?>(json['prevWorkoutCount']),
+      prevTotalVolumeKg: serializer.fromJson<double?>(
+        json['prevTotalVolumeKg'],
+      ),
+      generatedAt: serializer.fromJson<DateTime>(json['generatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'weekStart': serializer.toJson<DateTime>(weekStart),
+      'weekEnd': serializer.toJson<DateTime>(weekEnd),
+      'workoutCount': serializer.toJson<int>(workoutCount),
+      'totalVolumeKg': serializer.toJson<double>(totalVolumeKg),
+      'totalDurationSeconds': serializer.toJson<int>(totalDurationSeconds),
+      'averageRpe': serializer.toJson<double?>(averageRpe),
+      'prCount': serializer.toJson<int>(prCount),
+      'prsJson': serializer.toJson<String?>(prsJson),
+      'dailyVolumeKgJson': serializer.toJson<String>(dailyVolumeKgJson),
+      'prevWorkoutCount': serializer.toJson<int?>(prevWorkoutCount),
+      'prevTotalVolumeKg': serializer.toJson<double?>(prevTotalVolumeKg),
+      'generatedAt': serializer.toJson<DateTime>(generatedAt),
+    };
+  }
+
+  WeeklyRecapRow copyWith({
+    String? id,
+    DateTime? weekStart,
+    DateTime? weekEnd,
+    int? workoutCount,
+    double? totalVolumeKg,
+    int? totalDurationSeconds,
+    Value<double?> averageRpe = const Value.absent(),
+    int? prCount,
+    Value<String?> prsJson = const Value.absent(),
+    String? dailyVolumeKgJson,
+    Value<int?> prevWorkoutCount = const Value.absent(),
+    Value<double?> prevTotalVolumeKg = const Value.absent(),
+    DateTime? generatedAt,
+  }) => WeeklyRecapRow(
+    id: id ?? this.id,
+    weekStart: weekStart ?? this.weekStart,
+    weekEnd: weekEnd ?? this.weekEnd,
+    workoutCount: workoutCount ?? this.workoutCount,
+    totalVolumeKg: totalVolumeKg ?? this.totalVolumeKg,
+    totalDurationSeconds: totalDurationSeconds ?? this.totalDurationSeconds,
+    averageRpe: averageRpe.present ? averageRpe.value : this.averageRpe,
+    prCount: prCount ?? this.prCount,
+    prsJson: prsJson.present ? prsJson.value : this.prsJson,
+    dailyVolumeKgJson: dailyVolumeKgJson ?? this.dailyVolumeKgJson,
+    prevWorkoutCount: prevWorkoutCount.present
+        ? prevWorkoutCount.value
+        : this.prevWorkoutCount,
+    prevTotalVolumeKg: prevTotalVolumeKg.present
+        ? prevTotalVolumeKg.value
+        : this.prevTotalVolumeKg,
+    generatedAt: generatedAt ?? this.generatedAt,
+  );
+  WeeklyRecapRow copyWithCompanion(WeeklyRecapsCompanion data) {
+    return WeeklyRecapRow(
+      id: data.id.present ? data.id.value : this.id,
+      weekStart: data.weekStart.present ? data.weekStart.value : this.weekStart,
+      weekEnd: data.weekEnd.present ? data.weekEnd.value : this.weekEnd,
+      workoutCount: data.workoutCount.present
+          ? data.workoutCount.value
+          : this.workoutCount,
+      totalVolumeKg: data.totalVolumeKg.present
+          ? data.totalVolumeKg.value
+          : this.totalVolumeKg,
+      totalDurationSeconds: data.totalDurationSeconds.present
+          ? data.totalDurationSeconds.value
+          : this.totalDurationSeconds,
+      averageRpe: data.averageRpe.present
+          ? data.averageRpe.value
+          : this.averageRpe,
+      prCount: data.prCount.present ? data.prCount.value : this.prCount,
+      prsJson: data.prsJson.present ? data.prsJson.value : this.prsJson,
+      dailyVolumeKgJson: data.dailyVolumeKgJson.present
+          ? data.dailyVolumeKgJson.value
+          : this.dailyVolumeKgJson,
+      prevWorkoutCount: data.prevWorkoutCount.present
+          ? data.prevWorkoutCount.value
+          : this.prevWorkoutCount,
+      prevTotalVolumeKg: data.prevTotalVolumeKg.present
+          ? data.prevTotalVolumeKg.value
+          : this.prevTotalVolumeKg,
+      generatedAt: data.generatedAt.present
+          ? data.generatedAt.value
+          : this.generatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WeeklyRecapRow(')
+          ..write('id: $id, ')
+          ..write('weekStart: $weekStart, ')
+          ..write('weekEnd: $weekEnd, ')
+          ..write('workoutCount: $workoutCount, ')
+          ..write('totalVolumeKg: $totalVolumeKg, ')
+          ..write('totalDurationSeconds: $totalDurationSeconds, ')
+          ..write('averageRpe: $averageRpe, ')
+          ..write('prCount: $prCount, ')
+          ..write('prsJson: $prsJson, ')
+          ..write('dailyVolumeKgJson: $dailyVolumeKgJson, ')
+          ..write('prevWorkoutCount: $prevWorkoutCount, ')
+          ..write('prevTotalVolumeKg: $prevTotalVolumeKg, ')
+          ..write('generatedAt: $generatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    weekStart,
+    weekEnd,
+    workoutCount,
+    totalVolumeKg,
+    totalDurationSeconds,
+    averageRpe,
+    prCount,
+    prsJson,
+    dailyVolumeKgJson,
+    prevWorkoutCount,
+    prevTotalVolumeKg,
+    generatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WeeklyRecapRow &&
+          other.id == this.id &&
+          other.weekStart == this.weekStart &&
+          other.weekEnd == this.weekEnd &&
+          other.workoutCount == this.workoutCount &&
+          other.totalVolumeKg == this.totalVolumeKg &&
+          other.totalDurationSeconds == this.totalDurationSeconds &&
+          other.averageRpe == this.averageRpe &&
+          other.prCount == this.prCount &&
+          other.prsJson == this.prsJson &&
+          other.dailyVolumeKgJson == this.dailyVolumeKgJson &&
+          other.prevWorkoutCount == this.prevWorkoutCount &&
+          other.prevTotalVolumeKg == this.prevTotalVolumeKg &&
+          other.generatedAt == this.generatedAt);
+}
+
+class WeeklyRecapsCompanion extends UpdateCompanion<WeeklyRecapRow> {
+  final Value<String> id;
+  final Value<DateTime> weekStart;
+  final Value<DateTime> weekEnd;
+  final Value<int> workoutCount;
+  final Value<double> totalVolumeKg;
+  final Value<int> totalDurationSeconds;
+  final Value<double?> averageRpe;
+  final Value<int> prCount;
+  final Value<String?> prsJson;
+  final Value<String> dailyVolumeKgJson;
+  final Value<int?> prevWorkoutCount;
+  final Value<double?> prevTotalVolumeKg;
+  final Value<DateTime> generatedAt;
+  final Value<int> rowid;
+  const WeeklyRecapsCompanion({
+    this.id = const Value.absent(),
+    this.weekStart = const Value.absent(),
+    this.weekEnd = const Value.absent(),
+    this.workoutCount = const Value.absent(),
+    this.totalVolumeKg = const Value.absent(),
+    this.totalDurationSeconds = const Value.absent(),
+    this.averageRpe = const Value.absent(),
+    this.prCount = const Value.absent(),
+    this.prsJson = const Value.absent(),
+    this.dailyVolumeKgJson = const Value.absent(),
+    this.prevWorkoutCount = const Value.absent(),
+    this.prevTotalVolumeKg = const Value.absent(),
+    this.generatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WeeklyRecapsCompanion.insert({
+    required String id,
+    required DateTime weekStart,
+    required DateTime weekEnd,
+    required int workoutCount,
+    required double totalVolumeKg,
+    required int totalDurationSeconds,
+    this.averageRpe = const Value.absent(),
+    required int prCount,
+    this.prsJson = const Value.absent(),
+    required String dailyVolumeKgJson,
+    this.prevWorkoutCount = const Value.absent(),
+    this.prevTotalVolumeKg = const Value.absent(),
+    required DateTime generatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       weekStart = Value(weekStart),
+       weekEnd = Value(weekEnd),
+       workoutCount = Value(workoutCount),
+       totalVolumeKg = Value(totalVolumeKg),
+       totalDurationSeconds = Value(totalDurationSeconds),
+       prCount = Value(prCount),
+       dailyVolumeKgJson = Value(dailyVolumeKgJson),
+       generatedAt = Value(generatedAt);
+  static Insertable<WeeklyRecapRow> custom({
+    Expression<String>? id,
+    Expression<DateTime>? weekStart,
+    Expression<DateTime>? weekEnd,
+    Expression<int>? workoutCount,
+    Expression<double>? totalVolumeKg,
+    Expression<int>? totalDurationSeconds,
+    Expression<double>? averageRpe,
+    Expression<int>? prCount,
+    Expression<String>? prsJson,
+    Expression<String>? dailyVolumeKgJson,
+    Expression<int>? prevWorkoutCount,
+    Expression<double>? prevTotalVolumeKg,
+    Expression<DateTime>? generatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (weekStart != null) 'week_start': weekStart,
+      if (weekEnd != null) 'week_end': weekEnd,
+      if (workoutCount != null) 'workout_count': workoutCount,
+      if (totalVolumeKg != null) 'total_volume_kg': totalVolumeKg,
+      if (totalDurationSeconds != null)
+        'total_duration_seconds': totalDurationSeconds,
+      if (averageRpe != null) 'average_rpe': averageRpe,
+      if (prCount != null) 'pr_count': prCount,
+      if (prsJson != null) 'prs_json': prsJson,
+      if (dailyVolumeKgJson != null) 'daily_volume_kg_json': dailyVolumeKgJson,
+      if (prevWorkoutCount != null) 'prev_workout_count': prevWorkoutCount,
+      if (prevTotalVolumeKg != null) 'prev_total_volume_kg': prevTotalVolumeKg,
+      if (generatedAt != null) 'generated_at': generatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WeeklyRecapsCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? weekStart,
+    Value<DateTime>? weekEnd,
+    Value<int>? workoutCount,
+    Value<double>? totalVolumeKg,
+    Value<int>? totalDurationSeconds,
+    Value<double?>? averageRpe,
+    Value<int>? prCount,
+    Value<String?>? prsJson,
+    Value<String>? dailyVolumeKgJson,
+    Value<int?>? prevWorkoutCount,
+    Value<double?>? prevTotalVolumeKg,
+    Value<DateTime>? generatedAt,
+    Value<int>? rowid,
+  }) {
+    return WeeklyRecapsCompanion(
+      id: id ?? this.id,
+      weekStart: weekStart ?? this.weekStart,
+      weekEnd: weekEnd ?? this.weekEnd,
+      workoutCount: workoutCount ?? this.workoutCount,
+      totalVolumeKg: totalVolumeKg ?? this.totalVolumeKg,
+      totalDurationSeconds: totalDurationSeconds ?? this.totalDurationSeconds,
+      averageRpe: averageRpe ?? this.averageRpe,
+      prCount: prCount ?? this.prCount,
+      prsJson: prsJson ?? this.prsJson,
+      dailyVolumeKgJson: dailyVolumeKgJson ?? this.dailyVolumeKgJson,
+      prevWorkoutCount: prevWorkoutCount ?? this.prevWorkoutCount,
+      prevTotalVolumeKg: prevTotalVolumeKg ?? this.prevTotalVolumeKg,
+      generatedAt: generatedAt ?? this.generatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (weekStart.present) {
+      map['week_start'] = Variable<DateTime>(weekStart.value);
+    }
+    if (weekEnd.present) {
+      map['week_end'] = Variable<DateTime>(weekEnd.value);
+    }
+    if (workoutCount.present) {
+      map['workout_count'] = Variable<int>(workoutCount.value);
+    }
+    if (totalVolumeKg.present) {
+      map['total_volume_kg'] = Variable<double>(totalVolumeKg.value);
+    }
+    if (totalDurationSeconds.present) {
+      map['total_duration_seconds'] = Variable<int>(totalDurationSeconds.value);
+    }
+    if (averageRpe.present) {
+      map['average_rpe'] = Variable<double>(averageRpe.value);
+    }
+    if (prCount.present) {
+      map['pr_count'] = Variable<int>(prCount.value);
+    }
+    if (prsJson.present) {
+      map['prs_json'] = Variable<String>(prsJson.value);
+    }
+    if (dailyVolumeKgJson.present) {
+      map['daily_volume_kg_json'] = Variable<String>(dailyVolumeKgJson.value);
+    }
+    if (prevWorkoutCount.present) {
+      map['prev_workout_count'] = Variable<int>(prevWorkoutCount.value);
+    }
+    if (prevTotalVolumeKg.present) {
+      map['prev_total_volume_kg'] = Variable<double>(prevTotalVolumeKg.value);
+    }
+    if (generatedAt.present) {
+      map['generated_at'] = Variable<DateTime>(generatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WeeklyRecapsCompanion(')
+          ..write('id: $id, ')
+          ..write('weekStart: $weekStart, ')
+          ..write('weekEnd: $weekEnd, ')
+          ..write('workoutCount: $workoutCount, ')
+          ..write('totalVolumeKg: $totalVolumeKg, ')
+          ..write('totalDurationSeconds: $totalDurationSeconds, ')
+          ..write('averageRpe: $averageRpe, ')
+          ..write('prCount: $prCount, ')
+          ..write('prsJson: $prsJson, ')
+          ..write('dailyVolumeKgJson: $dailyVolumeKgJson, ')
+          ..write('prevWorkoutCount: $prevWorkoutCount, ')
+          ..write('prevTotalVolumeKg: $prevTotalVolumeKg, ')
+          ..write('generatedAt: $generatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4622,6 +5781,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $UserProfilesTable userProfiles = $UserProfilesTable(this);
   late final $WeightEntriesTable weightEntries = $WeightEntriesTable(this);
+  late final $WeeklyRecapsTable weeklyRecaps = $WeeklyRecapsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4636,6 +5796,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     appSettings,
     userProfiles,
     weightEntries,
+    weeklyRecaps,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4680,6 +5841,9 @@ typedef $$ExercisesTableCreateCompanionBuilder =
       Value<Uint8List?> thumbnailBytes,
       Value<bool> isDefault,
       Value<int?> defaultRestSeconds,
+      Value<String?> trackedMetrics,
+      Value<String?> equipment,
+      Value<String?> formCue,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -4694,6 +5858,9 @@ typedef $$ExercisesTableUpdateCompanionBuilder =
       Value<Uint8List?> thumbnailBytes,
       Value<bool> isDefault,
       Value<int?> defaultRestSeconds,
+      Value<String?> trackedMetrics,
+      Value<String?> equipment,
+      Value<String?> formCue,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -4803,6 +5970,21 @@ class $$ExercisesTableFilterComposer
 
   ColumnFilters<int> get defaultRestSeconds => $composableBuilder(
     column: $table.defaultRestSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get trackedMetrics => $composableBuilder(
+    column: $table.trackedMetrics,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get equipment => $composableBuilder(
+    column: $table.equipment,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get formCue => $composableBuilder(
+    column: $table.formCue,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4916,6 +6098,21 @@ class $$ExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get trackedMetrics => $composableBuilder(
+    column: $table.trackedMetrics,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get equipment => $composableBuilder(
+    column: $table.equipment,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get formCue => $composableBuilder(
+    column: $table.formCue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4968,6 +6165,17 @@ class $$ExercisesTableAnnotationComposer
     column: $table.defaultRestSeconds,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get trackedMetrics => $composableBuilder(
+    column: $table.trackedMetrics,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get equipment =>
+      $composableBuilder(column: $table.equipment, builder: (column) => column);
+
+  GeneratedColumn<String> get formCue =>
+      $composableBuilder(column: $table.formCue, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -5066,6 +6274,9 @@ class $$ExercisesTableTableManager
                 Value<Uint8List?> thumbnailBytes = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 Value<int?> defaultRestSeconds = const Value.absent(),
+                Value<String?> trackedMetrics = const Value.absent(),
+                Value<String?> equipment = const Value.absent(),
+                Value<String?> formCue = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -5078,6 +6289,9 @@ class $$ExercisesTableTableManager
                 thumbnailBytes: thumbnailBytes,
                 isDefault: isDefault,
                 defaultRestSeconds: defaultRestSeconds,
+                trackedMetrics: trackedMetrics,
+                equipment: equipment,
+                formCue: formCue,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -5092,6 +6306,9 @@ class $$ExercisesTableTableManager
                 Value<Uint8List?> thumbnailBytes = const Value.absent(),
                 Value<bool> isDefault = const Value.absent(),
                 Value<int?> defaultRestSeconds = const Value.absent(),
+                Value<String?> trackedMetrics = const Value.absent(),
+                Value<String?> equipment = const Value.absent(),
+                Value<String?> formCue = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -5104,6 +6321,9 @@ class $$ExercisesTableTableManager
                 thumbnailBytes: thumbnailBytes,
                 isDefault: isDefault,
                 defaultRestSeconds: defaultRestSeconds,
+                trackedMetrics: trackedMetrics,
+                equipment: equipment,
+                formCue: formCue,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -7034,6 +8254,9 @@ typedef $$SetsTableCreateCompanionBuilder =
       Value<int?> reps,
       Value<double?> distanceKm,
       Value<int?> durationSeconds,
+      Value<int?> laps,
+      Value<int?> floors,
+      Value<int?> calories,
       Value<bool> completed,
       Value<DateTime?> completedAt,
       Value<DateTime?> updatedAt,
@@ -7053,6 +8276,9 @@ typedef $$SetsTableUpdateCompanionBuilder =
       Value<int?> reps,
       Value<double?> distanceKm,
       Value<int?> durationSeconds,
+      Value<int?> laps,
+      Value<int?> floors,
+      Value<int?> calories,
       Value<bool> completed,
       Value<DateTime?> completedAt,
       Value<DateTime?> updatedAt,
@@ -7123,6 +8349,21 @@ class $$SetsTableFilterComposer extends Composer<_$AppDatabase, $SetsTable> {
 
   ColumnFilters<int> get durationSeconds => $composableBuilder(
     column: $table.durationSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get laps => $composableBuilder(
+    column: $table.laps,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get floors => $composableBuilder(
+    column: $table.floors,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get calories => $composableBuilder(
+    column: $table.calories,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7228,6 +8469,21 @@ class $$SetsTableOrderingComposer extends Composer<_$AppDatabase, $SetsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get laps => $composableBuilder(
+    column: $table.laps,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get floors => $composableBuilder(
+    column: $table.floors,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get calories => $composableBuilder(
+    column: $table.calories,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get completed => $composableBuilder(
     column: $table.completed,
     builder: (column) => ColumnOrderings(column),
@@ -7323,6 +8579,15 @@ class $$SetsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get laps =>
+      $composableBuilder(column: $table.laps, builder: (column) => column);
+
+  GeneratedColumn<int> get floors =>
+      $composableBuilder(column: $table.floors, builder: (column) => column);
+
+  GeneratedColumn<int> get calories =>
+      $composableBuilder(column: $table.calories, builder: (column) => column);
+
   GeneratedColumn<bool> get completed =>
       $composableBuilder(column: $table.completed, builder: (column) => column);
 
@@ -7410,6 +8675,9 @@ class $$SetsTableTableManager
                 Value<int?> reps = const Value.absent(),
                 Value<double?> distanceKm = const Value.absent(),
                 Value<int?> durationSeconds = const Value.absent(),
+                Value<int?> laps = const Value.absent(),
+                Value<int?> floors = const Value.absent(),
+                Value<int?> calories = const Value.absent(),
                 Value<bool> completed = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -7427,6 +8695,9 @@ class $$SetsTableTableManager
                 reps: reps,
                 distanceKm: distanceKm,
                 durationSeconds: durationSeconds,
+                laps: laps,
+                floors: floors,
+                calories: calories,
                 completed: completed,
                 completedAt: completedAt,
                 updatedAt: updatedAt,
@@ -7446,6 +8717,9 @@ class $$SetsTableTableManager
                 Value<int?> reps = const Value.absent(),
                 Value<double?> distanceKm = const Value.absent(),
                 Value<int?> durationSeconds = const Value.absent(),
+                Value<int?> laps = const Value.absent(),
+                Value<int?> floors = const Value.absent(),
+                Value<int?> calories = const Value.absent(),
                 Value<bool> completed = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -7463,6 +8737,9 @@ class $$SetsTableTableManager
                 reps: reps,
                 distanceKm: distanceKm,
                 durationSeconds: durationSeconds,
+                laps: laps,
+                floors: floors,
+                calories: calories,
                 completed: completed,
                 completedAt: completedAt,
                 updatedAt: updatedAt,
@@ -8271,6 +9548,374 @@ typedef $$WeightEntriesTableProcessedTableManager =
       WeightEntryRow,
       PrefetchHooks Function()
     >;
+typedef $$WeeklyRecapsTableCreateCompanionBuilder =
+    WeeklyRecapsCompanion Function({
+      required String id,
+      required DateTime weekStart,
+      required DateTime weekEnd,
+      required int workoutCount,
+      required double totalVolumeKg,
+      required int totalDurationSeconds,
+      Value<double?> averageRpe,
+      required int prCount,
+      Value<String?> prsJson,
+      required String dailyVolumeKgJson,
+      Value<int?> prevWorkoutCount,
+      Value<double?> prevTotalVolumeKg,
+      required DateTime generatedAt,
+      Value<int> rowid,
+    });
+typedef $$WeeklyRecapsTableUpdateCompanionBuilder =
+    WeeklyRecapsCompanion Function({
+      Value<String> id,
+      Value<DateTime> weekStart,
+      Value<DateTime> weekEnd,
+      Value<int> workoutCount,
+      Value<double> totalVolumeKg,
+      Value<int> totalDurationSeconds,
+      Value<double?> averageRpe,
+      Value<int> prCount,
+      Value<String?> prsJson,
+      Value<String> dailyVolumeKgJson,
+      Value<int?> prevWorkoutCount,
+      Value<double?> prevTotalVolumeKg,
+      Value<DateTime> generatedAt,
+      Value<int> rowid,
+    });
+
+class $$WeeklyRecapsTableFilterComposer
+    extends Composer<_$AppDatabase, $WeeklyRecapsTable> {
+  $$WeeklyRecapsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get weekStart => $composableBuilder(
+    column: $table.weekStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get weekEnd => $composableBuilder(
+    column: $table.weekEnd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get workoutCount => $composableBuilder(
+    column: $table.workoutCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get totalVolumeKg => $composableBuilder(
+    column: $table.totalVolumeKg,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalDurationSeconds => $composableBuilder(
+    column: $table.totalDurationSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get averageRpe => $composableBuilder(
+    column: $table.averageRpe,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get prCount => $composableBuilder(
+    column: $table.prCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get prsJson => $composableBuilder(
+    column: $table.prsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dailyVolumeKgJson => $composableBuilder(
+    column: $table.dailyVolumeKgJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get prevWorkoutCount => $composableBuilder(
+    column: $table.prevWorkoutCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get prevTotalVolumeKg => $composableBuilder(
+    column: $table.prevTotalVolumeKg,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WeeklyRecapsTableOrderingComposer
+    extends Composer<_$AppDatabase, $WeeklyRecapsTable> {
+  $$WeeklyRecapsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get weekStart => $composableBuilder(
+    column: $table.weekStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get weekEnd => $composableBuilder(
+    column: $table.weekEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get workoutCount => $composableBuilder(
+    column: $table.workoutCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get totalVolumeKg => $composableBuilder(
+    column: $table.totalVolumeKg,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalDurationSeconds => $composableBuilder(
+    column: $table.totalDurationSeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get averageRpe => $composableBuilder(
+    column: $table.averageRpe,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get prCount => $composableBuilder(
+    column: $table.prCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get prsJson => $composableBuilder(
+    column: $table.prsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dailyVolumeKgJson => $composableBuilder(
+    column: $table.dailyVolumeKgJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get prevWorkoutCount => $composableBuilder(
+    column: $table.prevWorkoutCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get prevTotalVolumeKg => $composableBuilder(
+    column: $table.prevTotalVolumeKg,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WeeklyRecapsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WeeklyRecapsTable> {
+  $$WeeklyRecapsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get weekStart =>
+      $composableBuilder(column: $table.weekStart, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get weekEnd =>
+      $composableBuilder(column: $table.weekEnd, builder: (column) => column);
+
+  GeneratedColumn<int> get workoutCount => $composableBuilder(
+    column: $table.workoutCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get totalVolumeKg => $composableBuilder(
+    column: $table.totalVolumeKg,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalDurationSeconds => $composableBuilder(
+    column: $table.totalDurationSeconds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get averageRpe => $composableBuilder(
+    column: $table.averageRpe,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get prCount =>
+      $composableBuilder(column: $table.prCount, builder: (column) => column);
+
+  GeneratedColumn<String> get prsJson =>
+      $composableBuilder(column: $table.prsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get dailyVolumeKgJson => $composableBuilder(
+    column: $table.dailyVolumeKgJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get prevWorkoutCount => $composableBuilder(
+    column: $table.prevWorkoutCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get prevTotalVolumeKg => $composableBuilder(
+    column: $table.prevTotalVolumeKg,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get generatedAt => $composableBuilder(
+    column: $table.generatedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$WeeklyRecapsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WeeklyRecapsTable,
+          WeeklyRecapRow,
+          $$WeeklyRecapsTableFilterComposer,
+          $$WeeklyRecapsTableOrderingComposer,
+          $$WeeklyRecapsTableAnnotationComposer,
+          $$WeeklyRecapsTableCreateCompanionBuilder,
+          $$WeeklyRecapsTableUpdateCompanionBuilder,
+          (
+            WeeklyRecapRow,
+            BaseReferences<_$AppDatabase, $WeeklyRecapsTable, WeeklyRecapRow>,
+          ),
+          WeeklyRecapRow,
+          PrefetchHooks Function()
+        > {
+  $$WeeklyRecapsTableTableManager(_$AppDatabase db, $WeeklyRecapsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WeeklyRecapsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WeeklyRecapsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WeeklyRecapsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> weekStart = const Value.absent(),
+                Value<DateTime> weekEnd = const Value.absent(),
+                Value<int> workoutCount = const Value.absent(),
+                Value<double> totalVolumeKg = const Value.absent(),
+                Value<int> totalDurationSeconds = const Value.absent(),
+                Value<double?> averageRpe = const Value.absent(),
+                Value<int> prCount = const Value.absent(),
+                Value<String?> prsJson = const Value.absent(),
+                Value<String> dailyVolumeKgJson = const Value.absent(),
+                Value<int?> prevWorkoutCount = const Value.absent(),
+                Value<double?> prevTotalVolumeKg = const Value.absent(),
+                Value<DateTime> generatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WeeklyRecapsCompanion(
+                id: id,
+                weekStart: weekStart,
+                weekEnd: weekEnd,
+                workoutCount: workoutCount,
+                totalVolumeKg: totalVolumeKg,
+                totalDurationSeconds: totalDurationSeconds,
+                averageRpe: averageRpe,
+                prCount: prCount,
+                prsJson: prsJson,
+                dailyVolumeKgJson: dailyVolumeKgJson,
+                prevWorkoutCount: prevWorkoutCount,
+                prevTotalVolumeKg: prevTotalVolumeKg,
+                generatedAt: generatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required DateTime weekStart,
+                required DateTime weekEnd,
+                required int workoutCount,
+                required double totalVolumeKg,
+                required int totalDurationSeconds,
+                Value<double?> averageRpe = const Value.absent(),
+                required int prCount,
+                Value<String?> prsJson = const Value.absent(),
+                required String dailyVolumeKgJson,
+                Value<int?> prevWorkoutCount = const Value.absent(),
+                Value<double?> prevTotalVolumeKg = const Value.absent(),
+                required DateTime generatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => WeeklyRecapsCompanion.insert(
+                id: id,
+                weekStart: weekStart,
+                weekEnd: weekEnd,
+                workoutCount: workoutCount,
+                totalVolumeKg: totalVolumeKg,
+                totalDurationSeconds: totalDurationSeconds,
+                averageRpe: averageRpe,
+                prCount: prCount,
+                prsJson: prsJson,
+                dailyVolumeKgJson: dailyVolumeKgJson,
+                prevWorkoutCount: prevWorkoutCount,
+                prevTotalVolumeKg: prevTotalVolumeKg,
+                generatedAt: generatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WeeklyRecapsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WeeklyRecapsTable,
+      WeeklyRecapRow,
+      $$WeeklyRecapsTableFilterComposer,
+      $$WeeklyRecapsTableOrderingComposer,
+      $$WeeklyRecapsTableAnnotationComposer,
+      $$WeeklyRecapsTableCreateCompanionBuilder,
+      $$WeeklyRecapsTableUpdateCompanionBuilder,
+      (
+        WeeklyRecapRow,
+        BaseReferences<_$AppDatabase, $WeeklyRecapsTable, WeeklyRecapRow>,
+      ),
+      WeeklyRecapRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8292,4 +9937,6 @@ class $AppDatabaseManager {
       $$UserProfilesTableTableManager(_db, _db.userProfiles);
   $$WeightEntriesTableTableManager get weightEntries =>
       $$WeightEntriesTableTableManager(_db, _db.weightEntries);
+  $$WeeklyRecapsTableTableManager get weeklyRecaps =>
+      $$WeeklyRecapsTableTableManager(_db, _db.weeklyRecaps);
 }
